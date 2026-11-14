@@ -1,0 +1,28 @@
+# Local archives, agent notes and verification artifacts
+/.local/
+/_build/
+/.finesse/
+/.learnings/
+/HANDOFF.md
+/PROMPT.md
+/test-results/
+
+# Dependencies and editor / operating-system files
+node_modules/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+*.tmp
+*.swp
+.idea/
+.vscode/
+
+# Local credentials and environment overrides
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx

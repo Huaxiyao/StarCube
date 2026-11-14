@@ -1,0 +1,15 @@
+{
+  "name": "starcube",
+  "private": true,
+  "description": "Offline single-file Rubik's Cube timer with training groups and review tools.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "test": "node scripts/test.cjs",
+    "test:browser": "node scripts/test-browser.cjs",
+    "sync-solver": "node scripts/sync-solver.cjs"
+  }
+}

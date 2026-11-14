@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#101719">
+<title>StarCube</title>
+<style>
+/* finesse · product · 2026-11-14 typography and control polish
+   Primary: a high-contrast timing display with a separate scramble band.
+   Secondary: horizontal metrics and recent results. Review: metrics / chart + history.
+   Unified charcoal surfaces; bright numerals and shared semantic colors establish hierarchy.
+   Refinement: UI sans for Chinese, tabular numerals, softer controls and grouped spacing.
+   Refactoring UI: 4.2 typography, 3.6 grouping, 2.8 action hierarchy, 8.5 quiet borders.
+   Preserve the instrument layout, DOM order and interaction boundaries.
+   One timer instance; document scrolling; 44px targets; no animated numerals. */
+:root {
+  --bg:#101719; --panel:#172124; --text:#e6ede9; --muted:#a5b5b4;
+  --line:rgb(190 212 208 / .24); --line-soft:rgb(190 212 208 / .11);
+  --control:#202d30; --control-hover:#2a3a3d; --control-active:#35484a;
+  --accent:#bdd5f4; --accent-fill:#dce8e5; --accent-pressed:#c8dbd5; --on-accent:#172724;
+  --accent-soft:#253b44; --accent-border:rgb(189 213 244 / .5);
+  --yellow:#e4c663; --green:#2e7d32; --green-bright:#84d8a4; --red:#c62828; --red-text:#f18b92;
+  --positive-soft:#1a3027; --yellow-soft:#302b18; --danger-soft:#342326;
+  --radius:12px; --radius-control:8px;
+  --control-border:rgb(190 212 208 / .18);
+  --ui:"Segoe UI","PingFang SC","Microsoft YaHei UI","Microsoft YaHei","Noto Sans SC",sans-serif;
+  --digits:"Segoe UI","SF Pro Display","Helvetica Neue",Arial,var(--ui);
+  --mono:ui-monospace,"SFMono-Regular","Cascadia Mono",Menlo,Consolas,"Liberation Mono",var(--ui);
+}
+* { box-sizing:border-box; }
+html { min-height:100%; scrollbar-gutter:stable; }
+body { margin:0; min-width:280px; background:var(--bg); color:var(--text); font:0.875rem/1.6 var(--ui); -webkit-text-size-adjust:100%; }
+button,select,input { font:inherit; color:inherit; }
+button { cursor:pointer; border:0; background:none; min-height:44px; min-width:44px; }
+button,select,summary { -webkit-tap-highlight-color:transparent; }
+button:disabled,select:disabled { opacity:.45; cursor:not-allowed; }
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible,[tabindex]:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
+::selection { color:var(--on-accent); background:var(--accent-fill); }
+[hidden] { display:none !important; }
+h1,h2,p { margin:0; }
+#app { width:min(100%,1600px); margin:0 auto; padding:0 32px 24px 128px; }
+main { min-width:0; }
+.topbar { position:fixed; top:16px; bottom:16px; left:16px; width:80px; z-index:6; display:flex; flex-direction:column; align-items:center; gap:24px; padding:20px 4px; background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); }
+.brand { display:flex; flex-direction:column; align-items:center; gap:10px; font-size:0.8125rem; font-weight:600; letter-spacing:-.02em; }
+.brand-symbol { width:32px; height:32px; color:var(--text); flex:none; }
+.brand-symbol .cube-top { fill:var(--text); }
+.brand-symbol .cube-left { fill:#6b8583; }
+.brand-symbol .cube-right { fill:#314d4d; }
+.brand-wordmark { white-space:nowrap; }
+.brand-wordmark span { color:var(--text); }
+.brand-sub { display:none; }
+.view-nav { display:flex; flex-direction:column; gap:8px; width:100%; padding:0 4px; margin-top:24px; }
+.nav-button { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:8px; min-height:76px; padding:12px 4px; color:var(--muted); border-radius:var(--radius-control); font-size:0.875rem; font-weight:600; }
+.nav-button svg { width:22px; height:22px; flex:none; }
+.nav-button[aria-pressed="true"] { background:var(--accent-fill); color:var(--on-accent); }
+.nav-button[aria-pressed="true"]:disabled { opacity:.75; }
+.topbar-right { margin-top:auto; display:flex; flex-direction:column; align-items:center; gap:16px; }
+.status { color:var(--muted); font:0.75rem/1.5 var(--ui); text-align:center; overflow-wrap:anywhere; }
+.status::before { content:""; display:inline-block; width:5px; height:5px; margin-right:6px; border-radius:50%; background:currentColor; vertical-align:middle; }
+.status[data-tone="active"] { color:var(--green-bright); }
+.status[data-tone="warn"] { color:var(--yellow); }
+.switch { display:flex; align-items:center; gap:6px; padding:0 2px; color:var(--muted); font-size:0.75rem; }
+.switch-track { width:28px; height:18px; border-radius:10px; background:var(--control-active); position:relative; }
+.switch-dot { position:absolute; top:3px; left:3px; width:12px; height:12px; border-radius:50%; background:var(--muted); transition:transform 120ms ease; }
+.switch[aria-checked="true"] .switch-track { background:var(--accent-fill); }
+.switch[aria-checked="true"] .switch-dot { background:var(--on-accent); transform:translateX(10px); }
+.banner { margin:16px 0; padding:12px 16px; border-left:3px solid var(--yellow); background:var(--yellow-soft); color:var(--text); font-size:0.75rem; overflow-wrap:anywhere; }
+.training { padding:20px 0; }
+.training-bar { display:flex; align-items:center; gap:12px; }
+.training-bar label { color:var(--muted); margin-right:4px; font-size:0.75rem; flex:none; }
+.training select { width:280px; min-width:0; max-width:100%; }
+.training select,.training input,.review select { min-height:44px; padding:8px 12px; background:var(--control); border:1px solid var(--control-border); border-radius:var(--radius-control); }
+.training button { padding:0 12px; font-size:0.875rem; color:var(--muted); border-radius:var(--radius-control); }
+.training-form { max-width:440px; display:grid; gap:8px; padding:16px 0 0; }
+.training-form input { width:100%; min-width:0; }
+.training-form span { color:var(--muted); font-size:0.75rem; }
+.training-form #groupError { color:var(--red-text); }
+.training-form #groupError:empty { display:none; }
+.training-form #groupSave { background:var(--accent-fill); color:var(--on-accent); margin-right:8px; }
+.timer-layout { display:grid; grid-template-columns:minmax(0,1fr) 232px; gap:32px; align-items:start; }
+.timer-stage { min-width:0; }
+.scramble { display:flex; align-items:center; gap:24px; padding:0 0 20px; }
+.scramble-main { flex:1; min-width:0; }
+.scramble-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.label { color:var(--muted); font-size:0.75rem; }
+.label-divider { margin:0 8px; }
+.small-btn,.retry { min-height:44px; padding:0 16px; border:1px solid var(--control-border); border-radius:var(--radius-control); background:var(--control); font-size:0.875rem; font-weight:500; }
+#newScramble { border-color:transparent; background:transparent; color:var(--accent); }
+kbd { color:var(--muted); font:0.75rem var(--mono); margin-left:8px; }
+.scramble-text { font:1.125rem/1.7 var(--mono); min-height:3.825rem; letter-spacing:0; word-spacing:.12em; overflow-wrap:anywhere; user-select:text; }
+.scramble-text.is-message { color:var(--muted); font-family:inherit; font-size:0.875rem; line-height:1.8; }
+.scramble-hint { display:flex; gap:8px; align-items:center; min-height:18px; margin-top:8px; color:var(--muted); font-size:0.75rem; }
+.net-wrap { width:104px; flex:none; padding:8px; background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius-control); }
+.net svg { display:block; width:100%; height:auto; }
+.timer-console { background:var(--panel); color:var(--text); border-radius:var(--radius); box-shadow:inset 0 0 0 1px var(--line-soft); overflow:visible; }
+.pad { position:relative; min-height:clamp(288px,38vh,420px); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:3rem 16px 2rem; user-select:none; -webkit-user-select:none; touch-action:pan-y pinch-zoom; -webkit-touch-callout:none; border-radius:var(--radius) var(--radius) 0 0; color:var(--text); }
+.pad:focus-visible { outline-offset:-8px; }
+.pad-caption { position:absolute; top:16px; left:24px; right:24px; display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:0.75rem; letter-spacing:0; color:var(--muted); }
+.pb-badge { color:var(--green-bright); font-size:0.75rem; letter-spacing:0; }
+.timer-line { display:flex; justify-content:center; max-width:100%; }
+.timer { font:500 clamp(5rem,13vw,12rem)/1 var(--digits); font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.035em; white-space:normal; overflow-wrap:anywhere; text-align:center; }
+.timer.is-empty { font-size:4rem; }
+.sub-status { min-height:24px; margin-top:16px; padding:0 8px; font-size:0.875rem; color:var(--muted); text-align:center; }
+.pad[data-state="ready"] .sub-status { color:var(--green-bright); }
+.pad[data-state="holding"] .sub-status,.pad[data-penalty="+2"] .sub-status { color:var(--yellow); }
+.pad[data-penalty="dnf"] .sub-status { color:var(--red-text); }
+.pad::after { content:""; width:40px; height:3px; background:var(--line); opacity:0; margin-top:16px; transition:background-color 120ms ease,width 120ms ease; }
+.pad[data-state="holding"]::after { width:64px; background:var(--yellow); opacity:1; }
+.pad[data-state="ready"]::after { width:80px; background:var(--green-bright); opacity:1; }
+.pad[data-state="running"]::after { background:var(--green-bright); opacity:1; }
+.cancel { position:absolute; right:16px; bottom:8px; padding:0 12px; color:var(--muted); font-size:0.75rem; border-radius:var(--radius-control); }
+.timer-controls { min-height:68px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 24px; border-top:1px solid var(--line-soft); border-radius:0 0 var(--radius) var(--radius); background:rgb(8 16 18 / .12); }
+.actions { display:flex; gap:8px; width:288px; flex:none; }
+.actions[hidden] { display:flex !important; visibility:hidden; pointer-events:none; }
+.action-btn { flex:1; min-height:44px; padding:0 12px; border:1px solid var(--control-border); border-radius:var(--radius-control); background:var(--control); font-size:0.875rem; font-weight:500; }
+.action-btn.is-active { color:var(--yellow); border-color:var(--yellow); background:var(--yellow-soft); }
+.action-btn.is-active.dnf { color:var(--red-text); border-color:var(--red-text); background:var(--danger-soft); }
+.timer-controls .action-btn.is-active { color:var(--yellow); border-color:var(--yellow); background:var(--yellow-soft); }
+.timer-controls .action-btn.is-active.dnf { color:var(--red-text); border-color:var(--red-text); background:var(--danger-soft); }
+.action-btn.danger { color:var(--muted); border-color:transparent; background:transparent; }
+#recordOk.is-active { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+.timer-help { color:var(--muted); font-size:0.75rem; text-align:right; line-height:1.7; }
+.timer-help kbd { margin:0 2px 0 6px; color:inherit; font-size:inherit; }
+.timer-metrics { padding-top:24px; }
+.core-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; margin:0; }
+.core-stat { padding:0 20px; border-left:1px solid var(--line); }
+.core-stat:first-child { padding-left:0; border-left:0; }
+.core-stat dt { color:var(--muted); font-size:0.75rem; }
+.core-stat dd { margin:4px 0 0; font:600 2rem/1.15 var(--digits); font-variant-numeric:tabular-nums; letter-spacing:-.025em; overflow-wrap:anywhere; }
+#coreAo5,#ao5 { color:var(--yellow); }
+.global-best { display:flex; justify-content:space-between; gap:16px; margin-top:20px; padding:12px 0; border-top:1px solid var(--line-soft); color:var(--muted); font-size:0.75rem; }
+.global-best strong { color:var(--text); font-family:var(--digits); font-weight:600; font-variant-numeric:tabular-nums; }
+.timer-sidebar { min-width:0; padding:4px 0 0 24px; border-left:1px solid var(--line); }
+.group-name { margin:8px 0 24px; font-size:1.25rem; font-weight:600; overflow-wrap:anywhere; }
+.section-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.section-heading h2 { font-size:0.875rem; font-weight:500; color:var(--muted); }
+.text-btn { padding:0 8px; color:var(--accent); font-size:0.75rem; border-radius:var(--radius-control); }
+.recent-list { list-style:none; margin:0; padding:0; }
+.recent-item { border-bottom:1px solid var(--line-soft); }
+.recent-item:last-child { border-bottom:0; }
+.recent-result { display:grid; grid-template-columns:28px minmax(0,1fr); gap:4px 8px; width:100%; min-height:80px; padding:12px 0; border-radius:var(--radius-control); text-align:left; font:600 1.5rem/1.2 var(--digits); font-variant-numeric:tabular-nums; }
+.recent-number { color:var(--muted); font:0.75rem var(--mono); align-self:center; }
+.recent-value { text-align:left; }
+.recent-at { grid-column:2; color:var(--muted); font:400 0.75rem/1.5 var(--ui); font-variant-numeric:tabular-nums; }
+.recent-empty { padding:24px 0; color:var(--muted); font-size:0.75rem; line-height:1.8; }
+.is-dnf { color:var(--red-text) !important; }
+.view-heading { display:flex; justify-content:space-between; align-items:baseline; gap:16px; margin:0 0 12px; }
+.view-heading h2 { font-size:1.5rem; font-weight:600; letter-spacing:0; }
+.view-heading p { color:var(--muted); font-size:0.75rem; }
+.review-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; grid-template-areas:"stats stats" "chart history"; gap:20px 24px; align-items:start; }
+.stats { grid-area:stats; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 0; padding:16px 24px 0; background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); }
+.stats-scope { grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--muted); font-size:0.75rem; }
+.stats-scope strong { color:var(--text); font:500 0.75rem var(--mono); margin-left:4px; }
+.stats-row { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+.stats-row + .stats-row { margin-left:16px; padding-left:16px; border-left:1px solid var(--line); }
+.stat { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.stat-label { color:var(--muted); font-size:0.75rem; }
+.stat-value { font:600 1.5rem/1.3 var(--digits); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.stats-help { grid-column:1/-1; border-top:1px solid var(--line-soft); color:var(--muted); font-size:0.75rem; }
+.stats-help summary { min-height:44px; display:flex; align-items:center; cursor:pointer; }
+.stats-help summary::after { content:'＋'; margin-left:auto; }
+.stats-help[open] summary::after { content:'−'; }
+.stats-help p { line-height:1.8; padding-bottom:16px; }
+.review { grid-area:chart; min-width:0; background:var(--panel); border-radius:var(--radius); }
+.history-head { width:100%; min-height:56px; display:flex; align-items:center; gap:12px; padding:8px 20px; text-align:left; font-size:0.875rem; }
+.history-count { color:var(--muted); font:0.75rem var(--mono); }
+.history-chevron { margin-left:auto; width:7px; height:7px; border-right:1px solid var(--muted); border-bottom:1px solid var(--muted); transform:rotate(45deg); flex:none; }
+.history-head[aria-expanded="false"] .history-chevron { transform:rotate(-45deg); }
+.review-body { padding:0 20px 20px; }
+.review-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--line-soft); padding-top:12px; }
+.review-toolbar label,.review-picker label { color:var(--muted); font-size:0.75rem; }
+.review select { min-width:0; max-width:100%; font-size:0.75rem; }
+.review-summary,.review-note { margin:8px 0; color:var(--muted); font-size:0.75rem; line-height:1.7; }
+.review-metrics { display:flex; flex-wrap:wrap; gap:16px 32px; padding:4px 0; }
+.review-metrics span { color:var(--muted); font-size:0.75rem; }
+.review-metrics strong { margin-left:8px; color:var(--text); font:600 1.25rem var(--digits); font-variant-numeric:tabular-nums; }
+.review-legend { display:flex; gap:16px; color:var(--muted); font-size:0.75rem; }
+.review-legend span { display:flex; align-items:center; gap:6px; }
+.review-legend i { width:16px; border-top:2px solid var(--green-bright); }
+.review-legend .ao5-key { border-color:var(--yellow); border-top-style:dashed; }
+.review-chart { display:block; width:100%; height:280px; overflow:visible; cursor:crosshair; }
+.review-grid { stroke:var(--line-soft); stroke-width:1; stroke-dasharray:3 6; }
+.review-axis { fill:var(--muted); font-size:0.75rem; font-family:var(--mono); }
+.review-single,.review-ao5,.review-dnf { fill:none; stroke-width:1.5; vector-effect:non-scaling-stroke; }
+.review-single { stroke:var(--green-bright); }
+.review-ao5 { stroke:var(--yellow); stroke-dasharray:5 4; stroke-width:2; }
+.review-dnf { stroke:var(--red-text); }
+.review-dot { fill:var(--green-bright); }
+.review-ao5-dot { fill:var(--panel); stroke:var(--yellow); stroke-width:1.5; }
+.review-cursor { stroke:var(--muted); stroke-dasharray:2 4; }
+.review-selection { fill:none; stroke:var(--accent); stroke-width:2.5; }
+.review-picker { display:flex; align-items:center; gap:8px; margin-top:16px; }
+.review-picker select { flex:1; width:0; }
+.review-picker button { flex:none; }
+.review-selected { margin:12px 0 0; font:0.875rem/1.7 var(--ui); font-variant-numeric:tabular-nums; }
+.review-empty { padding:48px 0; color:var(--muted); font-size:0.875rem; line-height:1.8; }
+.history-wrap { grid-area:history; min-width:0; background:transparent; border-top:1px solid var(--line); }
+.history-wrap .history-head { padding-left:0; padding-right:8px; }
+.history-body { padding:0 8px 12px 0; max-height:560px; overflow-y:auto; border-top:1px solid var(--line); }
+.history-list { list-style:none; margin:0; padding:0; }
+.history-item { padding:12px 0; border-bottom:1px solid var(--line-soft); }
+.history-item:last-child { border-bottom:0; }
+.history-top { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; }
+.history-id { min-width:32px; color:var(--muted); font:0.75rem var(--mono); }
+.history-result { font:600 1.375rem var(--digits); font-variant-numeric:tabular-nums; }
+.history-detail { padding:0 4px; border-radius:var(--radius-control); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:5px; }
+.history-latest { color:var(--accent); font-size:0.75rem; }
+.history-at { margin-left:auto; color:var(--muted); font-size:0.75rem; white-space:nowrap; }
+.history-scramble { margin:4px 0; color:var(--muted); font:0.75rem/1.7 var(--mono); overflow-wrap:anywhere; }
+.history-empty { padding:24px 0; color:var(--muted); font-size:0.875rem; }
+.history-more { width:100%; color:var(--accent); font-size:0.75rem; }
+.workspace-tools { display:flex; align-items:center; gap:24px; margin-top:20px; padding:16px 0 0; border-top:1px solid var(--line); }
+.storage-caption { color:var(--muted); font-size:0.75rem; flex:none; }
+.data-tools { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; flex:1; min-width:0; }
+.data-tools .small-btn { color:var(--muted); background:transparent; }
+.data-feedback { flex-basis:100%; color:var(--muted); font-size:0.75rem; line-height:1.7; text-align:right; overflow-wrap:anywhere; }
+.data-feedback:empty { display:none; }
+.record-dialog { width:min(520px,calc(100% - 24px)); max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); margin:auto; padding:24px; border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); color:var(--text); box-shadow:0 24px 80px rgb(8 16 18 / .6); overflow-y:auto; overscroll-behavior:contain; }
+.record-dialog::backdrop { background:rgb(8 16 18 / .85); }
+.record-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.record-heading h2 { font-size:1rem; font-weight:600; }
+.record-group { margin:8px 0 24px; color:var(--muted); font-size:0.75rem; overflow-wrap:anywhere; }
+.record-result { font:600 4.5rem/1.15 var(--digits); font-variant-numeric:tabular-nums; letter-spacing:-.04em; overflow-wrap:anywhere; }
+.record-meta { display:grid; grid-template-columns:auto minmax(0,1fr); gap:12px 16px; margin:24px 0; font-size:0.75rem; }
+.record-meta dt { color:var(--muted); }
+.record-meta dd { margin:0; text-align:right; overflow-wrap:anywhere; }
+.record-scramble { margin:8px 0 24px; padding:12px; border-left:2px solid var(--line); background:var(--bg); font:0.875rem/1.8 var(--mono); overflow-wrap:anywhere; }
+.record-penalties { display:flex; gap:8px; margin-top:8px; }
+.record-feedback { min-height:40px; margin-top:12px; color:var(--muted); font-size:0.75rem; line-height:1.7; }
+@media (hover:hover) {
+  button:not(:disabled):hover { background:var(--control-hover); }
+  .nav-button[aria-pressed="true"]:not(:disabled):hover,.training-form #groupSave:not(:disabled):hover { background:var(--accent-pressed); }
+  .text-btn:hover,.history-detail:hover,.recent-result:hover { color:var(--accent); }
+  #newScramble:not(:disabled):hover { background:var(--control-hover); }
+  .action-btn.danger:hover { color:var(--red-text); }
+}
+button:active:not(:disabled) { background:var(--control-active); }
+.nav-button[aria-pressed="true"]:active:not(:disabled),.training-form #groupSave:active:not(:disabled) { background:var(--accent-pressed); }
+#newScramble:active:not(:disabled) { background:var(--control-hover); }
+.action-btn.is-active:not(:disabled):is(:hover,:active) { background:var(--yellow-soft); }
+.action-btn.is-active.dnf:not(:disabled):is(:hover,:active) { background:var(--danger-soft); }
+#recordOk.is-active:not(:disabled):is(:hover,:active) { background:var(--accent-soft); }
+@media (max-width:1120px) {
+  #app { padding-right:24px; padding-left:112px; }
+  .timer-layout { grid-template-columns:minmax(0,1fr) 192px; gap:24px; }
+  .timer-sidebar { padding-left:16px; }
+  .scramble { gap:16px; }
+  .net-wrap { width:88px; }
+  .timer { font-size:clamp(4rem,12vw,9rem); }
+  .timer-help { display:none; }
+  .timer-controls { justify-content:center; }
+  .actions { width:min(100%,360px); }
+  .core-stat { padding:0 12px; }
+  .core-stat dd { font-size:1.75rem; }
+  .review-layout { grid-template-columns:minmax(0,1fr) 272px; gap:20px; }
+  .stats { padding:16px 16px 0; }
+  .stats-row { gap:8px; }
+  .stat-value { font-size:1.25rem; }
+}
+@media (max-width:900px) and (min-width:721px) {
+  .timer-layout { grid-template-columns:minmax(0,1fr); }
+  .timer-sidebar { padding:16px 0 0; border-left:0; border-top:1px solid var(--line); }
+  .timer-sidebar > .label,.group-name { display:none; }
+  .recent-list { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; }
+  .recent-result { grid-template-columns:1fr; gap:4px; font-size:1.25rem; }
+  .recent-at { grid-column:auto; font-size:0.625rem; }
+  .recent-item { border-bottom:0; }
+  .review-layout { grid-template-columns:minmax(0,1fr); grid-template-areas:"stats" "chart" "history"; }
+  .stats { grid-column:auto; }
+  .stats-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .history-body { max-height:480px; }
+}
+@media (max-width:720px) {
+  html { scrollbar-gutter:auto; }
+  #app { padding:0 16px calc(96px + env(safe-area-inset-bottom)); }
+  .topbar { position:static; width:auto; min-height:56px; flex-direction:row; justify-content:space-between; flex-wrap:wrap; gap:8px 12px; padding:0; background:none; border:0; border-bottom:1px solid var(--line); border-radius:0; }
+  .brand { flex-direction:row; gap:8px; font-size:1.25rem; }
+  .brand-symbol { width:24px; height:24px; }
+  .topbar-right { margin:0 0 0 auto; flex-direction:row; gap:12px; }
+  .status { font-size:0.75rem; font-family:inherit; line-height:1.5; white-space:nowrap; }
+  .status::before { display:none; }
+  .view-nav { position:fixed; left:0; right:0; bottom:0; z-index:6; width:auto; flex-direction:row; gap:8px; margin:0; padding:8px 16px calc(8px + env(safe-area-inset-bottom)); background:var(--bg); border-top:1px solid var(--line); }
+  .nav-button { flex:1; min-height:48px; flex-direction:row; gap:8px; padding:8px 16px; font-size:0.875rem; }
+  .nav-button svg { width:18px; height:18px; }
+  .training { padding:8px 0; }
+  .training-bar { gap:4px; }
+  .training-bar label { margin-right:4px; }
+  .training select { flex:1; width:0; padding:8px; }
+  .training button { padding:0 8px; }
+  .timer-layout { display:flex; flex-direction:column; gap:20px; }
+  .timer-stage { width:100%; }
+  .scramble { display:grid; grid-template-columns:minmax(0,1fr) 56px auto; gap:8px 10px; padding:0 0 16px; align-items:center; }
+  .scramble-main,.scramble-top { display:contents; }
+  .scramble-top .label { grid-column:1; grid-row:1; font-size:0.75rem; }
+  .scramble-top button { grid-column:3; grid-row:1; padding:0 8px; }
+  .scramble-text { grid-column:1/-1; grid-row:2; font-size:1rem; line-height:1.65; min-height:3.3rem; }
+  .scramble-hint { grid-column:1/-1; grid-row:3; margin:0; min-height:18px; font-size:0.75rem; }
+  .net-wrap { grid-column:2; grid-row:1; width:56px; padding:2px; background:none; border:0; }
+  .pad { min-height:248px; padding:3rem 12px 1.75rem; }
+  .pad-caption { top:14px; left:16px; right:16px; font-size:0.75rem; }
+  .timer { font-size:clamp(3rem,22vw,7rem); }
+  .timer.is-empty { font-size:3rem; }
+  .sub-status { min-height:24px; margin-top:12px; font-size:0.75rem; }
+  .pad::after { margin-top:12px; }
+  .cancel { right:4px; bottom:0; }
+  .timer-controls { min-height:60px; padding:8px 12px; }
+  .actions { width:100%; gap:8px; }
+  .action-btn { padding:0 8px; }
+  .timer-help,.keyboard-help,kbd { display:none; }
+  .timer-metrics { padding-top:20px; }
+  .core-stat { padding:0 8px; }
+  .core-stat dt { font-size:0.75rem; }
+  .core-stat dd { font-size:1.25rem; margin-top:6px; }
+  .global-best { margin-top:16px; padding:12px 0 0; font-size:0.75rem; }
+  .timer-sidebar { width:100%; padding:0; border:0; }
+  .timer-sidebar > .label,.group-name { display:none; }
+  .recent-section { border-top:1px solid var(--line); padding-top:8px; }
+  .recent-result { display:flex; align-items:center; gap:12px; min-height:52px; padding:4px 0; font-size:1.25rem; }
+  .recent-number { min-width:28px; }
+  .recent-at { margin-left:auto; font-size:0.75rem; }
+  .workspace-tools { flex-wrap:wrap; gap:12px; padding-top:16px; }
+  .storage-caption { width:100%; }
+  .data-tools { justify-content:flex-start; }
+  .data-tools .small-btn { flex:1; }
+  .data-feedback { text-align:left; }
+  .view-heading { margin:4px 0 16px; flex-wrap:wrap; gap:4px; }
+  .view-heading h2 { font-size:1.5rem; }
+  .view-heading p { width:100%; }
+  .review-layout { display:flex; flex-direction:column; gap:20px; }
+  .stats { display:grid; grid-template-columns:minmax(0,1fr); width:100%; gap:16px; padding:16px 12px 0; }
+  .stats-scope,.stats-help { grid-column:auto; }
+  .stats-row { grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+  .stats-row + .stats-row { margin:0; padding:12px 0 0; border:0; border-top:1px solid var(--line-soft); }
+  .stat-label { font-size:0.75rem; }
+  .stat-value { font-size:1.125rem; }
+  .review,.history-wrap { width:100%; min-width:0; }
+  .review-body { padding:0 12px 16px; }
+  .history-head { padding:8px 12px; gap:8px; }
+  .review-toolbar { gap:8px; }
+  .review-legend { gap:8px; }
+  .review-metrics { gap:12px 24px; }
+  .review-metrics strong { font-size:1.125rem; }
+  .review-chart { height:236px; }
+  .review-picker { flex-wrap:wrap; }
+  .review-picker label { flex-basis:100%; }
+  .review-selected { font-size:0.75rem; }
+  .history-body { max-height:480px; padding:0 0 12px; }
+  .history-top { gap:4px; }
+  .history-result { font-size:1.25rem; }
+  .history-id { min-width:28px; }
+  .record-dialog { padding:16px; }
+  .record-result { font-size:clamp(2rem,14vw,3.5rem); }
+}
+@media (max-width:360px) {
+  #app { padding-left:12px; padding-right:12px; }
+  .brand { font-size:1.125rem; }
+  .brand-symbol { width:20px; }
+  .topbar-right { gap:8px; }
+  .switch { gap:4px; }
+  .scramble-text { min-height:4.95rem; }
+  .core-stat { padding:0 6px; }
+  .core-stat dd { font-size:1.125rem; }
+  .stats-row { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .pad { min-height:224px; }
+  .history-head .history-count { font-size:0.75rem; }
+}
+@media (max-height:500px) {
+  #app { padding-left:24px; padding-right:24px; padding-bottom:max(24px,env(safe-area-inset-bottom)); }
+  .topbar { position:static; flex-direction:row; flex-wrap:wrap; width:auto; min-height:64px; padding:8px 0; border:0; border-bottom:1px solid var(--line); border-radius:0; background:none; gap:8px 16px; }
+  .brand { flex-direction:row; font-size:1.25rem; }
+  .brand-symbol { width:24px; height:24px; }
+  .topbar-right { flex-direction:row; margin:0 0 0 auto; gap:12px; }
+  .view-nav { position:static; width:auto; flex-direction:row; padding:0; border:0; margin:0 0 0 auto; }
+  .nav-button { min-height:44px; flex-direction:row; padding:0 16px; }
+  .nav-button svg { display:none; }
+  .training { padding:12px 0; }
+  .pad { min-height:224px; }
+}
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none !important; animation:none !important; scroll-behavior:auto !important; } }
+
+</style>
+</head>
+<body>
+<div id="app" data-view="timer">
+  <header class="topbar">
+    <h1 class="brand"><svg class="brand-symbol" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" aria-hidden="true"><path class="cube-top" d="M14 2 25 8.5 14 15 3 8.5Z"/><path class="cube-left" d="M3 8.5 14 15v12L3 20.5Z"/><path class="cube-right" d="m14 15 11-6.5v12L14 27Z"/><path d="m8.5 5.2 11 6.5v12M19.5 5.2l-11 6.5v12M3 14.5 14 21l11-6.5"/></svg><span class="brand-wordmark">Star<span>Cube</span></span><span class="brand-sub">三阶魔方计时</span></h1>
+    <nav class="view-nav" aria-label="主视图">
+      <button id="navTimer" class="nav-button" type="button" aria-pressed="true" aria-controls="timerView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="14" r="8"/><path d="M9 2h6M12 2v4M12 10v5l3 2"/></svg>计时</button>
+      <button id="navReview" class="nav-button" type="button" aria-pressed="false" aria-controls="reviewView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 3v17h17M7 15l4-5 4 2 6-7"/></svg>复盘</button>
+    </nav>
+    <div class="topbar-right"><button id="inspectionToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="15 秒观察"><span class="switch-label">观察</span><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button><span id="status" class="status" role="status">初始化中…</span></div>
+  </header>
+  <div id="storageBanner" class="banner" hidden>成绩不会被保存：浏览器存储不可用</div>
+  <main>
+    <section class="training" aria-label="训练分组">
+      <div class="training-bar">
+        <label for="groupSelect">训练</label>
+        <select id="groupSelect" aria-label="当前训练"></select>
+        <button id="groupNew" type="button">新建</button>
+        <button id="groupRename" type="button">重命名</button>
+      </div>
+      <form id="groupForm" class="training-form" hidden>
+        <label id="groupNameLabel" for="groupName">新建训练</label>
+        <input id="groupName" name="groupName" type="text" maxlength="40" required autocomplete="off" aria-describedby="groupNameHelp groupError" placeholder="例如：今晚练习">
+        <span id="groupNameHelp">1–40 个字符，同名训练仍独立保存</span>
+        <span id="groupError" role="alert"></span>
+        <div><button id="groupSave" type="submit">保存</button><button id="groupCancel" type="button">取消</button></div>
+      </form>
+    </section>
+
+    <section id="timerView" aria-label="计时">
+      <div class="timer-layout"><div class="timer-stage">
+    <section class="scramble" aria-label="打乱">
+      <div class="scramble-main">
+        <div class="scramble-top"><div class="label">3 × 3 <span class="label-divider">/</span> 随机打乱</div><button id="newScramble" class="small-btn" type="button" title="换一条打乱（N）">换打乱<kbd>N</kbd></button></div>
+        <div id="scrambleText" class="scramble-text is-message">打乱引擎初始化中…</div>
+        <div class="scramble-hint">
+          <span id="scrambleHint"></span>
+          <button id="retryBtn" class="retry" type="button" hidden>重试</button>
+        </div>
+      </div>
+      <div class="net-wrap"><div id="net" class="net" aria-hidden="true"></div></div>
+    </section>
+
+    <div class="timer-console">
+    <section id="pad" class="pad" aria-label="计时区" tabindex="0">
+      <div class="pad-caption"><span>本次计时</span><span id="pbBadge" class="pb-badge" hidden>本组 PB</span></div>
+      <div class="timer-line">
+        <div id="timer" class="timer" aria-live="off">0.000</div>
+      </div>
+      <div id="subStatus" class="sub-status"></div>
+      <button id="cancelInspection" class="cancel" type="button" hidden>取消观察</button>
+    </section>
+
+    <div class="timer-controls">
+    <section id="actions" class="actions" aria-label="操作" hidden>
+      <button id="penaltyPlus" class="action-btn" type="button" aria-pressed="false">+2</button>
+      <button id="penaltyDnf" class="action-btn dnf" type="button" aria-pressed="false">DNF</button>
+      <button id="deleteLatest" class="action-btn danger" type="button">删除最新</button>
+    </section>
+
+
+        <div class="timer-help"><span class="keyboard-help"><kbd>空格</kbd>起停 · <kbd>Esc</kbd>取消观察 · <kbd>N</kbd>换打乱</span></div>
+    </div></div>
+    <section class="timer-metrics" aria-label="本组核心统计">
+        <dl class="core-stats">
+          <div class="core-stat"><dt>Ao5</dt><dd id="coreAo5">—</dd></div><div class="core-stat"><dt>Ao12</dt><dd id="coreAo12">—</dd></div>
+          <div class="core-stat"><dt>本组 PB</dt><dd id="corePb">—</dd></div><div class="core-stat"><dt>本组次数</dt><dd id="coreCount">0</dd></div>
+        </dl>
+        <div class="global-best"><span>全局 PB · 全部训练</span><strong id="coreGlobalPb">—</strong></div>
+    </section>
+      </div><aside class="timer-sidebar" aria-label="当前训练概况">
+        <p class="label">当前训练</p><h2 id="timerGroupName" class="group-name">默认训练</h2>
+
+        <section class="recent-section" aria-label="最近成绩"><div class="section-heading"><h2>最近成绩</h2><button id="recentReview" class="text-btn" type="button">完整复盘 ↗</button></div><ol id="recentList" class="recent-list"></ol><p id="recentEmpty" class="recent-empty">完成第一把后，这里会显示<br>本组最近 5 次成绩。</p></section>
+      </aside></div>
+    </section>
+    <section id="reviewView" aria-label="复盘" tabindex="-1" hidden>
+      <div class="view-heading"><h2>训练复盘</h2><p>当前训练的趋势、统计与每一把成绩</p></div>
+      <div class="review-layout">
+
+
+    <section class="review panel" aria-label="训练复盘">
+      <button id="reviewToggle" class="history-head" type="button" aria-expanded="false" aria-controls="reviewBody">
+        <span>成绩趋势</span><span class="history-count">单次 / Ao5</span><span class="history-chevron" aria-hidden="true"></span>
+      </button>
+      <div id="reviewBody" class="review-body" hidden>
+        <div class="review-toolbar">
+          <label>范围 <select id="reviewRange" aria-label="复盘范围"><option value="50">最近 50 次</option><option value="100">最近 100 次</option></select></label>
+          <div class="review-legend" aria-hidden="true"><span><i></i>单次</span><span><i class="ao5-key"></i>Ao5</span></div>
+        </div>
+        <p id="reviewSummary" class="review-summary"></p>
+        <div id="reviewEmpty" class="review-empty">先完成一把，成绩就会出现在这里。练习满 5 次后可查看 Ao5 趋势。</div>
+        <div id="reviewContent" hidden>
+          <div class="review-metrics"><span>范围平均<strong id="reviewAverage">—</strong></span><span>范围最佳<strong id="reviewBest">—</strong></span></div>
+          <svg id="reviewChart" class="review-chart" role="img" aria-labelledby="reviewChartTitle" aria-describedby="reviewChartHelp"></svg>
+          <p id="reviewChartHelp" class="review-note">越低越快 · 实线为单次，虚线为 Ao5。DNF 以 × 单列，不计为零；+2 已计入用时。Ao5 取截至该次的最近 5 把。</p>
+          <div class="review-picker"><label for="reviewRecord">选择成绩</label><select id="reviewRecord"></select><button id="reviewInspect" class="small-btn" type="button">查看详情</button></div>
+          <p id="reviewSelected" class="review-selected" role="status"></p>
+        </div>
+      </div>
+    </section>
+
+
+
+    <section class="stats panel" aria-label="本组统计">
+      <div class="stats-scope"><span>本组统计</span><span>全局 PB <strong id="globalPb">—</strong></span></div>
+      <div class="stats-row">
+        <div class="stat"><span class="stat-label">Ao5</span><span id="ao5" class="stat-value">—</span></div>
+        <div class="stat"><span class="stat-label">Ao12</span><span id="ao12" class="stat-value">—</span></div>
+        <div class="stat"><span class="stat-label">Ao50</span><span id="ao50" class="stat-value">—</span></div>
+        <div class="stat"><span class="stat-label">Ao100</span><span id="ao100" class="stat-value">—</span></div>
+      </div>
+      <div class="stats-row">
+        <div class="stat"><span class="stat-label">本组平均</span><span id="avg" class="stat-value">—</span></div>
+        <div class="stat"><span class="stat-label">本组次数</span><span id="count" class="stat-value">0</span></div>
+        <div class="stat"><span class="stat-label">本组 PB</span><span id="pb" class="stat-value">—</span></div>
+        <div class="stat"><span class="stat-label">最佳 Ao5</span><span id="bestAo5" class="stat-value">—</span></div>
+      </div>
+      <details class="stats-help"><summary>统计说明</summary><p>除全局 PB 外，统计及历史仅包含当前训练。全局 PB 为全部训练的最佳有效单次。AoN 取本组最近 N 次，分别去掉最好与最差的 5%（向上取整）后平均。Ao5 / Ao12 各去 1 次，Ao50 各去 3 次，Ao100 各去 5 次。DNF 视为最差，去尾后仍有 DNF 则该组为 DNF。本组平均排除 DNF，+2 计入所有统计。</p></details>
+    </section>
+
+    <section class="history-wrap panel" aria-label="历史记录">
+      <button id="historyToggle" class="history-head" type="button" aria-expanded="true" aria-controls="historyBody">
+        <span>本组历史</span>
+        <span id="historyCount" class="history-count">0</span>
+        <span class="history-chevron" aria-hidden="true"></span>
+      </button>
+      <div id="historyBody" class="history-body">
+        <ol id="historyList" class="history-list"></ol>
+        <div id="historyEmpty" class="history-empty">还没有记录</div>
+        <button id="historyMore" class="history-more" type="button" hidden>再显示 50 条</button>
+      </div>
+    </section>
+
+      </div>
+    </section>
+    <div class="workspace-tools"><p class="storage-caption">本机数据 <span aria-hidden="true">/</span> 全部分组备份</p>    <section class="data-tools" aria-label="成绩备份">
+      <button id="exportData" class="small-btn" type="button">导出备份</button>
+      <button id="importData" class="small-btn" type="button" title="合并导入 StarCube JSON，重复成绩会跳过，最大 10 MB">导入合并</button>
+      <input id="importFile" type="file" accept=".json,application/json" hidden>
+      <p id="dataFeedback" class="data-feedback" role="status" aria-live="polite"></p>
+    </section>
+</div>
+  </main>
+</div>
+
+<dialog id="recordDialog" class="record-dialog" aria-labelledby="recordTitle" aria-describedby="recordGroup">
+  <div class="record-heading"><h2 id="recordTitle">成绩详情</h2><button id="recordClose" class="small-btn" type="button" autofocus>关闭</button></div>
+  <p id="recordGroup" class="record-group"></p>
+  <div id="recordResult" class="record-result"></div>
+  <dl class="record-meta"><dt>原始用时</dt><dd id="recordRaw"></dd><dt>记录时间</dt><dd id="recordDate"></dd><dt>截至该次 Ao5</dt><dd id="recordAo5"></dd></dl>
+  <div class="label">该次打乱</div><p id="recordScramble" class="record-scramble"></p>
+  <div class="label" id="penaltyLabel">罚时 · 点选后立即保存</div>
+  <div class="record-penalties" role="group" aria-labelledby="penaltyLabel"><button id="recordOk" class="action-btn" type="button" aria-pressed="false">正常</button><button id="recordPlus" class="action-btn" type="button" aria-pressed="false">+2</button><button id="recordDnf" class="action-btn dnf" type="button" aria-pressed="false">DNF</button></div>
+  <p id="recordFeedback" class="record-feedback" role="status" aria-live="polite"></p>
+</dialog>
+
+<!--
+  打乱求解器：cubejs v1.3.2
+  MIT License
+  Copyright (c) 2013-2017 Petri Lehtinen
+  Copyright (c) 2018 Ludovic Fernandez
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+-->
+<script type="text/plain" id="solver-src">__SOLVER_SOURCE__</script>
+<script>
+//__APP_SCRIPTS__
+</script>
+</body>
+</html>

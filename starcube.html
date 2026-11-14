@@ -1,0 +1,2916 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#101719">
+<title>StarCube</title>
+<style>
+/* finesse · product · 2026-11-14 typography and control polish
+   Primary: a high-contrast timing display with a separate scramble band.
+   Secondary: horizontal metrics and recent results. Review: metrics / chart + history.
+   Unified charcoal surfaces; bright numerals and shared semantic colors establish hierarchy.
+   Refinement: UI sans for Chinese, tabular numerals, softer controls and grouped spacing.
+   Refactoring UI: 4.2 typography, 3.6 grouping, 2.8 action hierarchy, 8.5 quiet borders.
+   Preserve the instrument layout, DOM order and interaction boundaries.
+   One timer instance; document scrolling; 44px targets; no animated numerals. */
+:root {
+  --bg:#101719; --panel:#172124; --text:#e6ede9; --muted:#a5b5b4;
+  --line:rgb(190 212 208 / .24); --line-soft:rgb(190 212 208 / .11);
+  --control:#202d30; --control-hover:#2a3a3d; --control-active:#35484a;
+  --accent:#bdd5f4; --accent-fill:#dce8e5; --accent-pressed:#c8dbd5; --on-accent:#172724;
+  --accent-soft:#253b44; --accent-border:rgb(189 213 244 / .5);
+  --yellow:#e4c663; --green:#2e7d32; --green-bright:#84d8a4; --red:#c62828; --red-text:#f18b92;
+  --positive-soft:#1a3027; --yellow-soft:#302b18; --danger-soft:#342326;
+  --radius:12px; --radius-control:8px;
+  --control-border:rgb(190 212 208 / .18);
+  --ui:"Segoe UI","PingFang SC","Microsoft YaHei UI","Microsoft YaHei","Noto Sans SC",sans-serif;
+  --digits:"Segoe UI","SF Pro Display","Helvetica Neue",Arial,var(--ui);
+  --mono:ui-monospace,"SFMono-Regular","Cascadia Mono",Menlo,Consolas,"Liberation Mono",var(--ui);
+}
+* { box-sizing:border-box; }
+html { min-height:100%; scrollbar-gutter:stable; }
+body { margin:0; min-width:280px; background:var(--bg); color:var(--text); font:0.875rem/1.6 var(--ui); -webkit-text-size-adjust:100%; }
+button,select,input { font:inherit; color:inherit; }
+button { cursor:pointer; border:0; background:none; min-height:44px; min-width:44px; }
+button,select,summary { -webkit-tap-highlight-color:transparent; }
+button:disabled,select:disabled { opacity:.45; cursor:not-allowed; }
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible,[tabindex]:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
+::selection { color:var(--on-accent); background:var(--accent-fill); }
+[hidden] { display:none !important; }
+h1,h2,p { margin:0; }
+#app { width:min(100%,1600px); margin:0 auto; padding:0 32px 24px 128px; }
+main { min-width:0; }
+.topbar { position:fixed; top:16px; bottom:16px; left:16px; width:80px; z-index:6; display:flex; flex-direction:column; align-items:center; gap:24px; padding:20px 4px; background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); }
+.brand { display:flex; flex-direction:column; align-items:center; gap:10px; font-size:0.8125rem; font-weight:600; letter-spacing:-.02em; }
+.brand-symbol { width:32px; height:32px; color:var(--text); flex:none; }
+.brand-symbol .cube-top { fill:var(--text); }
+.brand-symbol .cube-left { fill:#6b8583; }
+.brand-symbol .cube-right { fill:#314d4d; }
+.brand-wordmark { white-space:nowrap; }
+.brand-wordmark span { color:var(--text); }
+.brand-sub { display:none; }
+.view-nav { display:flex; flex-direction:column; gap:8px; width:100%; padding:0 4px; margin-top:24px; }
+.nav-button { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:8px; min-height:76px; padding:12px 4px; color:var(--muted); border-radius:var(--radius-control); font-size:0.875rem; font-weight:600; }
+.nav-button svg { width:22px; height:22px; flex:none; }
+.nav-button[aria-pressed="true"] { background:var(--accent-fill); color:var(--on-accent); }
+.nav-button[aria-pressed="true"]:disabled { opacity:.75; }
+.topbar-right { margin-top:auto; display:flex; flex-direction:column; align-items:center; gap:16px; }
+.status { color:var(--muted); font:0.75rem/1.5 var(--ui); text-align:center; overflow-wrap:anywhere; }
+.status::before { content:""; display:inline-block; width:5px; height:5px; margin-right:6px; border-radius:50%; background:currentColor; vertical-align:middle; }
+.status[data-tone="active"] { color:var(--green-bright); }
+.status[data-tone="warn"] { color:var(--yellow); }
+.switch { display:flex; align-items:center; gap:6px; padding:0 2px; color:var(--muted); font-size:0.75rem; }
+.switch-track { width:28px; height:18px; border-radius:10px; background:var(--control-active); position:relative; }
+.switch-dot { position:absolute; top:3px; left:3px; width:12px; height:12px; border-radius:50%; background:var(--muted); transition:transform 120ms ease; }
+.switch[aria-checked="true"] .switch-track { background:var(--accent-fill); }
+.switch[aria-checked="true"] .switch-dot { background:var(--on-accent); transform:translateX(10px); }
+.banner { margin:16px 0; padding:12px 16px; border-left:3px solid var(--yellow); background:var(--yellow-soft); color:var(--text); font-size:0.75rem; overflow-wrap:anywhere; }
+.training { padding:20px 0; }
+.training-bar { display:flex; align-items:center; gap:12px; }
+.training-bar label { color:var(--muted); margin-right:4px; font-size:0.75rem; flex:none; }
+.training select { width:280px; min-width:0; max-width:100%; }
+.training select,.training input,.review select { min-height:44px; padding:8px 12px; background:var(--control); border:1px solid var(--control-border); border-radius:var(--radius-control); }
+.training button { padding:0 12px; font-size:0.875rem; color:var(--muted); border-radius:var(--radius-control); }
+.training-form { max-width:440px; display:grid; gap:8px; padding:16px 0 0; }
+.training-form input { width:100%; min-width:0; }
+.training-form span { color:var(--muted); font-size:0.75rem; }
+.training-form #groupError { color:var(--red-text); }
+.training-form #groupError:empty { display:none; }
+.training-form #groupSave { background:var(--accent-fill); color:var(--on-accent); margin-right:8px; }
+.timer-layout { display:grid; grid-template-columns:minmax(0,1fr) 232px; gap:32px; align-items:start; }
+.timer-stage { min-width:0; }
+.scramble { display:flex; align-items:center; gap:24px; padding:0 0 20px; }
+.scramble-main { flex:1; min-width:0; }
+.scramble-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.label { color:var(--muted); font-size:0.75rem; }
+.label-divider { margin:0 8px; }
+.small-btn,.retry { min-height:44px; padding:0 16px; border:1px solid var(--control-border); border-radius:var(--radius-control); background:var(--control); font-size:0.875rem; font-weight:500; }
+#newScramble { border-color:transparent; background:transparent; color:var(--accent); }
+kbd { color:var(--muted); font:0.75rem var(--mono); margin-left:8px; }
+.scramble-text { font:1.125rem/1.7 var(--mono); min-height:3.825rem; letter-spacing:0; word-spacing:.12em; overflow-wrap:anywhere; user-select:text; }
+.scramble-text.is-message { color:var(--muted); font-family:inherit; font-size:0.875rem; line-height:1.8; }
+.scramble-hint { display:flex; gap:8px; align-items:center; min-height:18px; margin-top:8px; color:var(--muted); font-size:0.75rem; }
+.net-wrap { width:104px; flex:none; padding:8px; background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius-control); }
+.net svg { display:block; width:100%; height:auto; }
+.timer-console { background:var(--panel); color:var(--text); border-radius:var(--radius); box-shadow:inset 0 0 0 1px var(--line-soft); overflow:visible; }
+.pad { position:relative; min-height:clamp(288px,38vh,420px); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:3rem 16px 2rem; user-select:none; -webkit-user-select:none; touch-action:pan-y pinch-zoom; -webkit-touch-callout:none; border-radius:var(--radius) var(--radius) 0 0; color:var(--text); }
+.pad:focus-visible { outline-offset:-8px; }
+.pad-caption { position:absolute; top:16px; left:24px; right:24px; display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:0.75rem; letter-spacing:0; color:var(--muted); }
+.pb-badge { color:var(--green-bright); font-size:0.75rem; letter-spacing:0; }
+.timer-line { display:flex; justify-content:center; max-width:100%; }
+.timer { font:500 clamp(5rem,13vw,12rem)/1 var(--digits); font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.035em; white-space:normal; overflow-wrap:anywhere; text-align:center; }
+.timer.is-empty { font-size:4rem; }
+.sub-status { min-height:24px; margin-top:16px; padding:0 8px; font-size:0.875rem; color:var(--muted); text-align:center; }
+.pad[data-state="ready"] .sub-status { color:var(--green-bright); }
+.pad[data-state="holding"] .sub-status,.pad[data-penalty="+2"] .sub-status { color:var(--yellow); }
+.pad[data-penalty="dnf"] .sub-status { color:var(--red-text); }
+.pad::after { content:""; width:40px; height:3px; background:var(--line); opacity:0; margin-top:16px; transition:background-color 120ms ease,width 120ms ease; }
+.pad[data-state="holding"]::after { width:64px; background:var(--yellow); opacity:1; }
+.pad[data-state="ready"]::after { width:80px; background:var(--green-bright); opacity:1; }
+.pad[data-state="running"]::after { background:var(--green-bright); opacity:1; }
+.cancel { position:absolute; right:16px; bottom:8px; padding:0 12px; color:var(--muted); font-size:0.75rem; border-radius:var(--radius-control); }
+.timer-controls { min-height:68px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 24px; border-top:1px solid var(--line-soft); border-radius:0 0 var(--radius) var(--radius); background:rgb(8 16 18 / .12); }
+.actions { display:flex; gap:8px; width:288px; flex:none; }
+.actions[hidden] { display:flex !important; visibility:hidden; pointer-events:none; }
+.action-btn { flex:1; min-height:44px; padding:0 12px; border:1px solid var(--control-border); border-radius:var(--radius-control); background:var(--control); font-size:0.875rem; font-weight:500; }
+.action-btn.is-active { color:var(--yellow); border-color:var(--yellow); background:var(--yellow-soft); }
+.action-btn.is-active.dnf { color:var(--red-text); border-color:var(--red-text); background:var(--danger-soft); }
+.timer-controls .action-btn.is-active { color:var(--yellow); border-color:var(--yellow); background:var(--yellow-soft); }
+.timer-controls .action-btn.is-active.dnf { color:var(--red-text); border-color:var(--red-text); background:var(--danger-soft); }
+.action-btn.danger { color:var(--muted); border-color:transparent; background:transparent; }
+#recordOk.is-active { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+.timer-help { color:var(--muted); font-size:0.75rem; text-align:right; line-height:1.7; }
+.timer-help kbd { margin:0 2px 0 6px; color:inherit; font-size:inherit; }
+.timer-metrics { padding-top:24px; }
+.core-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; margin:0; }
+.core-stat { padding:0 20px; border-left:1px solid var(--line); }
+.core-stat:first-child { padding-left:0; border-left:0; }
+.core-stat dt { color:var(--muted); font-size:0.75rem; }
+.core-stat dd { margin:4px 0 0; font:600 2rem/1.15 var(--digits); font-variant-numeric:tabular-nums; letter-spacing:-.025em; overflow-wrap:anywhere; }
+#coreAo5,#ao5 { color:var(--yellow); }
+.global-best { display:flex; justify-content:space-between; gap:16px; margin-top:20px; padding:12px 0; border-top:1px solid var(--line-soft); color:var(--muted); font-size:0.75rem; }
+.global-best strong { color:var(--text); font-family:var(--digits); font-weight:600; font-variant-numeric:tabular-nums; }
+.timer-sidebar { min-width:0; padding:4px 0 0 24px; border-left:1px solid var(--line); }
+.group-name { margin:8px 0 24px; font-size:1.25rem; font-weight:600; overflow-wrap:anywhere; }
+.section-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.section-heading h2 { font-size:0.875rem; font-weight:500; color:var(--muted); }
+.text-btn { padding:0 8px; color:var(--accent); font-size:0.75rem; border-radius:var(--radius-control); }
+.recent-list { list-style:none; margin:0; padding:0; }
+.recent-item { border-bottom:1px solid var(--line-soft); }
+.recent-item:last-child { border-bottom:0; }
+.recent-result { display:grid; grid-template-columns:28px minmax(0,1fr); gap:4px 8px; width:100%; min-height:80px; padding:12px 0; border-radius:var(--radius-control); text-align:left; font:600 1.5rem/1.2 var(--digits); font-variant-numeric:tabular-nums; }
+.recent-number { color:var(--muted); font:0.75rem var(--mono); align-self:center; }
+.recent-value { text-align:left; }
+.recent-at { grid-column:2; color:var(--muted); font:400 0.75rem/1.5 var(--ui); font-variant-numeric:tabular-nums; }
+.recent-empty { padding:24px 0; color:var(--muted); font-size:0.75rem; line-height:1.8; }
+.is-dnf { color:var(--red-text) !important; }
+.view-heading { display:flex; justify-content:space-between; align-items:baseline; gap:16px; margin:0 0 12px; }
+.view-heading h2 { font-size:1.5rem; font-weight:600; letter-spacing:0; }
+.view-heading p { color:var(--muted); font-size:0.75rem; }
+.review-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; grid-template-areas:"stats stats" "chart history"; gap:20px 24px; align-items:start; }
+.stats { grid-area:stats; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 0; padding:16px 24px 0; background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); }
+.stats-scope { grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--muted); font-size:0.75rem; }
+.stats-scope strong { color:var(--text); font:500 0.75rem var(--mono); margin-left:4px; }
+.stats-row { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+.stats-row + .stats-row { margin-left:16px; padding-left:16px; border-left:1px solid var(--line); }
+.stat { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.stat-label { color:var(--muted); font-size:0.75rem; }
+.stat-value { font:600 1.5rem/1.3 var(--digits); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.stats-help { grid-column:1/-1; border-top:1px solid var(--line-soft); color:var(--muted); font-size:0.75rem; }
+.stats-help summary { min-height:44px; display:flex; align-items:center; cursor:pointer; }
+.stats-help summary::after { content:'＋'; margin-left:auto; }
+.stats-help[open] summary::after { content:'−'; }
+.stats-help p { line-height:1.8; padding-bottom:16px; }
+.review { grid-area:chart; min-width:0; background:var(--panel); border-radius:var(--radius); }
+.history-head { width:100%; min-height:56px; display:flex; align-items:center; gap:12px; padding:8px 20px; text-align:left; font-size:0.875rem; }
+.history-count { color:var(--muted); font:0.75rem var(--mono); }
+.history-chevron { margin-left:auto; width:7px; height:7px; border-right:1px solid var(--muted); border-bottom:1px solid var(--muted); transform:rotate(45deg); flex:none; }
+.history-head[aria-expanded="false"] .history-chevron { transform:rotate(-45deg); }
+.review-body { padding:0 20px 20px; }
+.review-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--line-soft); padding-top:12px; }
+.review-toolbar label,.review-picker label { color:var(--muted); font-size:0.75rem; }
+.review select { min-width:0; max-width:100%; font-size:0.75rem; }
+.review-summary,.review-note { margin:8px 0; color:var(--muted); font-size:0.75rem; line-height:1.7; }
+.review-metrics { display:flex; flex-wrap:wrap; gap:16px 32px; padding:4px 0; }
+.review-metrics span { color:var(--muted); font-size:0.75rem; }
+.review-metrics strong { margin-left:8px; color:var(--text); font:600 1.25rem var(--digits); font-variant-numeric:tabular-nums; }
+.review-legend { display:flex; gap:16px; color:var(--muted); font-size:0.75rem; }
+.review-legend span { display:flex; align-items:center; gap:6px; }
+.review-legend i { width:16px; border-top:2px solid var(--green-bright); }
+.review-legend .ao5-key { border-color:var(--yellow); border-top-style:dashed; }
+.review-chart { display:block; width:100%; height:280px; overflow:visible; cursor:crosshair; }
+.review-grid { stroke:var(--line-soft); stroke-width:1; stroke-dasharray:3 6; }
+.review-axis { fill:var(--muted); font-size:0.75rem; font-family:var(--mono); }
+.review-single,.review-ao5,.review-dnf { fill:none; stroke-width:1.5; vector-effect:non-scaling-stroke; }
+.review-single { stroke:var(--green-bright); }
+.review-ao5 { stroke:var(--yellow); stroke-dasharray:5 4; stroke-width:2; }
+.review-dnf { stroke:var(--red-text); }
+.review-dot { fill:var(--green-bright); }
+.review-ao5-dot { fill:var(--panel); stroke:var(--yellow); stroke-width:1.5; }
+.review-cursor { stroke:var(--muted); stroke-dasharray:2 4; }
+.review-selection { fill:none; stroke:var(--accent); stroke-width:2.5; }
+.review-picker { display:flex; align-items:center; gap:8px; margin-top:16px; }
+.review-picker select { flex:1; width:0; }
+.review-picker button { flex:none; }
+.review-selected { margin:12px 0 0; font:0.875rem/1.7 var(--ui); font-variant-numeric:tabular-nums; }
+.review-empty { padding:48px 0; color:var(--muted); font-size:0.875rem; line-height:1.8; }
+.history-wrap { grid-area:history; min-width:0; background:transparent; border-top:1px solid var(--line); }
+.history-wrap .history-head { padding-left:0; padding-right:8px; }
+.history-body { padding:0 8px 12px 0; max-height:560px; overflow-y:auto; border-top:1px solid var(--line); }
+.history-list { list-style:none; margin:0; padding:0; }
+.history-item { padding:12px 0; border-bottom:1px solid var(--line-soft); }
+.history-item:last-child { border-bottom:0; }
+.history-top { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; }
+.history-id { min-width:32px; color:var(--muted); font:0.75rem var(--mono); }
+.history-result { font:600 1.375rem var(--digits); font-variant-numeric:tabular-nums; }
+.history-detail { padding:0 4px; border-radius:var(--radius-control); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:5px; }
+.history-latest { color:var(--accent); font-size:0.75rem; }
+.history-at { margin-left:auto; color:var(--muted); font-size:0.75rem; white-space:nowrap; }
+.history-scramble { margin:4px 0; color:var(--muted); font:0.75rem/1.7 var(--mono); overflow-wrap:anywhere; }
+.history-empty { padding:24px 0; color:var(--muted); font-size:0.875rem; }
+.history-more { width:100%; color:var(--accent); font-size:0.75rem; }
+.workspace-tools { display:flex; align-items:center; gap:24px; margin-top:20px; padding:16px 0 0; border-top:1px solid var(--line); }
+.storage-caption { color:var(--muted); font-size:0.75rem; flex:none; }
+.data-tools { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; flex:1; min-width:0; }
+.data-tools .small-btn { color:var(--muted); background:transparent; }
+.data-feedback { flex-basis:100%; color:var(--muted); font-size:0.75rem; line-height:1.7; text-align:right; overflow-wrap:anywhere; }
+.data-feedback:empty { display:none; }
+.record-dialog { width:min(520px,calc(100% - 24px)); max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); margin:auto; padding:24px; border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); color:var(--text); box-shadow:0 24px 80px rgb(8 16 18 / .6); overflow-y:auto; overscroll-behavior:contain; }
+.record-dialog::backdrop { background:rgb(8 16 18 / .85); }
+.record-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.record-heading h2 { font-size:1rem; font-weight:600; }
+.record-group { margin:8px 0 24px; color:var(--muted); font-size:0.75rem; overflow-wrap:anywhere; }
+.record-result { font:600 4.5rem/1.15 var(--digits); font-variant-numeric:tabular-nums; letter-spacing:-.04em; overflow-wrap:anywhere; }
+.record-meta { display:grid; grid-template-columns:auto minmax(0,1fr); gap:12px 16px; margin:24px 0; font-size:0.75rem; }
+.record-meta dt { color:var(--muted); }
+.record-meta dd { margin:0; text-align:right; overflow-wrap:anywhere; }
+.record-scramble { margin:8px 0 24px; padding:12px; border-left:2px solid var(--line); background:var(--bg); font:0.875rem/1.8 var(--mono); overflow-wrap:anywhere; }
+.record-penalties { display:flex; gap:8px; margin-top:8px; }
+.record-feedback { min-height:40px; margin-top:12px; color:var(--muted); font-size:0.75rem; line-height:1.7; }
+@media (hover:hover) {
+  button:not(:disabled):hover { background:var(--control-hover); }
+  .nav-button[aria-pressed="true"]:not(:disabled):hover,.training-form #groupSave:not(:disabled):hover { background:var(--accent-pressed); }
+  .text-btn:hover,.history-detail:hover,.recent-result:hover { color:var(--accent); }
+  #newScramble:not(:disabled):hover { background:var(--control-hover); }
+  .action-btn.danger:hover { color:var(--red-text); }
+}
+button:active:not(:disabled) { background:var(--control-active); }
+.nav-button[aria-pressed="true"]:active:not(:disabled),.training-form #groupSave:active:not(:disabled) { background:var(--accent-pressed); }
+#newScramble:active:not(:disabled) { background:var(--control-hover); }
+.action-btn.is-active:not(:disabled):is(:hover,:active) { background:var(--yellow-soft); }
+.action-btn.is-active.dnf:not(:disabled):is(:hover,:active) { background:var(--danger-soft); }
+#recordOk.is-active:not(:disabled):is(:hover,:active) { background:var(--accent-soft); }
+@media (max-width:1120px) {
+  #app { padding-right:24px; padding-left:112px; }
+  .timer-layout { grid-template-columns:minmax(0,1fr) 192px; gap:24px; }
+  .timer-sidebar { padding-left:16px; }
+  .scramble { gap:16px; }
+  .net-wrap { width:88px; }
+  .timer { font-size:clamp(4rem,12vw,9rem); }
+  .timer-help { display:none; }
+  .timer-controls { justify-content:center; }
+  .actions { width:min(100%,360px); }
+  .core-stat { padding:0 12px; }
+  .core-stat dd { font-size:1.75rem; }
+  .review-layout { grid-template-columns:minmax(0,1fr) 272px; gap:20px; }
+  .stats { padding:16px 16px 0; }
+  .stats-row { gap:8px; }
+  .stat-value { font-size:1.25rem; }
+}
+@media (max-width:900px) and (min-width:721px) {
+  .timer-layout { grid-template-columns:minmax(0,1fr); }
+  .timer-sidebar { padding:16px 0 0; border-left:0; border-top:1px solid var(--line); }
+  .timer-sidebar > .label,.group-name { display:none; }
+  .recent-list { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; }
+  .recent-result { grid-template-columns:1fr; gap:4px; font-size:1.25rem; }
+  .recent-at { grid-column:auto; font-size:0.625rem; }
+  .recent-item { border-bottom:0; }
+  .review-layout { grid-template-columns:minmax(0,1fr); grid-template-areas:"stats" "chart" "history"; }
+  .stats { grid-column:auto; }
+  .stats-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .history-body { max-height:480px; }
+}
+@media (max-width:720px) {
+  html { scrollbar-gutter:auto; }
+  #app { padding:0 16px calc(96px + env(safe-area-inset-bottom)); }
+  .topbar { position:static; width:auto; min-height:56px; flex-direction:row; justify-content:space-between; flex-wrap:wrap; gap:8px 12px; padding:0; background:none; border:0; border-bottom:1px solid var(--line); border-radius:0; }
+  .brand { flex-direction:row; gap:8px; font-size:1.25rem; }
+  .brand-symbol { width:24px; height:24px; }
+  .topbar-right { margin:0 0 0 auto; flex-direction:row; gap:12px; }
+  .status { font-size:0.75rem; font-family:inherit; line-height:1.5; white-space:nowrap; }
+  .status::before { display:none; }
+  .view-nav { position:fixed; left:0; right:0; bottom:0; z-index:6; width:auto; flex-direction:row; gap:8px; margin:0; padding:8px 16px calc(8px + env(safe-area-inset-bottom)); background:var(--bg); border-top:1px solid var(--line); }
+  .nav-button { flex:1; min-height:48px; flex-direction:row; gap:8px; padding:8px 16px; font-size:0.875rem; }
+  .nav-button svg { width:18px; height:18px; }
+  .training { padding:8px 0; }
+  .training-bar { gap:4px; }
+  .training-bar label { margin-right:4px; }
+  .training select { flex:1; width:0; padding:8px; }
+  .training button { padding:0 8px; }
+  .timer-layout { display:flex; flex-direction:column; gap:20px; }
+  .timer-stage { width:100%; }
+  .scramble { display:grid; grid-template-columns:minmax(0,1fr) 56px auto; gap:8px 10px; padding:0 0 16px; align-items:center; }
+  .scramble-main,.scramble-top { display:contents; }
+  .scramble-top .label { grid-column:1; grid-row:1; font-size:0.75rem; }
+  .scramble-top button { grid-column:3; grid-row:1; padding:0 8px; }
+  .scramble-text { grid-column:1/-1; grid-row:2; font-size:1rem; line-height:1.65; min-height:3.3rem; }
+  .scramble-hint { grid-column:1/-1; grid-row:3; margin:0; min-height:18px; font-size:0.75rem; }
+  .net-wrap { grid-column:2; grid-row:1; width:56px; padding:2px; background:none; border:0; }
+  .pad { min-height:248px; padding:3rem 12px 1.75rem; }
+  .pad-caption { top:14px; left:16px; right:16px; font-size:0.75rem; }
+  .timer { font-size:clamp(3rem,22vw,7rem); }
+  .timer.is-empty { font-size:3rem; }
+  .sub-status { min-height:24px; margin-top:12px; font-size:0.75rem; }
+  .pad::after { margin-top:12px; }
+  .cancel { right:4px; bottom:0; }
+  .timer-controls { min-height:60px; padding:8px 12px; }
+  .actions { width:100%; gap:8px; }
+  .action-btn { padding:0 8px; }
+  .timer-help,.keyboard-help,kbd { display:none; }
+  .timer-metrics { padding-top:20px; }
+  .core-stat { padding:0 8px; }
+  .core-stat dt { font-size:0.75rem; }
+  .core-stat dd { font-size:1.25rem; margin-top:6px; }
+  .global-best { margin-top:16px; padding:12px 0 0; font-size:0.75rem; }
+  .timer-sidebar { width:100%; padding:0; border:0; }
+  .timer-sidebar > .label,.group-name { display:none; }
+  .recent-section { border-top:1px solid var(--line); padding-top:8px; }
+  .recent-result { display:flex; align-items:center; gap:12px; min-height:52px; padding:4px 0; font-size:1.25rem; }
+  .recent-number { min-width:28px; }
+  .recent-at { margin-left:auto; font-size:0.75rem; }
+  .workspace-tools { flex-wrap:wrap; gap:12px; padding-top:16px; }
+  .storage-caption { width:100%; }
+  .data-tools { justify-content:flex-start; }
+  .data-tools .small-btn { flex:1; }
+  .data-feedback { text-align:left; }
+  .view-heading { margin:4px 0 16px; flex-wrap:wrap; gap:4px; }
+  .view-heading h2 { font-size:1.5rem; }
+  .view-heading p { width:100%; }
+  .review-layout { display:flex; flex-direction:column; gap:20px; }
+  .stats { display:grid; grid-template-columns:minmax(0,1fr); width:100%; gap:16px; padding:16px 12px 0; }
+  .stats-scope,.stats-help { grid-column:auto; }
+  .stats-row { grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+  .stats-row + .stats-row { margin:0; padding:12px 0 0; border:0; border-top:1px solid var(--line-soft); }
+  .stat-label { font-size:0.75rem; }
+  .stat-value { font-size:1.125rem; }
+  .review,.history-wrap { width:100%; min-width:0; }
+  .review-body { padding:0 12px 16px; }
+  .history-head { padding:8px 12px; gap:8px; }
+  .review-toolbar { gap:8px; }
+  .review-legend { gap:8px; }
+  .review-metrics { gap:12px 24px; }
+  .review-metrics strong { font-size:1.125rem; }
+  .review-chart { height:236px; }
+  .review-picker { flex-wrap:wrap; }
+  .review-picker label { flex-basis:100%; }
+  .review-selected { font-size:0.75rem; }
+  .history-body { max-height:480px; padding:0 0 12px; }
+  .history-top { gap:4px; }
+  .history-result { font-size:1.25rem; }
+  .history-id { min-width:28px; }
+  .record-dialog { padding:16px; }
+  .record-result { font-size:clamp(2rem,14vw,3.5rem); }
+}
+@media (max-width:360px) {
+  #app { padding-left:12px; padding-right:12px; }
+  .brand { font-size:1.125rem; }
+  .brand-symbol { width:20px; }
+  .topbar-right { gap:8px; }
+  .switch { gap:4px; }
+  .scramble-text { min-height:4.95rem; }
+  .core-stat { padding:0 6px; }
+  .core-stat dd { font-size:1.125rem; }
+  .stats-row { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .pad { min-height:224px; }
+  .history-head .history-count { font-size:0.75rem; }
+}
+@media (max-height:500px) {
+  #app { padding-left:24px; padding-right:24px; padding-bottom:max(24px,env(safe-area-inset-bottom)); }
+  .topbar { position:static; flex-direction:row; flex-wrap:wrap; width:auto; min-height:64px; padding:8px 0; border:0; border-bottom:1px solid var(--line); border-radius:0; background:none; gap:8px 16px; }
+  .brand { flex-direction:row; font-size:1.25rem; }
+  .brand-symbol { width:24px; height:24px; }
+  .topbar-right { flex-direction:row; margin:0 0 0 auto; gap:12px; }
+  .view-nav { position:static; width:auto; flex-direction:row; padding:0; border:0; margin:0 0 0 auto; }
+  .nav-button { min-height:44px; flex-direction:row; padding:0 16px; }
+  .nav-button svg { display:none; }
+  .training { padding:12px 0; }
+  .pad { min-height:224px; }
+}
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none !important; animation:none !important; scroll-behavior:auto !important; } }
+
+</style>
+</head>
+<body>
+<div id="app" data-view="timer">
+  <header class="topbar">
+    <h1 class="brand"><svg class="brand-symbol" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" aria-hidden="true"><path class="cube-top" d="M14 2 25 8.5 14 15 3 8.5Z"/><path class="cube-left" d="M3 8.5 14 15v12L3 20.5Z"/><path class="cube-right" d="m14 15 11-6.5v12L14 27Z"/><path d="m8.5 5.2 11 6.5v12M19.5 5.2l-11 6.5v12M3 14.5 14 21l11-6.5"/></svg><span class="brand-wordmark">Star<span>Cube</span></span><span class="brand-sub">三阶魔方计时</span></h1>
+    <nav class="view-nav" aria-label="主视图">
+      <button id="navTimer" class="nav-button" type="button" aria-pressed="true" aria-controls="timerView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="14" r="8"/><path d="M9 2h6M12 2v4M12 10v5l3 2"/></svg>计时</button>
+      <button id="navReview" class="nav-button" type="button" aria-pressed="false" aria-controls="reviewView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 3v17h17M7 15l4-5 4 2 6-7"/></svg>复盘</button>
+    </nav>
+    <div class="topbar-right"><button id="inspectionToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="15 秒观察"><span class="switch-label">观察</span><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button><span id="status" class="status" role="status">初始化中…</span></div>
+  </header>
+  <div id="storageBanner" class="banner" hidden>成绩不会被保存：浏览器存储不可用</div>
+  <main>
+    <section class="training" aria-label="训练分组">
+      <div class="training-bar">
+        <label for="groupSelect">训练</label>
+        <select id="groupSelect" aria-label="当前训练"></select>
+        <button id="groupNew" type="button">新建</button>
+        <button id="groupRename" type="button">重命名</button>
+      </div>
+      <form id="groupForm" class="training-form" hidden>
+        <label id="groupNameLabel" for="groupName">新建训练</label>
+        <input id="groupName" name="groupName" type="text" maxlength="40" required autocomplete="off" aria-describedby="groupNameHelp groupError" placeholder="例如：今晚练习">
+        <span id="groupNameHelp">1–40 个字符，同名训练仍独立保存</span>
+        <span id="groupError" role="alert"></span>
+        <div><button id="groupSave" type="submit">保存</button><button id="groupCancel" type="button">取消</button></div>
+      </form>
+    </section>
+
+    <section id="timerView" aria-label="计时">
+      <div class="timer-layout"><div class="timer-stage">
+    <section class="scramble" aria-label="打乱">
+      <div class="scramble-main">
+        <div class="scramble-top"><div class="label">3 × 3 <span class="label-divider">/</span> 随机打乱</div><button id="newScramble" class="small-btn" type="button" title="换一条打乱（N）">换打乱<kbd>N</kbd></button></div>
+        <div id="scrambleText" class="scramble-text is-message">打乱引擎初始化中…</div>
+        <div class="scramble-hint">
+          <span id="scrambleHint"></span>
+          <button id="retryBtn" class="retry" type="button" hidden>重试</button>
+        </div>
+      </div>
+      <div class="net-wrap"><div id="net" class="net" aria-hidden="true"></div></div>
+    </section>
+
+    <div class="timer-console">
+    <section id="pad" class="pad" aria-label="计时区" tabindex="0">
+      <div class="pad-caption"><span>本次计时</span><span id="pbBadge" class="pb-badge" hidden>本组 PB</span></div>
+      <div class="timer-line">
+        <div id="timer" class="timer" aria-live="off">0.000</div>
+      </div>
+      <div id="subStatus" class="sub-status"></div>
+      <button id="cancelInspection" class="cancel" type="button" hidden>取消观察</button>
+    </section>
+
+    <div class="timer-controls">
+    <section id="actions" class="actions" aria-label="操作" hidden>
+      <button id="penaltyPlus" class="action-btn" type="button" aria-pressed="false">+2</button>
+      <button id="penaltyDnf" class="action-btn dnf" type="button" aria-pressed="false">DNF</button>
+      <button id="deleteLatest" class="action-btn danger" type="button">删除最新</button>
+    </section>
+
+
+        <div class="timer-help"><span class="keyboard-help"><kbd>空格</kbd>起停 · <kbd>Esc</kbd>取消观察 · <kbd>N</kbd>换打乱</span></div>
+    </div></div>
+    <section class="timer-metrics" aria-label="本组核心统计">
+        <dl class="core-stats">
+          <div class="core-stat"><dt>Ao5</dt><dd id="coreAo5">—</dd></div><div class="core-stat"><dt>Ao12</dt><dd id="coreAo12">—</dd></div>
+          <div class="core-stat"><dt>本组 PB</dt><dd id="corePb">—</dd></div><div class="core-stat"><dt>本组次数</dt><dd id="coreCount">0</dd></div>
+        </dl>
+        <div class="global-best"><span>全局 PB · 全部训练</span><strong id="coreGlobalPb">—</strong></div>
+    </section>
+      </div><aside class="timer-sidebar" aria-label="当前训练概况">
+        <p class="label">当前训练</p><h2 id="timerGroupName" class="group-name">默认训练</h2>
+
+        <section class="recent-section" aria-label="最近成绩"><div class="section-heading"><h2>最近成绩</h2><button id="recentReview" class="text-btn" type="button">完整复盘 ↗</button></div><ol id="recentList" class="recent-list"></ol><p id="recentEmpty" class="recent-empty">完成第一把后，这里会显示<br>本组最近 5 次成绩。</p></section>
+      </aside></div>
+    </section>
+    <section id="reviewView" aria-label="复盘" tabindex="-1" hidden>
+      <div class="view-heading"><h2>训练复盘</h2><p>当前训练的趋势、统计与每一把成绩</p></div>
+      <div class="review-layout">
+
+
+    <section class="review panel" aria-label="训练复盘">
+      <button id="reviewToggle" class="history-head" type="button" aria-expanded="false" aria-controls="reviewBody">
+        <span>成绩趋势</span><span class="history-count">单次 / Ao5</span><span class="history-chevron" aria-hidden="true"></span>
+      </button>
+      <div id="reviewBody" class="review-body" hidden>
+        <div class="review-toolbar">
+          <label>范围 <select id="reviewRange" aria-label="复盘范围"><option value="50">最近 50 次</option><option value="100">最近 100 次</option></select></label>
+          <div class="review-legend" aria-hidden="true"><span><i></i>单次</span><span><i class="ao5-key"></i>Ao5</span></div>
+        </div>
+        <p id="reviewSummary" class="review-summary"></p>
+        <div id="reviewEmpty" class="review-empty">先完成一把，成绩就会出现在这里。练习满 5 次后可查看 Ao5 趋势。</div>
+        <div id="reviewContent" hidden>
+          <div class="review-metrics"><span>范围平均<strong id="reviewAverage">—</strong></span><span>范围最佳<strong id="reviewBest">—</strong></span></div>
+          <svg id="reviewChart" class="review-chart" role="img" aria-labelledby="reviewChartTitle" aria-describedby="reviewChartHelp"></svg>
+          <p id="reviewChartHelp" class="review-note">越低越快 · 实线为单次，虚线为 Ao5。DNF 以 × 单列，不计为零；+2 已计入用时。Ao5 取截至该次的最近 5 把。</p>
+          <div class="review-picker"><label for="reviewRecord">选择成绩</label><select id="reviewRecord"></select><button id="reviewInspect" class="small-btn" type="button">查看详情</button></div>
+          <p id="reviewSelected" class="review-selected" role="status"></p>
+        </div>
+      </div>
+    </section>
+
+
+
+    <section class="stats panel" aria-label="本组统计">
+      <div class="stats-scope"><span>本组统计</span><span>全局 PB <strong id="globalPb">—</strong></span></div>
+      <div class="stats-row">
+        <div class="stat"><span class="stat-label">Ao5</span><span id="ao5" class="stat-value">—</span></div>
+        <div class="stat"><span class="stat-label">Ao12</span><span id="ao12" class="stat-value">—</span></div>
+        <div class="stat"><span class="stat-label">Ao50</span><span id="ao50" class="stat-value">—</span></div>
+        <div class="stat"><span class="stat-label">Ao100</span><span id="ao100" class="stat-value">—</span></div>
+      </div>
+      <div class="stats-row">
+        <div class="stat"><span class="stat-label">本组平均</span><span id="avg" class="stat-value">—</span></div>
+        <div class="stat"><span class="stat-label">本组次数</span><span id="count" class="stat-value">0</span></div>
+        <div class="stat"><span class="stat-label">本组 PB</span><span id="pb" class="stat-value">—</span></div>
+        <div class="stat"><span class="stat-label">最佳 Ao5</span><span id="bestAo5" class="stat-value">—</span></div>
+      </div>
+      <details class="stats-help"><summary>统计说明</summary><p>除全局 PB 外，统计及历史仅包含当前训练。全局 PB 为全部训练的最佳有效单次。AoN 取本组最近 N 次，分别去掉最好与最差的 5%（向上取整）后平均。Ao5 / Ao12 各去 1 次，Ao50 各去 3 次，Ao100 各去 5 次。DNF 视为最差，去尾后仍有 DNF 则该组为 DNF。本组平均排除 DNF，+2 计入所有统计。</p></details>
+    </section>
+
+    <section class="history-wrap panel" aria-label="历史记录">
+      <button id="historyToggle" class="history-head" type="button" aria-expanded="true" aria-controls="historyBody">
+        <span>本组历史</span>
+        <span id="historyCount" class="history-count">0</span>
+        <span class="history-chevron" aria-hidden="true"></span>
+      </button>
+      <div id="historyBody" class="history-body">
+        <ol id="historyList" class="history-list"></ol>
+        <div id="historyEmpty" class="history-empty">还没有记录</div>
+        <button id="historyMore" class="history-more" type="button" hidden>再显示 50 条</button>
+      </div>
+    </section>
+
+      </div>
+    </section>
+    <div class="workspace-tools"><p class="storage-caption">本机数据 <span aria-hidden="true">/</span> 全部分组备份</p>    <section class="data-tools" aria-label="成绩备份">
+      <button id="exportData" class="small-btn" type="button">导出备份</button>
+      <button id="importData" class="small-btn" type="button" title="合并导入 StarCube JSON，重复成绩会跳过，最大 10 MB">导入合并</button>
+      <input id="importFile" type="file" accept=".json,application/json" hidden>
+      <p id="dataFeedback" class="data-feedback" role="status" aria-live="polite"></p>
+    </section>
+</div>
+  </main>
+</div>
+
+<dialog id="recordDialog" class="record-dialog" aria-labelledby="recordTitle" aria-describedby="recordGroup">
+  <div class="record-heading"><h2 id="recordTitle">成绩详情</h2><button id="recordClose" class="small-btn" type="button" autofocus>关闭</button></div>
+  <p id="recordGroup" class="record-group"></p>
+  <div id="recordResult" class="record-result"></div>
+  <dl class="record-meta"><dt>原始用时</dt><dd id="recordRaw"></dd><dt>记录时间</dt><dd id="recordDate"></dd><dt>截至该次 Ao5</dt><dd id="recordAo5"></dd></dl>
+  <div class="label">该次打乱</div><p id="recordScramble" class="record-scramble"></p>
+  <div class="label" id="penaltyLabel">罚时 · 点选后立即保存</div>
+  <div class="record-penalties" role="group" aria-labelledby="penaltyLabel"><button id="recordOk" class="action-btn" type="button" aria-pressed="false">正常</button><button id="recordPlus" class="action-btn" type="button" aria-pressed="false">+2</button><button id="recordDnf" class="action-btn dnf" type="button" aria-pressed="false">DNF</button></div>
+  <p id="recordFeedback" class="record-feedback" role="status" aria-live="polite"></p>
+</dialog>
+
+<!--
+  打乱求解器：cubejs v1.3.2
+  MIT License
+  Copyright (c) 2013-2017 Petri Lehtinen
+  Copyright (c) 2018 Ludovic Fernandez
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+-->
+<script type="text/plain" id="solver-src">/*! cubejs v1.3.2 | MIT License | Copyright (c) 2013-2017 Petri Lehtinen, 2018 Ludovic Fernandez | bundled for StarCube */
+"use strict";(()=>{var _e=(H,N)=>()=>(N||H((N={exports:{}}).exports,N),N.exports);var Ve=_e((Ye,Je)=>{(function(){var H,N,O,T,w,A,$,K,I,oe,se,re,ue,ve,le,fe,ae,ce,me,Q,ne,q,E,x,X,ie,Z,ge,Ie,we,De,pe,Fe;[me,ce,ve,w,ae,H]=[0,1,2,3,4,5],[Z,E,X,ne,I,se,$,ue]=[0,1,2,3,4,5,6,7],[ie,q,x,Q,re,K,oe,A,fe,le,N,O]=[0,1,2,3,4,5,6,7,8,9,10,11],[Ie,De,Fe]=(function(){var ee,W,j,L,k,f;return f=function(h){return h-1},k=function(h){return f(9)+h},j=function(h){return k(9)+h},W=function(h){return j(9)+h},L=function(h){return W(9)+h},ee=function(h){return L(9)+h},[[4,13,22,31,40,49],[[f(9),k(1),j(3)],[f(7),j(1),L(3)],[f(1),L(1),ee(3)],[f(3),ee(1),k(3)],[W(3),j(9),k(7)],[W(1),L(9),j(7)],[W(7),ee(9),L(7)],[W(9),k(9),ee(7)]],[[f(6),k(2)],[f(8),j(2)],[f(4),L(2)],[f(2),ee(2)],[W(6),k(8)],[W(2),j(8)],[W(4),L(8)],[W(8),ee(8)],[j(6),k(4)],[j(4),L(6)],[ee(6),L(4)],[ee(4),k(6)]]]})(),ge=["U","R","F","D","L","B"],we=[["U","R","F"],["U","F","L"],["U","L","B"],["U","B","R"],["D","F","R"],["D","L","F"],["D","B","L"],["D","R","B"]],pe=[["U","R"],["U","F"],["U","L"],["U","B"],["D","R"],["D","F"],["D","L"],["D","B"],["F","R"],["F","L"],["B","L"],["B","R"]],T=(function(){var ee,W,j;class L{constructor(f){var h;f!=null?this.init(f):this.identity(),this.newCenter=(function(){var n,o;for(o=[],h=n=0;n<=5;h=++n)o.push(0);return o})(),this.newCp=(function(){var n,o;for(o=[],h=n=0;n<=7;h=++n)o.push(0);return o})(),this.newEp=(function(){var n,o;for(o=[],h=n=0;n<=11;h=++n)o.push(0);return o})(),this.newCo=(function(){var n,o;for(o=[],h=n=0;n<=7;h=++n)o.push(0);return o})(),this.newEo=(function(){var n,o;for(o=[],h=n=0;n<=11;h=++n)o.push(0);return o})()}init(f){return this.center=f.center.slice(0),this.co=f.co.slice(0),this.ep=f.ep.slice(0),this.cp=f.cp.slice(0),this.eo=f.eo.slice(0)}identity(){var f;return this.center=[0,1,2,3,4,5],this.cp=[0,1,2,3,4,5,6,7],this.co=(function(){var h,n;for(n=[],f=h=0;h<=7;f=++h)n.push(0);return n})(),this.ep=[0,1,2,3,4,5,6,7,8,9,10,11],this.eo=(function(){var h,n;for(n=[],f=h=0;h<=11;f=++h)n.push(0);return n})()}toJSON(){return{center:this.center,cp:this.cp,co:this.co,ep:this.ep,eo:this.eo}}asString(){var f,h,n,o,R,m,B,S,U,g,d;for(d=[],n=o=0;o<=5;n=++o)d[9*n+4]=ge[this.center[n]];for(n=R=0;R<=7;n=++R)for(f=this.cp[n],U=this.co[n],B=m=0;m<=2;B=++m)d[De[n][(B+U)%3]]=we[f][B];for(n=S=0;S<=11;n=++S)for(h=this.ep[n],U=this.eo[n],B=g=0;g<=1;B=++g)d[Fe[n][(B+U)%2]]=pe[h][B];return d.join("")}static fromString(f){var h,n,o,R,m,B,S,U,g,d,M,Y,V,G;for(o=new L,R=B=0;B<=5;R=++B)for(m=S=0;S<=5;m=++S)f[9*R+4]===ge[m]&&(o.center[R]=m);for(R=U=0;U<=7;R=++U){for(d=g=0;g<=2&&!((G=f[De[R][d]])==="U"||G==="D");d=++g);for(h=f[De[R][(d+1)%3]],n=f[De[R][(d+2)%3]],m=M=0;M<=7;m=++M)h===we[m][1]&&n===we[m][2]&&(o.cp[R]=m,o.co[R]=d%3)}for(R=Y=0;Y<=11;R=++Y)for(m=V=0;V<=11;m=++V){if(f[Fe[R][0]]===pe[m][0]&&f[Fe[R][1]]===pe[m][1]){o.ep[R]=m,o.eo[R]=0;break}if(f[Fe[R][0]]===pe[m][1]&&f[Fe[R][1]]===pe[m][0]){o.ep[R]=m,o.eo[R]=1;break}}return o}clone(){return new L(this.toJSON())}static random(){return new L().randomize()}isSolved(){var f,h,n,o,R,m,B;for(n=this.clone(),n.move(n.upright()),h=R=0;R<=5;h=++R)if(n.center[h]!==h)return!1;for(f=m=0;m<=7;f=++m)if(n.cp[f]!==f||n.co[f]!==0)return!1;for(o=B=0;B<=11;o=++B)if(n.ep[o]!==o||n.eo[o]!==0)return!1;return!0}centerMultiply(f){var h,n,o;for(o=n=0;n<=5;o=++n)h=f.center[o],this.newCenter[o]=this.center[h];return[this.center,this.newCenter]=[this.newCenter,this.center],this}cornerMultiply(f){var h,n,o;for(o=n=0;n<=7;o=++n)h=f.cp[o],this.newCp[o]=this.cp[h],this.newCo[o]=(this.co[h]+f.co[o])%3;return[this.cp,this.newCp]=[this.newCp,this.cp],[this.co,this.newCo]=[this.newCo,this.co],this}edgeMultiply(f){var h,n,o;for(o=n=0;n<=11;o=++n)h=f.ep[o],this.newEp[o]=this.ep[h],this.newEo[o]=(this.eo[h]+f.eo[o])%2;return[this.ep,this.newEp]=[this.newEp,this.ep],[this.eo,this.newEo]=[this.newEo,this.eo],this}multiply(f){return this.centerMultiply(f),this.cornerMultiply(f),this.edgeMultiply(f),this}move(f){var h,n,o,R,m,B,S,U,g;for(S=j(f),n=0,R=S.length;n<R;n++)for(m=S[n],h=m/3|0,B=m%3,g=o=0,U=B;0<=U?o<=U:o>=U;g=0<=U?++o:--o)this.multiply(L.moves[h]);return this}upright(){var f,h,n,o,R,m;for(f=this.clone(),m=[],h=o=0;o<=5&&f.center[h]!==ve;h=++o);switch(h){case w:m.push("x");break;case me:m.push("x'");break;case H:m.push("x2");break;case ce:m.push("y");break;case ae:m.push("y'")}for(m.length&&f.move(m[0]),n=R=0;R<=5&&f.center[n]!==me;n=++R);switch(n){case ae:m.push("z");break;case ce:m.push("z'");break;case w:m.push("z2")}return m.join(" ")}static inverse(f){var h,n,o,R,m,B,S;if(B=(function(){var U,g,d,M;for(d=j(f),M=[],U=0,g=d.length;U<g;U++)R=d[U],h=R/3|0,m=R%3,M.push(h*3+-(m-1)+1);return M})(),B.reverse(),typeof f=="string"){for(S="",n=0,o=B.length;n<o;n++)R=B[n],h=R/3|0,m=R%3,S+=ee[h],m===1?S+="2":m===2&&(S+="'"),S+=" ";return S.substring(0,S.length-1)}else return f.length!=null?B:B[0]}}return L.prototype.randomize=(function(){var k,f,h,n,o,R,m,B,S;return R=function(U,g){return U+Math.floor(Math.random()*(g-U+1))},S=function(U){var g,d,M;for(g=U.length;g!==0;)d=R(0,g-1),g-=1,M=U[g],[U[g],U[d]]=[U[d],U[g]]},n=function(U){var g,d,M,Y,V,G,he,Le;for(V=0,he=(function(){var Re,Ue,Be;for(Be=[],Le=Re=0,Ue=U.length-1;0<=Ue?Re<=Ue:Re>=Ue;Le=0<=Ue?++Re:--Re)Be.push(!1);return Be})();;){for(g=-1,M=Y=0,G=U.length-1;0<=G?Y<=G:Y>=G;M=0<=G?++Y:--Y)if(!he[M]){g=M;break}if(g===-1)break;for(d=0;!he[g];)he[g]=!0,d++,g=U[g];V+=d+1}return V},k=function(U,g){var d;return d=n(g)+n(U),d%2===0},h=function(U,g){for(S(g),S(U);!k(U,g);)S(g),S(U)},m=function(U,g){var d,M,Y,V;for(Y=0,d=M=0,V=U.length-1;0<=V?M<=V:M>=V;d=0<=V?++M:--M)Y+=U[d]=R(0,g-1)},o=function(U,g){return U.reduce(function(d,M){return d+M})%g===0},f=function(U,g){for(m(U,3);!o(U,3);)m(U,3);for(m(g,2);!o(g,2);)m(g,2)},B=function(){return h(this.cp,this.ep),f(this.co,this.eo),this},B})(),L.moves=[{center:[0,1,2,3,4,5],cp:[ne,Z,E,X,I,se,$,ue],co:[0,0,0,0,0,0,0,0],ep:[Q,ie,q,x,re,K,oe,A,fe,le,N,O],eo:[0,0,0,0,0,0,0,0,0,0,0,0]},{center:[0,1,2,3,4,5],cp:[I,E,X,Z,ue,se,$,ne],co:[2,0,0,1,1,0,0,2],ep:[fe,q,x,Q,O,K,oe,A,re,le,N,ie],eo:[0,0,0,0,0,0,0,0,0,0,0,0]},{center:[0,1,2,3,4,5],cp:[E,se,X,ne,Z,I,$,ue],co:[1,2,0,0,2,1,0,0],ep:[ie,le,x,Q,re,fe,oe,A,q,K,N,O],eo:[0,1,0,0,0,1,0,0,1,1,0,0]},{center:[0,1,2,3,4,5],cp:[Z,E,X,ne,se,$,ue,I],co:[0,0,0,0,0,0,0,0],ep:[ie,q,x,Q,K,oe,A,re,fe,le,N,O],eo:[0,0,0,0,0,0,0,0,0,0,0,0]},{center:[0,1,2,3,4,5],cp:[Z,X,$,ne,I,E,se,ue],co:[0,1,2,0,0,2,1,0],ep:[ie,q,N,Q,re,K,le,A,fe,x,oe,O],eo:[0,0,0,0,0,0,0,0,0,0,0,0]},{center:[0,1,2,3,4,5],cp:[Z,E,ne,ue,I,se,X,$],co:[0,0,1,2,0,0,2,1],ep:[ie,q,x,O,re,K,oe,N,fe,le,Q,A],eo:[0,0,0,1,0,0,0,1,0,0,1,1]},{center:[me,ve,ae,w,H,ce],cp:[Z,E,X,ne,I,se,$,ue],co:[0,0,0,0,0,0,0,0],ep:[ie,q,x,Q,re,K,oe,A,le,N,O,fe],eo:[0,0,0,0,0,0,0,0,1,1,1,1]},{center:[H,ce,me,ve,ae,w],cp:[Z,E,X,ne,I,se,$,ue],co:[0,0,0,0,0,0,0,0],ep:[ie,Q,x,A,re,q,oe,K,fe,le,N,O],eo:[0,1,0,1,0,1,0,1,0,0,0,0]},{center:[ae,me,ve,ce,w,H],cp:[Z,E,X,ne,I,se,$,ue],co:[0,0,0,0,0,0,0,0],ep:[x,q,oe,Q,ie,K,re,A,fe,le,N,O],eo:[1,0,1,0,1,0,1,0,0,0,0,0]}],W={U:0,R:1,F:2,D:3,L:4,B:5,E:6,M:7,S:8,x:9,y:10,z:11,u:12,r:13,f:14,d:15,l:16,b:17},ee={0:"U",1:"R",2:"F",3:"D",4:"L",5:"B",6:"E",7:"M",8:"S",9:"x",10:"y",11:"z",12:"u",13:"r",14:"f",15:"d",16:"l",17:"b"},j=function(k){var f,h,n,o,R,m,B;if(typeof k=="string"){for(m=k.split(/\s+/),B=[],f=0,h=m.length;f<h;f++)if(o=m[f],o.length!==0){if(o.length>2)throw new Error(`Invalid move: ${o}`);if(n=W[o[0]],n===void 0)throw new Error(`Invalid move: ${o}`);if(o.length===1)R=0;else if(o[1]==="2")R=1;else if(o[1]==="'")R=2;else throw new Error(`Invalid move: ${o}`);B.push(n*3+R)}return B}else return k.length!=null?k:[k]},L.moves.push(new L().move("R M' L'").toJSON()),L.moves.push(new L().move("U E' D'").toJSON()),L.moves.push(new L().move("F S B'").toJSON()),L.moves.push(new L().move("U E'").toJSON()),L.moves.push(new L().move("R M'").toJSON()),L.moves.push(new L().move("F S").toJSON()),L.moves.push(new L().move("D E").toJSON()),L.moves.push(new L().move("L M").toJSON()),L.moves.push(new L().move("B S'").toJSON()),L}).call(this),typeof Je<"u"&&Je!==null?Je.exports=T:this.Cube=T}).call(Ye)});var He=_e(Ge=>{(function(){var H,N,O,T,w,A,$,K,I,oe,se,re,ue,ve,le,fe,ae,ce,me,Q,ne,q,E,x,X,ie,Z,ge,Ie,we,De,pe,Fe,ee,W,j,L,k,f,h,n,o,R,m,B,S,U,g,d,M,Y,V,G,he,Le,Re,Ue,Be,Xe=[].indexOf;w=this.Cube||Ve(),[De,we,le,A,me,H]=[0,1,2,3,4,5],[f,W,L,Fe,oe,re,K,ve]=[0,1,2,3,4,5,6,7],[k,ee,j,pe,ue,I,se,$,ae,fe,N,O]=[0,1,2,3,4,5,6,7,8,9,10,11],T=function(t,r){var u,l,e;if(t<r)return 0;for(r>t/2&&(r=t-r),e=1,u=t,l=1;u!==t-r;)e*=u,e/=l,u--,l++;return e},S=function(t){var r,u,l,e;for(r=1,u=l=2,e=t;2<=e?l<=e:l>=e;u=2<=e?++l:--l)r*=u;return r},g=function(t,r){return t>r?t:r},Re=function(t,r,u){var l,e,i,c,v;for(v=t[r],l=e=i=r,c=u-1;i<=c?e<=c:e>=c;l=i<=c?++e:--e)t[l]=t[l+1];return t[u]=v},Ue=function(t,r,u){var l,e,i,c,v;for(v=t[u],l=e=i=u,c=r+1;i<=c?e<=c:e>=c;l=i<=c?++e:--e)t[l]=t[l-1];return t[r]=v},G=function(t,r,u,l=!1){var e,i,c,v,D,b;return v=u-r,c=S(v+1),t==="corners"?(i=7,b="cp"):(i=11,b="ep"),D=(function(){var C,F,s;for(s=[],e=C=0,F=v;0<=F?C<=F:C>=F;e=0<=F?++C:--C)s.push(0);return s})(),function(C){var F,s,a,p,y,_,P,J,z,de,ye,be,je,Se,Me,ze,ke,qe,$e,Te,We,Ne,xe,Ce,te,Ee,Pe;if(C!=null){for(e=_=0,ye=v;0<=ye?_<=ye:_>=ye;e=0<=ye?++_:--_)D[e]=e+r;for(s=C%c,F=C/c|0,z=this[b],e=P=0,be=i;0<=be?P<=be:P>=be;e=0<=be?++P:--P)z[e]=-1;for(p=J=1,Se=v;1<=Se?J<=Se:J>=Se;p=1<=Se?++J:--J)for(y=s%(p+1),s=s/(p+1)|0;y>0;)Ue(D,0,p),y--;if(te=v,l)for(p=de=0,Me=i;0<=Me?de<=Me:de>=Me;p=0<=Me?++de:--de)a=T(i-p,te+1),F-a>=0&&(z[p]=D[v-te],F-=a,te--);else for(p=Ne=ze=i;ze<=0?Ne<=0:Ne>=0;p=ze<=0?++Ne:--Ne)a=T(p,te+1),F-a>=0&&(z[p]=D[te],F-=a,te--);return this}else{for(z=this[b],e=xe=0,ke=v;0<=ke?xe<=ke:xe>=ke;e=0<=ke?++xe:--xe)D[e]=-1;if(F=s=te=0,l)for(p=Ce=qe=i;qe<=0?Ce<=0:Ce>=0;p=qe<=0?++Ce:--Ce)r<=($e=z[p])&&$e<=u&&(F+=T(i-p,te+1),D[v-te]=z[p],te++);else for(p=Ee=0,Te=i;0<=Te?Ee<=Te:Ee>=Te;p=0<=Te?++Ee:--Ee)r<=(We=z[p])&&We<=u&&(F+=T(p,te+1),D[te]=z[p],te++);for(p=Pe=je=v;je<=0?Pe<=0:Pe>=0;p=je<=0?++Pe:--Pe){for(y=0;D[p]!==r+p;)Re(D,0,p),y++;s=(p+1)*s+y}return F*c+s}}},ce={twist:function(t){var r,u,l,e,i,c;if(t!=null){for(i=0,r=u=6;u>=0;r=--u)e=t%3,t=t/3|0,this.co[r]=e,i+=e;return this.co[7]=(3-i%3)%3,this}else{for(c=0,r=l=0;l<=6;r=++l)c=3*c+this.co[r];return c}},flip:function(t){var r,u,l,e,i,c;if(t!=null){for(i=0,r=u=10;u>=0;r=--u)e=t%2,t=t/2|0,this.eo[r]=e,i+=e;return this.eo[11]=(2-i%2)%2,this}else{for(c=0,r=l=0;l<=10;r=++l)c=2*c+this.eo[r];return c}},cornerParity:function(){var t,r,u,l,e,i,c,v,D;for(D=0,t=u=e=ve,i=f+1;e<=i?u<=i:u>=i;t=e<=i?++u:--u)for(r=l=c=t-1,v=f;c<=v?l<=v:l>=v;r=c<=v?++l:--l)this.cp[r]>this.cp[t]&&D++;return D%2},edgeParity:function(){var t,r,u,l,e,i,c,v,D;for(D=0,t=u=e=O,i=k+1;e<=i?u<=i:u>=i;t=e<=i?++u:--u)for(r=l=c=t-1,v=k;c<=v?l<=v:l>=v;r=c<=v?++l:--l)this.ep[r]>this.ep[t]&&D++;return D%2},URFtoDLF:G("corners",f,re),URtoUL:G("edges",k,j),UBtoDF:G("edges",pe,I),URtoDF:G("edges",k,I),FRtoBR:G("edges",ae,O,!0)};for(U in ce)Be=ce[U],w.prototype[U]=Be;o=function(t,r,u){var l,e,i,c,v,D,b,C,F,s,a,p;for(l=t==="corners"?"cornerMultiply":"edgeMultiply",e=new w,p=[],i=b=0,a=u-1;0<=a?b<=a:b>=a;i=0<=a?++b:--b){for(e[r](i),c=[],v=F=0;F<=5;v=++F){for(C=w.moves[v],D=s=0;s<=2;D=++s)e[l](C),c.push(e[r]());e[l](C)}p.push(c)}return p},d=(function(){var t,r;return t=new w,r=new w,function(u,l){var e,i;for(t.URtoUL(u),r.UBtoDF(l),e=i=0;i<=7;e=++i)if(t.ep[e]!==-1){if(r.ep[e]!==-1)return-1;r.ep[e]=t.ep[e]}return r.URtoDF()}})(),X=2187,Q=2048,q=2,ne=11880,E=495,x=24,Z=20160,ge=20160,Ie=1320,ie=1320,w.moveTables={parity:[[1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1],[0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0]],twist:null,flip:null,FRtoBR:null,URFtoDLF:null,URtoDF:null,URtoUL:null,UBtoDF:null,mergeURtoDF:null},M={twist:["corners",X],flip:["edges",Q],FRtoBR:["edges",ne],URFtoDLF:["corners",Z],URtoDF:["edges",ge],URtoUL:["edges",Ie],UBtoDF:["edges",ie],mergeURtoDF:[]},w.computeMoveTables=function(...t){var r,u,l,e,i,c;for(t.length===0&&(t=(function(){var v;v=[];for(l in M)v.push(l);return v})()),u=0,r=t.length;u<r;u++)c=t[u],this.moveTables[c]===null&&(c==="mergeURtoDF"?this.moveTables.mergeURtoDF=(function(){var v,D,b,C;for(C=[],D=b=0;b<=335;D=++b)C.push((function(){var F,s;for(s=[],v=F=0;F<=335;v=++F)s.push(d(D,v));return s})());return C})():([e,i]=M[c],this.moveTables[c]=o(e,c,i)));return this},h=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17],Y=(function(){var t,r,u,l,e,i,c,v;for(v=[],r=u=0;u<=5;r=++u){for(l=[],t=e=0;e<=5;t=++e)if(t!==r&&t!==r-3)for(c=i=0;i<=2;c=++i)l.push(t*3+c);v.push(l)}return v})(),n=[0,1,2,4,7,9,10,11,13,16],V=(function(){var t,r,u,l,e,i,c,v,D,b;for(b=[],r=l=0;l<=5;r=++l){for(e=[],t=i=0;i<=5;t=++i)if(t!==r&&t!==r-3)for(D=t===0||t===3?[0,1,2]:[1],c=0,u=D.length;c<u;c++)v=D[c],e.push(t*3+v);b.push(e)}return b})(),he=function(t,r,u){var l,e,i;return l=r%8,i=r>>3,e=l<<2,u!=null?(t[i]&=~(15<<e),t[i]|=u<<e,u):(t[i]&15<<e)>>>e},R=function(t,r,u,l){var e,i,c,v,D,b,C,F,s,a,p,y,_;for(y=(function(){var P,J,z;for(z=[],_=P=0,J=Math.ceil(r/8)-1;0<=J?P<=J:P>=J;_=0<=J?++P:--P)z.push(4294967295);return z})(),t===1?F=h:F=n,i=0,he(y,0,i),c=1;c!==r;){for(v=b=0,p=r-1;0<=p?b<=p:b>=p;v=0<=p?++b:--b)if(he(y,v)===i)for(e=u(v),a=0,D=F.length;a<D;a++)C=F[a],s=l(e,C),he(y,s)===15&&(he(y,s,i+1),c++);i++}return y},w.pruningTables={sliceTwist:null,sliceFlip:null,sliceURFtoDLFParity:null,sliceURtoDFParity:null},Le={sliceTwist:[1,E*X,function(t){return[t%E,t/E|0]},function(t,r){var u,l,e,i;return[e,i]=t,u=w.moveTables.FRtoBR[e*24][r]/24|0,l=w.moveTables.twist[i][r],l*E+u}],sliceFlip:[1,E*Q,function(t){return[t%E,t/E|0]},function(t,r){var u,l,e,i;return[i,u]=t,e=w.moveTables.FRtoBR[i*24][r]/24|0,l=w.moveTables.flip[u][r],l*E+e}],sliceURFtoDLFParity:[2,x*Z*q,function(t){return[t%2,(t/2|0)%x,(t/2|0)/x|0]},function(t,r){var u,l,e,i,c,v;return[c,v,u]=t,l=w.moveTables.parity[c][r],e=w.moveTables.FRtoBR[v][r],i=w.moveTables.URFtoDLF[u][r],(i*x+e)*2+l}],sliceURtoDFParity:[2,x*ge*q,function(t){return[t%2,(t/2|0)%x,(t/2|0)/x|0]},function(t,r){var u,l,e,i,c,v;return[c,v,u]=t,l=w.moveTables.parity[c][r],e=w.moveTables.FRtoBR[v][r],i=w.moveTables.URtoDF[u][r],(i*x+e)*2+l}]},w.computePruningTables=function(...t){var r,u,l,e,i;for(t.length===0&&(t=(function(){var c;c=[];for(l in Le)c.push(l);return c})()),u=0,r=t.length;u<r;u++)i=t[u],this.pruningTables[i]===null&&(e=Le[i],this.pruningTables[i]=R(...e));return this},w.initSolver=function(){return w.computeMoveTables(),w.computePruningTables()},w.prototype.solveUpright=function(t=22){var r,u,l,e,i,c,v,D,b,C;return l=(function(){var F,s,a,p,y,_,P;for(s=["U","R","F","D","L","B"],_=["","2","'"],P=[],F=a=0;a<=5;F=++a)for(y=p=0;p<=2;y=++p)P.push(s[F]+_[y]);return P})(),r=class{constructor(s){this.parent=null,this.lastMove=null,this.depth=0,s&&this.init(s)}init(s){return this.flip=s.flip(),this.twist=s.twist(),this.slice=s.FRtoBR()/x|0,this.parity=s.cornerParity(),this.URFtoDLF=s.URFtoDLF(),this.FRtoBR=s.FRtoBR(),this.URtoUL=s.URtoUL(),this.UBtoDF=s.UBtoDF(),this}solution(){return this.parent?this.parent.solution()+l[this.lastMove]+" ":""}move(s,a,p){return w.moveTables[s][a][p]}pruning(s,a){return he(w.pruningTables[s],a)}moves1(){return this.lastMove!==null?Y[this.lastMove/3|0]:h}minDist1(){var s,a;return s=this.pruning("sliceFlip",E*this.flip+this.slice),a=this.pruning("sliceTwist",E*this.twist+this.slice),g(s,a)}next1(s){var a;return a=u.pop(),a.parent=this,a.lastMove=s,a.depth=this.depth+1,a.flip=this.move("flip",this.flip,s),a.twist=this.move("twist",this.twist,s),a.slice=this.move("FRtoBR",this.slice*24,s)/24|0,a}moves2(){return this.lastMove!==null?V[this.lastMove/3|0]:n}minDist2(){var s,a,p,y;return p=(x*this.URtoDF+this.FRtoBR)*q+this.parity,s=this.pruning("sliceURtoDFParity",p),y=(x*this.URFtoDLF+this.FRtoBR)*q+this.parity,a=this.pruning("sliceURFtoDLFParity",y),g(s,a)}init2(s=!0){if(this.parent!==null&&(this.parent.init2(!1),this.URFtoDLF=this.move("URFtoDLF",this.parent.URFtoDLF,this.lastMove),this.FRtoBR=this.move("FRtoBR",this.parent.FRtoBR,this.lastMove),this.parity=this.move("parity",this.parent.parity,this.lastMove),this.URtoUL=this.move("URtoUL",this.parent.URtoUL,this.lastMove),this.UBtoDF=this.move("UBtoDF",this.parent.UBtoDF,this.lastMove),s))return this.URtoDF=this.move("mergeURtoDF",this.URtoUL,this.UBtoDF)}next2(s){var a;return a=u.pop(),a.parent=this,a.lastMove=s,a.depth=this.depth+1,a.URFtoDLF=this.move("URFtoDLF",this.URFtoDLF,s),a.FRtoBR=this.move("FRtoBR",this.FRtoBR,s),a.parity=this.move("parity",this.parity,s),a.URtoDF=this.move("URtoDF",this.URtoDF,s),a}},D=null,i=function(F){var s,a,p,y;for(s=0,y=[],s=a=1,p=t;(1<=p?a<=p:a>=p)&&(e(F,s),D===null);s=1<=p?++a:--a)y.push(s++);return y},e=function(F,s){var a,p,y,_,P,J,z;if(s===0){if(F.minDist1()===0&&(F.lastMove===null||(P=F.lastMove,Xe.call(n,P)<0)))return v(F)}else if(s>0&&F.minDist1()<=s){for(J=F.moves1(),z=[],p=0,a=J.length;p<a&&(y=J[p],_=F.next1(y),e(_,s-1),u.push(_),D===null);p++)z.push(void 0);return z}},v=function(F){var s,a,p,y;for(F.init2(),y=[],s=a=1,p=t-F.depth;(1<=p?a<=p:a>=p)&&(c(F,s),D===null);s=1<=p?++a:--a)y.push(s++);return y},c=function(F,s){var a,p,y,_,P,J;if(s===0){if(F.minDist2()===0)return D=F.solution()}else if(s>0&&F.minDist2()<=s){for(P=F.moves2(),J=[],p=0,a=P.length;p<a&&(y=P[p],_=F.next2(y),c(_,s-1),u.push(_),D===null);p++)J.push(void 0);return J}},u=(function(){var F,s,a;for(a=[],C=F=0,s=t+1;0<=s?F<=s:F>=s;C=0<=s?++F:--F)a.push(new r);return a})(),b=u.pop().init(this),i(b),u.push(b),D.length>0&&(D=D.substring(0,D.length-1)),D},B={U:0,R:1,F:2,D:3,L:4,B:5},m={0:"U",1:"R",2:"F",3:"D",4:"L",5:"B"},w.prototype.solve=function(t=22){var r,u,l,e,i,c,v,D,b;for(r=this.clone(),D=r.upright(),r.move(D),c=new w().move(D).center,b=r.solveUpright(t),v=[],i=b.split(" "),l=0,u=i.length;l<u;l++)e=i[l],v.push(m[c[B[e[0]]]]),e.length>1&&(v[v.length-1]+=e[1]);return v.join(" ")},w.scramble=function(){return w.inverse(w.random().solve())}}).call(Ge)});var Qe=_e((ot,Ke)=>{Ke.exports=Ve();He()});
+// StarCube worker-entry sync boundary
+var StarCubeBundledCube = Qe();
+(function (require) {
+'use strict';
+
+var Cube = require('cubejs');
+
+var SOLVED = 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB';
+// Check distance by state, not by the length of a solver's equivalent formula.
+var TOO_SIMPLE_STATES = new Set([SOLVED]);
+['U', 'R', 'F', 'D', 'L', 'B'].forEach(function (face) {
+  ['', "'", '2'].forEach(function (suffix) {
+    TOO_SIMPLE_STATES.add(new Cube().move(face + suffix).asString());
+  });
+});
+
+function generateScramble() {
+  if (new Cube().asString() !== SOLVED) {
+    throw new Error('facelet 基准串校验失败');
+  }
+  var lastError = '打乱自检失败';
+  for (var attempt = 0; attempt < 3; attempt++) {
+    var cube = Cube.random();
+    var facelets = cube.asString();
+    if (typeof facelets !== 'string' || facelets.length !== 54) continue;
+    if (TOO_SIMPLE_STATES.has(facelets)) {
+      lastError = '打乱状态过于简单';
+      continue;
+    }
+
+    var solution = null;
+    try {
+      solution = cube.solve();
+    } catch (err) {
+      lastError = err && err.message ? err.message : String(err);
+      continue;
+    }
+    if (!solution) continue;
+
+    var moves = solution.trim().split(/\s+/).filter(Boolean);
+    if (moves.length === 0 || moves.length > 22) continue;
+
+    var algorithm = Cube.inverse(solution).replace(/\s+/g, ' ').trim();
+    var check = new Cube().move(algorithm);
+    if (check.asString() !== facelets) continue;
+
+    return { algorithm: algorithm, facelets: facelets };
+  }
+  throw new Error(lastError);
+}
+
+var api = {
+  init: function () { Cube.initSolver(); },
+  scramble: generateScramble
+};
+
+self.StarCubeSolver = api;
+
+if (typeof self.document === 'undefined' && typeof self.postMessage === 'function') {
+  self.onmessage = function (event) {
+    var data = event.data || {};
+    if (data.cmd === 'init') {
+      try {
+        api.init();
+        self.postMessage({ cmd: 'ready' });
+      } catch (err) {
+        self.postMessage({ cmd: 'error', message: err && err.message ? err.message : String(err) });
+      }
+      return;
+    }
+    if (data.cmd === 'scramble') {
+      try {
+        var result = api.scramble();
+        self.postMessage({ cmd: 'scramble', requestId: data.requestId, algorithm: result.algorithm, facelets: result.facelets });
+      } catch (err) {
+        self.postMessage({ cmd: 'error', requestId: data.requestId, message: err && err.message ? err.message : String(err) });
+      }
+    }
+  };
+}
+})(function (name) {
+  if (name === 'cubejs') return StarCubeBundledCube;
+  throw new Error('Unsupported bundled dependency: ' + name);
+});
+})();
+</script>
+<script>
+(function (global) {
+  'use strict';
+
+  var PLUS2_MS = 2000;
+
+  function effectiveMs(record) {
+    if (!record || record.penalty === 'dnf') return null;
+    if (!isFinite(record.ms)) return null;
+    return record.ms + (record.penalty === '+2' ? PLUS2_MS : 0);
+  }
+
+  function aoN(records, n) {
+    if (!Array.isArray(records) || n < 3 || records.length < n) return null;
+    var values = records.slice(records.length - n).map(function (record) {
+      var value = effectiveMs(record);
+      return value === null ? Infinity : value;
+    });
+    values.sort(function (a, b) { return a - b; });
+    // Trim 5% from each end, rounded up (Ao50: 3; Ao100: 5).
+    var trimCount = Math.ceil(n / 20);
+    var trimmed = values.slice(trimCount, values.length - trimCount);
+    var sum = 0;
+    for (var i = 0; i < trimmed.length; i++) {
+      if (!isFinite(trimmed[i])) return 'DNF';
+      sum += trimmed[i];
+    }
+    return sum / trimmed.length;
+  }
+
+  function overallAverage(records) {
+    var sum = 0;
+    var count = 0;
+    (records || []).forEach(function (record) {
+      var value = effectiveMs(record);
+      if (value !== null) {
+        sum += value;
+        count++;
+      }
+    });
+    return count ? sum / count : null;
+  }
+
+  function personalBest(records) {
+    var best = null;
+    (records || []).forEach(function (record) {
+      var value = effectiveMs(record);
+      if (value === null) return;
+      if (best === null || value < best.value) {
+        best = { value: value, record: record };
+      }
+    });
+    return best;
+  }
+
+  function bestAo5(records) {
+    if (!Array.isArray(records) || records.length < 5) return null;
+    var best = null;
+    for (var end = 5; end <= records.length; end++) {
+      var average = aoN(records.slice(end - 5, end), 5);
+      if (average !== null && average !== 'DNF' && (best === null || average < best)) {
+        best = average;
+      }
+    }
+    return best;
+  }
+
+  function inspectionPenalty(elapsedMs, inspectionEnabled) {
+    if (!inspectionEnabled) return 'ok';
+    if (elapsedMs >= 17000) return 'dnf';
+    if (elapsedMs >= 15000) return '+2';
+    return 'ok';
+  }
+
+  function formatMs(ms) {
+    var value = Math.max(0, Math.round(ms));
+    if (value < 60000) return (value / 1000).toFixed(3);
+    var minutes = Math.floor(value / 60000);
+    var seconds = Math.floor((value % 60000) / 1000);
+    var millis = value % 1000;
+    return minutes + ':' + String(seconds).padStart(2, '0') + '.' + String(millis).padStart(3, '0');
+  }
+
+  function formatResult(record) {
+    if (!record) return '—';
+    if (record.penalty === 'dnf') return 'DNF';
+    var value = effectiveMs(record);
+    return formatMs(value) + (record.penalty === '+2' ? '+' : '');
+  }
+
+  global.StarCubeStats = {
+    effectiveMs: effectiveMs,
+    aoN: aoN,
+    overallAverage: overallAverage,
+    personalBest: personalBest,
+    bestAo5: bestAo5,
+    inspectionPenalty: inspectionPenalty,
+    formatMs: formatMs,
+    formatResult: formatResult
+  };
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = global.StarCubeStats;
+  }
+})(typeof self !== 'undefined' ? self : globalThis);
+
+(function (global) {
+  'use strict';
+
+  var Stats = typeof module !== 'undefined' && module.exports ? require('./stats.js') : global.StarCubeStats;
+
+  // The caller supplies one group's records in chronological order. Windowing
+  // affects the summary only; rolling averages retain preceding solves.
+  function build(records, limit) {
+    records = Array.isArray(records) ? records : [];
+    limit = limit === 100 ? 100 : 50;
+    var startIndex = Math.max(0, records.length - limit);
+    var visible = records.slice(startIndex);
+    var validCount = 0;
+    var dnfCount = 0;
+    var plus2Count = 0;
+    var best = Stats.personalBest(visible);
+    var points = visible.map(function (record, offset) {
+      var index = startIndex + offset;
+      var value = Stats.effectiveMs(record);
+      if (value !== null) validCount++;
+      if (record.penalty === 'dnf') dnfCount++;
+      if (record.penalty === '+2') plus2Count++;
+      return {
+        uid: record.uid,
+        number: index + 1,
+        value: value,
+        ao5: index < 4 ? null : Stats.aoN(records.slice(index - 4, index + 1), 5)
+      };
+    });
+
+    return {
+      total: records.length,
+      shown: visible.length,
+      startIndex: startIndex,
+      validCount: validCount,
+      dnfCount: dnfCount,
+      plus2Count: plus2Count,
+      average: Stats.overallAverage(visible),
+      best: best === null ? null : best.value,
+      points: points
+    };
+  }
+
+  global.StarCubeReview = { build: build };
+  if (typeof module !== 'undefined' && module.exports) module.exports = global.StarCubeReview;
+})(typeof self !== 'undefined' ? self : globalThis);
+
+(function (root) {
+  'use strict';
+
+  var LEGACY_KEY = 'starcube.records.v1';
+  var PREFIX = 'starcube.records.v2.';
+  var ITEM_PREFIX = PREFIX + 'item.';
+  var DELETED_PREFIX = PREFIX + 'deleted.';
+  var BACKUP_PREFIX = PREFIX + 'backup.';
+  var GROUP_PREFIX = 'starcube.groups.v1.item.';
+  var DEFAULT_GROUP = 'default';
+  var MAX_SAFE = 9007199254740991;
+  var serial = 0;
+
+  function error(message, code) {
+    var err = new Error(message);
+    err.code = code || 'STORE_ERROR';
+    return err;
+  }
+
+  function validUid(uid) {
+    return typeof uid === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(uid);
+  }
+
+  function integer(value, min, max) {
+    return typeof value === 'number' && isFinite(value) && Math.floor(value) === value && value >= min && value <= max;
+  }
+
+  function defaultGroup() { return { id: DEFAULT_GROUP, origin: 'builtin-default', name: '默认训练' }; }
+  function validateName(name) {
+    if (typeof name !== 'string' || !name.trim() || name.trim().length > 40 || /[\u0000-\u001f\u007f]/.test(name)) {
+      throw error('训练名称需为 1–40 个字符，不能包含控制字符', 'INVALID_GROUP');
+    }
+    return name.trim();
+  }
+  function validateGroup(group) {
+    if (!group || !validUid(group.id) || !validUid(group.origin)) throw error('训练分组身份无效', 'INVALID_GROUP');
+    if ((group.id === DEFAULT_GROUP) !== (group.origin === 'builtin-default')) throw error('默认训练身份无效', 'INVALID_GROUP');
+    return { id: group.id, origin: group.origin, name: validateName(group.name) };
+  }
+  function recoveredGroup(id) { return { id: id, origin: 'recovered-' + hash(id), name: '恢复的训练 · ' + id.slice(0, 12) }; }
+
+  function validateRecord(record, options) {
+    options = options || {};
+    if (!record || typeof record !== 'object' || Array.isArray(record)) throw error('成绩必须是对象', 'INVALID_RECORD');
+    if (!integer(record.id, 1, MAX_SAFE)) throw error('成绩编号必须是正安全整数', 'INVALID_RECORD');
+    if (!integer(record.ms, 0, MAX_SAFE - 2000)) throw error('成绩时间必须是非负安全整数毫秒', 'INVALID_RECORD');
+    if (record.penalty !== 'ok' && record.penalty !== '+2' && record.penalty !== 'dnf') throw error('成绩罚时无效', 'INVALID_RECORD');
+    if (typeof record.scramble !== 'string' || record.scramble.length > 10000) throw error('打乱文本无效或过长', 'INVALID_RECORD');
+    if (typeof record.at !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(record.at)) {
+      throw error('成绩日期必须是完整 ISO 时间', 'INVALID_RECORD');
+    }
+    var date = new Date(record.at);
+    if (!isFinite(date.getTime())) throw error('成绩日期无效', 'INVALID_RECORD');
+    var clockPart = record.at.slice(11, 19).split(':').map(Number);
+    if (clockPart[0] > 23 || clockPart[1] > 59 || clockPart[2] > 59) throw error('成绩时刻无效', 'INVALID_RECORD');
+    // Date parses impossible day-of-month values by rolling into the next month.
+    var datePart = record.at.slice(0, 10).split('-').map(Number);
+    var days = new Date(Date.UTC(datePart[0], datePart[1], 0)).getUTCDate();
+    if (datePart[1] < 1 || datePart[1] > 12 || datePart[2] < 1 || datePart[2] > days) throw error('成绩日期不存在', 'INVALID_RECORD');
+    if (record.uid !== undefined && !validUid(record.uid)) throw error('成绩 uid 无效', 'INVALID_RECORD');
+    if (options.allowMissingUid === false && !validUid(record.uid)) throw error('成绩缺少 uid', 'INVALID_RECORD');
+    if (record.groupId !== undefined && !validUid(record.groupId)) throw error('成绩分组 ID 无效', 'INVALID_RECORD');
+    var normalized = { id: record.id, ms: record.ms, penalty: record.penalty, scramble: record.scramble, at: date.toISOString() };
+    normalized.groupId = record.groupId === undefined ? DEFAULT_GROUP : record.groupId;
+    if (record.uid !== undefined) normalized.uid = record.uid;
+    return normalized;
+  }
+
+  function isValidRecord(record, options) {
+    try { validateRecord(record, options); return true; } catch (err) { return false; }
+  }
+
+  // A deterministic 128-bit content fingerprint. It is not a security primitive.
+  // Backup writes also compare the complete source key and raw text before reuse.
+  function hash(text) {
+    var seeds = [2166136261, 2246822507, 3266489909, 668265263];
+    for (var p = 0; p < text.length; p++) {
+      var c = text.charCodeAt(p);
+      for (var i = 0; i < seeds.length; i++) {
+        seeds[i] = Math.imul(seeds[i] ^ (c + i * 257), 16777619) >>> 0;
+      }
+    }
+    return seeds.map(function (v) { return ('00000000' + v.toString(16)).slice(-8); }).join('');
+  }
+
+  function content(record, includeId) {
+    var fields = includeId ? [record.id, record.ms, record.penalty, record.scramble, record.at] :
+      [record.ms, record.penalty, record.scramble, record.at];
+    // Keep default-group fingerprints byte-compatible with v2 migration IDs.
+    if (record.groupId && record.groupId !== DEFAULT_GROUP) fields.push(record.groupId);
+    return JSON.stringify(fields);
+  }
+
+  function compareRecords(a, b) {
+    return a.at < b.at ? -1 : a.at > b.at ? 1 : a.id - b.id || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0);
+  }
+
+  function newUid() {
+    if (root.crypto && typeof root.crypto.randomUUID === 'function') return root.crypto.randomUUID();
+    serial++;
+    return 'local-' + Date.now().toString(36) + '-' + serial.toString(36) + '-' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  }
+
+  function create(options) {
+    options = options || {};
+    var storage = options.storage || null;
+    var memoryBackups = new Map();
+
+    function requireStorage() {
+      if (!storage) throw error('浏览器存储不可用', 'STORAGE_UNAVAILABLE');
+      return storage;
+    }
+
+    function keys() {
+      var target = requireStorage();
+      var result = [];
+      var length = target.length;
+      for (var i = 0; i < length; i++) {
+        var key = target.key(i);
+        if (typeof key === 'string') result.push(key);
+      }
+      return result;
+    }
+
+    function uidFromKey(key, prefix) {
+      try {
+        var uid = decodeURIComponent(key.slice(prefix.length));
+        return validUid(uid) ? uid : null;
+      } catch (err) { return null; }
+    }
+
+    function itemKey(uid) { return ITEM_PREFIX + encodeURIComponent(uid); }
+    function deletedKey(uid) { return DELETED_PREFIX + encodeURIComponent(uid); }
+    function groupKey(id) { return GROUP_PREFIX + encodeURIComponent(id); }
+    function putGroup(group) {
+      var normalized = validateGroup(group);
+      var target = requireStorage();
+      var raw = target.getItem(groupKey(group.id));
+      if (raw !== null) {
+        var prior;
+        try { prior = validateGroup(JSON.parse(raw)); }
+        catch (err) { rememberBackup(groupKey(group.id), raw, '损坏的分组原文', true); }
+        if (prior && prior.origin !== normalized.origin) throw error('训练 ID 已被其他训练占用', 'GROUP_CONFLICT');
+      }
+      target.setItem(groupKey(group.id), JSON.stringify(normalized));
+      return normalized;
+    }
+
+    function probe() {
+      if (!storage) return false;
+      var key = PREFIX + 'probe.' + newUid();
+      try {
+        storage.setItem(key, '1');
+        storage.removeItem(key);
+        return true;
+      } catch (err) { return false; }
+    }
+
+    function rememberBackup(sourceKey, raw, reason, writable) {
+      var identity = JSON.stringify([sourceKey, raw]);
+      var base = BACKUP_PREFIX + hash(identity);
+      var backup = { sourceKey: sourceKey, raw: raw, reason: reason, at: new Date().toISOString() };
+      memoryBackups.set(identity, backup);
+      if (!writable) return false;
+      var key = base;
+      for (var suffix = 0; suffix < 100; suffix++) {
+        var old = storage.getItem(key);
+        if (old === null) {
+          storage.setItem(key, JSON.stringify(backup));
+          return true;
+        }
+        try {
+          var prior = JSON.parse(old);
+          if (prior.sourceKey === sourceKey && prior.raw === raw) return true;
+        } catch (err) {}
+        key = base + '.' + (suffix + 1);
+      }
+      throw error('备份键冲突，原始数据仍被保留', 'BACKUP_CONFLICT');
+    }
+
+    function load() {
+      var writable = probe();
+      var notices = [];
+      if (!storage) return { records: [], groups: [defaultGroup()], writable: false, notice: '浏览器存储不可用，当前成绩只保留在本次页面中' };
+      var allKeys;
+      try { allKeys = keys(); } catch (err) {
+        return { records: [], groups: [defaultGroup()], writable: false, notice: '无法读取浏览器存储，原始数据未被改写' };
+      }
+      var deleted = new Set();
+      var existingItemIds = new Set();
+      var records = new Map();
+      var groups = new Map([[DEFAULT_GROUP, defaultGroup()]]);
+      var damaged = 0;
+      var readFailures = 0;
+      var migrated = 0;
+
+      function backup(sourceKey, raw, reason) {
+        try { rememberBackup(sourceKey, raw, reason, writable); }
+        catch (err) { writable = false; }
+      }
+
+      allKeys.forEach(function (key) {
+        if (key.indexOf(GROUP_PREFIX) === 0) {
+          var raw;
+          try { raw = storage.getItem(key); } catch (err) { readFailures++; return; }
+          if (raw === null) return;
+          try {
+            var group = validateGroup(JSON.parse(raw));
+            if (group.id !== uidFromKey(key, GROUP_PREFIX)) throw error('分组 ID 与键不一致');
+            groups.set(group.id, group);
+          } catch (err) { damaged++; backup(key, raw, '分组损坏：' + err.message); }
+        }
+        if (key.indexOf(DELETED_PREFIX) === 0) {
+          var uid = uidFromKey(key, DELETED_PREFIX);
+          if (uid) deleted.add(uid);
+        }
+        if (key.indexOf(ITEM_PREFIX) === 0) {
+          var itemUid = uidFromKey(key, ITEM_PREFIX);
+          if (itemUid) existingItemIds.add(itemUid);
+        }
+      });
+
+      allKeys.forEach(function (key) {
+        if (key.indexOf(ITEM_PREFIX) !== 0) return;
+        var uid = uidFromKey(key, ITEM_PREFIX);
+        if (uid && deleted.has(uid)) return;
+        var raw;
+        try { raw = storage.getItem(key); } catch (err) { readFailures++; return; }
+        if (raw === null) return;
+        try {
+          var parsed = JSON.parse(raw);
+          var normalized = validateRecord(parsed, { allowMissingUid: false });
+          if (parsed.groupId === undefined) backup(key, raw, '升级前成绩原文');
+          if (normalized.uid !== uid) throw error('uid 与存储键不一致');
+          records.set(uid, normalized);
+        } catch (err) {
+          damaged++;
+          backup(key, raw, '成绩条目损坏：' + err.message);
+        }
+      });
+
+      var legacyRaw;
+      try { legacyRaw = storage.getItem(LEGACY_KEY); } catch (err) { readFailures++; }
+      if (typeof legacyRaw === 'string') {
+        backup(LEGACY_KEY, legacyRaw, '旧版成绩原文');
+        var legacy;
+        try {
+          legacy = JSON.parse(legacyRaw);
+          if (!Array.isArray(legacy)) throw error('旧版记录不是数组');
+        } catch (err) {
+          damaged++;
+          notices.push('旧版成绩无法解析，原文已保留，可从备份导出');
+          legacy = [];
+        }
+        var occurrences = new Map();
+        legacy.forEach(function (value) {
+          var normalized;
+          try { normalized = validateRecord(value); }
+          catch (err) { damaged++; return; }
+          var body = content(normalized, true);
+          var occurrence = (occurrences.get(body) || 0) + 1;
+          occurrences.set(body, occurrence);
+          normalized.uid = 'legacy-' + hash(body) + '-' + occurrence;
+          if (deleted.has(normalized.uid) || existingItemIds.has(normalized.uid) || records.has(normalized.uid)) return;
+          records.set(normalized.uid, normalized);
+          if (writable) {
+            try {
+              // Deterministic keys make concurrent first migration idempotent.
+              if (storage.getItem(deletedKey(normalized.uid)) === null && storage.getItem(itemKey(normalized.uid)) === null) {
+                storage.setItem(itemKey(normalized.uid), JSON.stringify(normalized));
+                migrated++;
+              }
+            } catch (err) { writable = false; }
+          }
+        });
+      }
+      if (damaged) notices.push('已隔离 ' + damaged + ' 处损坏数据，其余有效成绩仍可使用；原文可从备份导出');
+      var recovered = 0;
+      records.forEach(function (record) {
+        if (!groups.has(record.groupId)) { groups.set(record.groupId, recoveredGroup(record.groupId)); recovered++; }
+      });
+      if (recovered) notices.push('已恢复 ' + recovered + ' 个缺失的训练分组，成绩完整保留');
+      if (readFailures) { writable = false; notices.push('部分存储读取失败，原始数据未被改写'); }
+      if (migrated) notices.push('已迁移 ' + migrated + ' 条旧版成绩，旧版原文和备份均保留');
+      if (!writable) notices.push('存储无法写入，已显示可读取的历史；新成绩只保留在本次页面中');
+      return { records: Array.from(records.values()).sort(compareRecords), groups: Array.from(groups.values()), writable: writable, notice: notices.join('；') };
+    }
+
+    function put(record) {
+      var normalized = validateRecord(record);
+      if (!normalized.uid) normalized.uid = newUid();
+      var target = requireStorage();
+      if (target.getItem(deletedKey(normalized.uid)) !== null) throw error('该成绩已在其他页面删除，未恢复旧记录', 'RECORD_DELETED');
+      var oldRaw = target.getItem(itemKey(normalized.uid));
+      if (oldRaw !== null) {
+        try { if (JSON.parse(oldRaw).groupId === undefined) rememberBackup(itemKey(normalized.uid), oldRaw, '升级前成绩原文', true); }
+        catch (err) { if (err instanceof SyntaxError) rememberBackup(itemKey(normalized.uid), oldRaw, '损坏的成绩原文', true); else throw err; }
+      }
+      target.setItem(itemKey(normalized.uid), JSON.stringify(normalized));
+      return normalized;
+    }
+
+    function remove(uid) {
+      if (!validUid(uid)) throw error('成绩 uid 无效', 'INVALID_RECORD');
+      var tombstone = { uid: uid, deletedAt: new Date().toISOString() };
+      requireStorage().setItem(deletedKey(uid), JSON.stringify(tombstone));
+      return tombstone;
+    }
+
+    function backups() {
+      var result = new Map(memoryBackups);
+      if (storage) {
+        try {
+          keys().forEach(function (key) {
+            if (key.indexOf(BACKUP_PREFIX) !== 0) return;
+            try {
+              var value = JSON.parse(storage.getItem(key));
+              if (value && typeof value.sourceKey === 'string' && typeof value.raw === 'string') {
+                result.set(JSON.stringify([value.sourceKey, value.raw]), value);
+              }
+            } catch (err) {}
+          });
+        } catch (err) {}
+      }
+      return Array.from(result.values()).sort(function (a, b) { return a.sourceKey < b.sourceKey ? -1 : a.sourceKey > b.sourceKey ? 1 : a.raw < b.raw ? -1 : a.raw > b.raw ? 1 : 0; });
+    }
+
+    function importRecords(input) {
+      if (typeof input === 'string') {
+        try { input = JSON.parse(input); } catch (err) { throw error('导入文件不是有效 JSON', 'INVALID_IMPORT'); }
+      }
+      var inputBackups = [];
+      var inputGroups = [];
+      var rawRecords = input;
+      if (!Array.isArray(input)) {
+        if (!input || input.format !== 'starcube' || (input.version !== 2 && input.version !== 3) || !Array.isArray(input.records)) throw error('导入文件格式或版本不受支持', 'INVALID_IMPORT');
+        if (input.version === 3) {
+          if (!Array.isArray(input.groups)) throw error('备份缺少分组列表', 'INVALID_IMPORT');
+          inputGroups = input.groups.map(validateGroup);
+          var seenGroups = new Set();
+          var seenOrigins = new Set();
+          inputGroups.forEach(function (g) {
+            if (seenGroups.has(g.id) || seenOrigins.has(g.origin)) throw error('备份包含重复分组 ID 或来源身份，无法确定归属', 'INVALID_IMPORT');
+            seenGroups.add(g.id); seenOrigins.add(g.origin);
+          });
+        }
+        rawRecords = input.records;
+        if (input.backups !== undefined) {
+          if (!Array.isArray(input.backups)) throw error('导入备份格式无效', 'INVALID_IMPORT');
+          inputBackups = input.backups;
+        }
+      }
+      // Complete validation precedes every import write.
+      var incoming = rawRecords.map(function (value, index) {
+        try { return validateRecord(value); }
+        catch (err) { throw error('第 ' + (index + 1) + ' 条导入成绩无效：' + err.message, 'INVALID_IMPORT'); }
+      });
+      inputBackups.forEach(function (backup) {
+        if (!backup || typeof backup.sourceKey !== 'string' || typeof backup.raw !== 'string' ||
+            (backup.reason !== undefined && typeof backup.reason !== 'string')) throw error('导入备份内容无效', 'INVALID_IMPORT');
+      });
+      var loaded = load();
+      if (!loaded.writable) throw error('存储无法写入，未导入成绩；请先导出当前数据备份', 'STORAGE_UNAVAILABLE');
+      var byUid = new Map();
+      var byContent = new Set();
+      loaded.records.forEach(function (record) { byUid.set(record.uid, record); byContent.add(content(record, false)); });
+      var progress = { added: 0, skipped: 0, conflicts: 0 };
+      progress.groupsAdded = 0;
+      progress.groupConflicts = 0;
+      progress.recoveredGroups = 0;
+      var groupMap = new Map(loaded.groups.map(function (g) { return [g.id, g]; }));
+      var incomingGroups = new Map(inputGroups.map(function (g) { return [g.id, g]; }));
+      incoming.forEach(function (r) {
+        if (!incomingGroups.has(r.groupId)) {
+          incomingGroups.set(r.groupId, r.groupId === DEFAULT_GROUP ? defaultGroup() : recoveredGroup(r.groupId));
+          if (r.groupId !== DEFAULT_GROUP) progress.recoveredGroups++;
+        }
+      });
+      var remap = new Map();
+      try {
+        incomingGroups.forEach(function (group, originalId) {
+          var targetId = originalId, prior = groupMap.get(targetId), suffix = 0;
+          var sameIdentity = Array.from(groupMap.values()).find(function (g) { return g.origin === group.origin; });
+          if (sameIdentity) { targetId = sameIdentity.id; prior = sameIdentity; }
+          if (prior && prior.origin !== group.origin) {
+            progress.groupConflicts++;
+            do {
+              targetId = 'import-group-' + hash(JSON.stringify([originalId, group.origin, suffix++]));
+              prior = groupMap.get(targetId);
+            } while (prior && prior.origin !== group.origin);
+          }
+          remap.set(originalId, targetId);
+          if (targetId === DEFAULT_GROUP && group.name !== '默认训练' && storage.getItem(groupKey(DEFAULT_GROUP)) === null) prior = null;
+          // Names are mutable; the local name wins for the same immutable identity.
+          if (!prior) {
+            var savedGroup = putGroup({ id: targetId, origin: group.origin, name: group.name });
+            groupMap.set(targetId, savedGroup); progress.groupsAdded++;
+          }
+        });
+        incoming.forEach(function (record) {
+          record.groupId = remap.get(record.groupId);
+          var body = content(record, false);
+          if (byContent.has(body)) { progress.skipped++; return; }
+          var originalUid = record.uid;
+          if (!record.uid) record.uid = 'import-' + hash(body);
+          if (storage.getItem(deletedKey(record.uid)) !== null) { progress.skipped++; return; }
+          var prior = byUid.get(record.uid);
+          if (prior && content(prior, true) !== content(record, true)) {
+            progress.conflicts++;
+            record.uid = 'import-' + hash(originalUid + '\n' + content(record, true));
+            var index = 0;
+            while (byUid.has(record.uid) && content(byUid.get(record.uid), true) !== content(record, true)) {
+              index++;
+              record.uid = 'import-' + hash(originalUid + '\n' + content(record, true) + '\n' + index);
+            }
+            if (storage.getItem(deletedKey(record.uid)) !== null) { progress.skipped++; return; }
+          }
+          if (byUid.has(record.uid)) { progress.skipped++; return; }
+          var saved = put(record);
+          byUid.set(saved.uid, saved);
+          byContent.add(body);
+          progress.added++;
+        });
+        inputBackups.forEach(function (backup) {
+          rememberBackup(backup.sourceKey, backup.raw, backup.reason || '导入的原始备份', true);
+        });
+      } catch (err) {
+        err.partial = Object.assign({}, progress);
+        err.message = '导入中断：已写入 ' + progress.added + ' 条成绩、' + progress.groupsAdded + ' 个训练，可重试去重；' + err.message;
+        throw err;
+      }
+      progress.records = Array.from(byUid.values()).sort(compareRecords);
+      progress.groups = Array.from(groupMap.values());
+      return progress;
+    }
+
+    function exportData() {
+      var result = load();
+      return { format: 'starcube', version: 3, groups: result.groups, records: result.records, backups: backups() };
+    }
+
+    function readRaw(key) {
+      var target = requireStorage();
+      if (key !== undefined) return target.getItem(String(key));
+      var result = {};
+      keys().forEach(function (name) {
+        if (name === LEGACY_KEY || name.indexOf(PREFIX) === 0 || name.indexOf(GROUP_PREFIX) === 0) result[name] = target.getItem(name);
+      });
+      return result;
+    }
+
+    return { load: load, put: put, putGroup: putGroup, remove: remove, importRecords: importRecords, backups: backups, exportData: exportData, readRaw: readRaw };
+  }
+
+  var api = { create: create, validateRecord: validateRecord, isValidRecord: isValidRecord,
+    validateGroup: validateGroup, validateName: validateName, newUid: newUid, defaultGroup: defaultGroup, defaultGroupId: DEFAULT_GROUP,
+    compareRecords: compareRecords, keys: { legacy: LEGACY_KEY, itemPrefix: ITEM_PREFIX, deletedPrefix: DELETED_PREFIX, backupPrefix: BACKUP_PREFIX, groupPrefix: GROUP_PREFIX } };
+  root.StarCubeStore = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+(function () {
+  'use strict';
+
+  var Stats = window.StarCubeStats;
+  var Review = window.StarCubeReview;
+  var HOLD_MS = 300;
+  var TOUCH_MOVE_PX = 10;
+  var GEN_TIMEOUT = 5000;
+  var INIT_TIMEOUT = 30000;
+  var RECORDS_KEY = 'starcube.records.v1';
+  var SETTINGS_KEY = 'starcube.settings.v1';
+  var SELECTION_KEY = 'starcube.currentGroup.v1';
+  var SOLVED_COLORS = { U: '#F2F2F2', R: '#C62828', F: '#2E7D32', D: '#F2C230', L: '#E06C00', B: '#1565C0' };
+  var FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+  var NET_FACE_POS = { U: [3, 0], L: [0, 3], F: [3, 3], R: [6, 3], B: [9, 3], D: [3, 6] };
+  var CELL = 15;
+  var GAP = 1;
+  var NET_W = 12 * CELL + 11 * GAP;
+  var NET_H = 9 * CELL + 8 * GAP;
+  var C = {
+    normal: 'var(--text)',
+    dim: 'var(--muted)',
+    white: 'var(--text)',
+    hold: 'var(--yellow)',
+    ready: 'var(--green-bright)',
+    bad: 'var(--red-text)'
+  };
+  var ALG_RE = /^[URFDLB](2|')?$/;
+
+  function $(id) { return document.getElementById(id); }
+
+  var el = {
+    app: $('app'), navTimer: $('navTimer'), navReview: $('navReview'),
+    timerView: $('timerView'), reviewView: $('reviewView'), recentReview: $('recentReview'),
+    timerGroupName: $('timerGroupName'), coreAo5: $('coreAo5'), coreAo12: $('coreAo12'),
+    corePb: $('corePb'), coreCount: $('coreCount'), coreGlobalPb: $('coreGlobalPb'),
+    recentList: $('recentList'), recentEmpty: $('recentEmpty'),
+    status: $('status'),
+    switchBtn: $('inspectionToggle'),
+    storageBanner: $('storageBanner'),
+    scrambleText: $('scrambleText'),
+    scrambleHint: $('scrambleHint'),
+    retryBtn: $('retryBtn'),
+    newScrambleBtn: $('newScramble'),
+    exportBtn: $('exportData'),
+    importBtn: $('importData'),
+    importFile: $('importFile'),
+    feedback: $('dataFeedback'),
+    historyMore: $('historyMore'),
+    net: $('net'),
+    pad: $('pad'),
+    timer: $('timer'),
+    pbBadge: $('pbBadge'),
+    subStatus: $('subStatus'),
+    cancelBtn: $('cancelInspection'),
+    ao5: $('ao5'),
+    ao12: $('ao12'),
+    ao50: $('ao50'),
+    ao100: $('ao100'),
+    avg: $('avg'),
+    count: $('count'),
+    pb: $('pb'),
+    globalPb: $('globalPb'),
+    groupSelect: $('groupSelect'),
+    groupNew: $('groupNew'),
+    groupRename: $('groupRename'),
+    groupForm: $('groupForm'),
+    groupName: $('groupName'),
+    groupSave: $('groupSave'),
+    groupCancel: $('groupCancel'),
+    groupError: $('groupError'),
+    groupLabel: $('groupNameLabel'),
+    bestAo5: $('bestAo5'),
+    actions: $('actions'),
+    plusBtn: $('penaltyPlus'),
+    dnfBtn: $('penaltyDnf'),
+    deleteBtn: $('deleteLatest'),
+    historyToggle: $('historyToggle'),
+    historyBody: $('historyBody'),
+    historyList: $('historyList'),
+    historyEmpty: $('historyEmpty'),
+    historyCount: $('historyCount'),
+    reviewToggle: $('reviewToggle'), reviewBody: $('reviewBody'), reviewRange: $('reviewRange'),
+    reviewChart: $('reviewChart'), reviewSummary: $('reviewSummary'), reviewEmpty: $('reviewEmpty'),
+    reviewContent: $('reviewContent'), reviewAverage: $('reviewAverage'), reviewBest: $('reviewBest'),
+    reviewRecord: $('reviewRecord'), reviewInspect: $('reviewInspect'), reviewSelected: $('reviewSelected'),
+    recordDialog: $('recordDialog'), recordClose: $('recordClose'), recordTitle: $('recordTitle'),
+    recordResult: $('recordResult'), recordRaw: $('recordRaw'), recordDate: $('recordDate'),
+    recordScramble: $('recordScramble'), recordGroup: $('recordGroup'), recordAo5: $('recordAo5'),
+    recordOk: $('recordOk'), recordPlus: $('recordPlus'), recordDnf: $('recordDnf'), recordFeedback: $('recordFeedback'),
+    solverSrc: $('solver-src')
+  };
+
+  var state = 'BOOT';
+  var currentView = 'timer';
+  var records = [];
+  var allRecords = [];
+  var groups = [];
+  var currentGroupId = window.StarCubeStore.defaultGroupId;
+  var editingGroup = null;
+  var groupsVersion = -1;
+  var settings = { inspection: true };
+  var nextId = 1;
+  var memoryMode = false;
+  var historyOpen = window.innerWidth >= 720;
+  var store = null;
+  var dataNotice = '';
+  var dataVersion = 0;
+  var statsVersion = -1;
+  var historyVersion = -1;
+  var historyDetailButtons = [];
+  var recentVersion = -1;
+  var recentDetailButtons = [];
+  var historyLimit = 50;
+  var netKey = undefined;
+  var pendingStorageRefresh = false;
+  var storageRefreshTimer = 0;
+  var importing = false;
+  var reviewOpen = true;
+  var reviewLimit = 50;
+  var reviewVersion = -1;
+  var reviewData = null;
+  var reviewSelectedUid = null;
+  var selectedRecordUid = null;
+  var recordReturnFocus = null;
+
+  var currentScramble = null;
+  var scrambleUsed = false;
+  var generating = false;
+  var genFailed = false;
+  var genTimer = 0;
+  var requestSerial = 0;
+  var pendingRequestId = null;
+  var activeScramble = null;
+
+  var engineMode = 'worker';
+  var engineReady = false;
+  var engineFallback = false;
+  var engineDead = false;
+  var solverSource = '';
+  var worker = null;
+  var blobUrl = '';
+  var initTimer = 0;
+
+  var press = null;
+  var holdTimer = 0;
+  var readyFrom = '';
+  var pointerId = null;
+  var pointerGesture = null;
+  var touchContacts = new Set();
+  var touchGestureBlocked = false;
+  var groupPointerSelection = false;
+  var inspectStart = 0;
+  var inspectionRaf = 0;
+  var runStart = 0;
+  var runPenalty = 'ok';
+  var usedScramble = '';
+  var runRaf = 0;
+
+  function loadData() {
+    var storage = null;
+    try {
+      storage = window.localStorage;
+      var settingsRaw = storage.getItem(SETTINGS_KEY);
+      var parsedSettings = settingsRaw ? JSON.parse(settingsRaw) : null;
+      if (parsedSettings && typeof parsedSettings.inspection === 'boolean') settings.inspection = parsedSettings.inspection;
+    } catch (err) {
+      console.warn('设置读取失败，使用默认设置', err);
+    }
+    store = window.StarCubeStore.create({ storage: storage });
+    try { currentGroupId = window.sessionStorage.getItem(SELECTION_KEY) || currentGroupId; } catch (err) {}
+    readStore();
+    el.groupForm.hidden = true;
+  }
+
+  function dataChanged() {
+    dataVersion++;
+    records = allRecords.filter(function (record) { return record.groupId === currentGroupId; });
+    historyLimit = Math.max(50, historyLimit);
+    nextId = allRecords.reduce(function (max, record) {
+      return Math.max(max, record.id);
+    }, 0) + 1;
+    if (!Number.isSafeInteger(nextId)) {
+      var ids = new Set(allRecords.map(function (record) { return record.id; }));
+      nextId = 1;
+      while (ids.has(nextId)) nextId++;
+    }
+  }
+
+  function readStore() {
+    var loaded = store.load();
+    allRecords = loaded.records;
+    groups = loaded.groups;
+    if (!groups.some(function (group) { return group.id === currentGroupId; })) currentGroupId = window.StarCubeStore.defaultGroupId;
+    memoryMode = !loaded.writable;
+    dataNotice = loaded.notice || '';
+    pendingStorageRefresh = false;
+    dataChanged();
+  }
+
+  function saveRecord(record) {
+    if (!record.uid) {
+      record.uid = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
+        'local-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    }
+    if (!memoryMode) {
+      try { store.put(record); readStore(); return; }
+      catch (err) {
+        if (err.code === 'RECORD_DELETED') {
+          readStore();
+          el.feedback.textContent = '该成绩已在另一页面删除，列表已更新。';
+          return;
+        }
+        setMemoryMode('记录写入失败');
+      }
+    }
+    var index = allRecords.findIndex(function (item) { return item.uid === record.uid; });
+    if (index < 0) allRecords.push(record); else allRecords[index] = record;
+    allRecords.sort(window.StarCubeStore.compareRecords);
+    dataChanged();
+  }
+
+  function persistSettings() {
+    if (memoryMode) return;
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch (err) {
+      setMemoryMode('设置写入失败');
+    }
+  }
+
+  function setMemoryMode(reason) {
+    if (!memoryMode) console.warn('浏览器存储不可用，切换到内存模式：' + reason);
+    memoryMode = true;
+    dataNotice = reason + '；请导出备份，避免关闭页面后丢失本次成绩。';
+  }
+
+  function latestRecord() {
+    return records.length ? records[records.length - 1] : null;
+  }
+
+  function canStart() {
+    if (currentView !== 'timer' || importing || editingGroup !== null || selectedRecordUid) return false;
+    if (state !== 'IDLE' && state !== 'STOPPED') return false;
+    if (engineDead) return true;
+    if (!engineReady || generating || genFailed) return false;
+    if (!currentScramble || scrambleUsed) return false;
+    return true;
+  }
+
+  function setTimer(text, color, empty) {
+    el.timer.textContent = text;
+    el.timer.style.color = color;
+    el.timer.classList.toggle('is-empty', !!empty);
+  }
+
+  function render() {
+    if (pendingStorageRefresh && !press && !activeScramble && state !== 'RUNNING' && !memoryMode) readStore();
+    renderViews();
+    renderStatus();
+    renderScramblePanel();
+    renderTimerAndPad();
+    renderStats();
+    renderHistory();
+    renderRecent();
+    renderActions();
+    renderControls();
+    renderGroups();
+    renderReview();
+    renderRecordDialog();
+    el.storageBanner.textContent = (memoryMode ? '成绩不会被保存：' : '') + dataNotice;
+    el.storageBanner.hidden = !memoryMode && !dataNotice;
+  }
+
+  function renderViews() {
+    el.app.dataset.view = currentView;
+    el.timerView.hidden = currentView !== 'timer';
+    el.reviewView.hidden = currentView !== 'review';
+    el.navTimer.setAttribute('aria-pressed', String(currentView === 'timer'));
+    el.navReview.setAttribute('aria-pressed', String(currentView === 'review'));
+  }
+
+  function switchView(view) {
+    if (!canChangeGroup() || editingGroup !== null || (view !== 'timer' && view !== 'review')) return;
+    if (currentView !== view) {
+      currentView = view;
+      // Showing the panel precedes chart measurement. Hidden panels release their
+      // expensive DOM through their normal render paths; model state stays live.
+      render();
+      window.scrollTo(0, 0);
+    }
+    if (view === 'timer') el.pad.focus({ preventScroll: true }); else el.reviewView.focus({ preventScroll: true });
+  }
+
+  function returnTimerFocus(event) {
+    // Mouse/touch actions hand the next Space back to the timer. Keyboard and
+    // assistive-technology clicks (detail = 0) retain normal control semantics.
+    if (event && event.detail > 0 && currentView === 'timer' && canChangeGroup() && editingGroup === null) {
+      el.pad.focus({ preventScroll: true });
+    }
+  }
+
+  function renderStatus() {
+    var text = '';
+    var tone = '';
+    if (state === 'RUNNING') {
+      text = '计时中';
+      tone = 'active';
+    } else if (state === 'INSPECTING') {
+      text = '观察中';
+      tone = 'active';
+    } else if (state === 'READY') {
+      text = '按住';
+      tone = 'active';
+    } else if (engineDead) {
+      text = '打乱不可用';
+      tone = 'warn';
+    } else if (!engineReady) {
+      text = '初始化中…';
+    } else if (generating) {
+      text = '生成中…';
+    } else if (genFailed) {
+      text = '生成失败';
+      tone = 'warn';
+    } else if (state === 'IDLE') {
+      text = '就绪';
+    } else if (state === 'STOPPED') {
+      text = '已停止';
+    } else {
+      text = '初始化中…';
+    }
+    el.status.textContent = text;
+    el.status.dataset.tone = tone;
+  }
+
+  function renderScramblePanel() {
+    var text = '—';
+    var message = false;
+    var hint = '';
+    var showRetry = false;
+    var facelets = null;
+
+    if (activeScramble) {
+      text = activeScramble.algorithm;
+      facelets = activeScramble.facelets;
+      hint = '本次打乱 · 已固定';
+    } else if (engineDead) {
+      text = '打乱不可用';
+      message = true;
+      hint = '仍可计时，记录中打乱显示 —';
+    } else if (!engineReady || state === 'BOOT') {
+      text = '打乱引擎初始化中…';
+      message = true;
+      hint = engineFallback ? '主线程初始化，可能卡顿数秒' : '首次初始化约需数秒';
+    } else if (generating) {
+      text = '生成中…';
+      message = true;
+      hint = '随机状态打乱生成中';
+    } else if (genFailed) {
+      text = '生成失败';
+      message = true;
+      hint = '打乱未就绪，按 N 或点击重试';
+      showRetry = true;
+    } else if (currentScramble) {
+      text = currentScramble.algorithm;
+      facelets = currentScramble.facelets;
+      var canN = (state === 'IDLE' || state === 'STOPPED') && !scrambleUsed && !generating;
+      hint = '随机状态 · ' + currentScramble.algorithm.split(' ').length + ' 步';
+    }
+
+    el.scrambleText.textContent = text;
+    el.scrambleText.classList.toggle('is-message', message);
+    el.scrambleHint.textContent = hint;
+    el.retryBtn.hidden = !showRetry;
+    el.newScrambleBtn.disabled = !!press || !!activeScramble || !engineReady || engineDead || generating ||
+      (state !== 'IDLE' && state !== 'STOPPED');
+    renderNet(facelets);
+  }
+
+  function renderNet(facelets) {
+    if (facelets === netKey) return;
+    netKey = facelets;
+    var svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + NET_W + ' ' + NET_H);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.setAttribute('focusable', 'false');
+
+    var valid = typeof facelets === 'string' && /^[URFDLB]{54}$/.test(facelets);
+    for (var f = 0; f < FACE_ORDER.length; f++) {
+      var face = FACE_ORDER[f];
+      var pos = NET_FACE_POS[face];
+      var segment = valid ? facelets.slice(f * 9, f * 9 + 9) : null;
+      for (var i = 0; i < 9; i++) {
+        var col = i % 3;
+        var row = Math.floor(i / 3);
+        var rect = document.createElementNS(SVG_NS, 'rect');
+        var x = (pos[0] + col) * (CELL + GAP);
+        var y = (pos[1] + row) * (CELL + GAP);
+        rect.setAttribute('x', String(x));
+        rect.setAttribute('y', String(y));
+        rect.setAttribute('width', String(CELL));
+        rect.setAttribute('height', String(CELL));
+        rect.setAttribute('rx', '1');
+        rect.setAttribute('ry', '1');
+        rect.setAttribute('fill', valid ? SOLVED_COLORS[segment.charAt(i)] : 'var(--line-soft)');
+        svg.appendChild(rect);
+      }
+    }
+    el.net.replaceChildren(svg);
+  }
+
+  function inspectionColor(elapsed, holding) {
+    if (holding) return C.hold;
+    if (elapsed >= 12000) return C.bad;
+    if (elapsed >= 8000) return C.hold;
+    return C.normal;
+  }
+
+  function updateInspectionDisplay() {
+    if (!inspectStart) return;
+    var elapsed = performance.now() - inspectStart;
+    var seconds = Math.max(0, Math.ceil(elapsed / 1000));
+    var holding = !!press && !press.suppressed && !press.ready;
+    var penalty = Stats.inspectionPenalty(elapsed, true);
+    el.pad.dataset.penalty = penalty;
+    var mark = penalty === 'dnf' ? ' · DNF' : penalty === '+2' ? ' · +2' : '';
+    setTimer(String(seconds), inspectionColor(elapsed, holding));
+    if (holding) {
+      el.subStatus.textContent = '按住，保持到变绿' + mark;
+      return;
+    }
+    el.subStatus.textContent = '观察中' + mark + ' · 按住 0.3 秒起表';
+  }
+
+  function inspectionFrame() {
+    if (state !== 'INSPECTING' && state !== 'READY') {
+      inspectionRaf = 0;
+      return;
+    }
+    if (state === 'INSPECTING') updateInspectionDisplay();
+    if (state === 'READY') renderReadyHint();
+    inspectionRaf = requestAnimationFrame(inspectionFrame);
+  }
+
+  function renderReadyHint() {
+    var penalty = settings.inspection && inspectStart > 0 ? Stats.inspectionPenalty(performance.now() - inspectStart, true) : 'ok';
+    el.pad.dataset.penalty = penalty;
+    el.subStatus.textContent = '准备好了 · 松开起表' + (penalty === 'dnf' ? ' · DNF' : penalty === '+2' ? ' · +2' : '');
+  }
+
+  function idleHintText() {
+    if (state === 'BOOT') return '打乱引擎初始化中…';
+    if (engineDead) return '打乱不可用，仍可计时';
+    if (generating) return (state === 'STOPPED' ? (memoryMode ? '已留在本页 · ' : '已保存 · ') : '') + '下一条打乱生成中…';
+    if (genFailed) return '打乱生成失败，按 N 或点击重试';
+    if (state === 'STOPPED') {
+      return (memoryMode ? '已留在本页 · ' : '已保存 · ') + (settings.inspection ? '空格 / 轻点进入观察' : '按住 0.3 秒开始下一次');
+    }
+    return settings.inspection ? '空格 / 轻点进入 15 秒观察' : '按住 0.3 秒起表';
+  }
+
+  function renderTimerAndPad() {
+    var latest = latestRecord();
+    var holding = !!press && !press.suppressed && !press.ready;
+    el.pad.dataset.state = holding && state !== 'INSPECTING' ? 'holding' : state.toLowerCase();
+    if (state !== 'INSPECTING') el.pad.dataset.penalty = 'ok';
+    el.cancelBtn.hidden = !(settings.inspection && (state === 'INSPECTING' || state === 'READY'));
+    el.pbBadge.hidden = true;
+
+    if (state === 'RUNNING') {
+      setTimer(Stats.formatMs(performance.now() - runStart), C.white);
+      el.subStatus.textContent = '空格 / 轻点停表';
+      return;
+    }
+    if (state === 'READY') {
+      setTimer('0.000', C.ready);
+      renderReadyHint();
+      return;
+    }
+    if (state === 'INSPECTING') {
+      updateInspectionDisplay();
+      return;
+    }
+    if (holding) {
+      setTimer('0.000', C.hold);
+      el.subStatus.textContent = '按住准备 · 保持 0.3 秒';
+      return;
+    }
+
+    if (latest) {
+      setTimer(Stats.formatResult(latest), latest.penalty === 'dnf' ? C.bad : C.normal);
+    } else {
+      setTimer('0.000', C.dim);
+    }
+
+    if (latest && records.length >= 2 && latest.penalty !== 'dnf' &&
+        (state === 'IDLE' || state === 'STOPPED')) {
+      var pb = Stats.personalBest(records);
+      if (pb && Stats.effectiveMs(latest) === pb.value) {
+        el.pbBadge.hidden = false;
+      }
+    }
+    el.subStatus.textContent = idleHintText();
+  }
+
+  function setStatValue(node, value) {
+    if (value === null) {
+      node.textContent = '—';
+      node.classList.remove('is-dnf');
+      return;
+    }
+    if (value === 'DNF') {
+      node.textContent = 'DNF';
+      node.classList.add('is-dnf');
+      return;
+    }
+    node.textContent = Stats.formatMs(value);
+    node.classList.remove('is-dnf');
+  }
+
+  function renderStats() {
+    if (statsVersion === dataVersion) return;
+    statsVersion = dataVersion;
+    setStatValue(el.ao5, Stats.aoN(records, 5));
+    setStatValue(el.ao12, Stats.aoN(records, 12));
+    setStatValue(el.ao50, Stats.aoN(records, 50));
+    setStatValue(el.ao100, Stats.aoN(records, 100));
+    setStatValue(el.avg, Stats.overallAverage(records));
+    el.count.textContent = String(records.length);
+
+    var pb = Stats.personalBest(records);
+    if (pb) {
+      el.pb.textContent = Stats.formatMs(pb.value) + (pb.record.penalty === '+2' ? '+' : '');
+      el.pb.classList.remove('is-dnf');
+    } else {
+      el.pb.textContent = '—';
+      el.pb.classList.remove('is-dnf');
+    }
+    setStatValue(el.bestAo5, Stats.bestAo5(records));
+    var globalBest = Stats.personalBest(allRecords);
+    setStatValue(el.globalPb, globalBest ? globalBest.value : null);
+    [[el.coreAo5, el.ao5], [el.coreAo12, el.ao12], [el.corePb, el.pb],
+      [el.coreCount, el.count], [el.coreGlobalPb, el.globalPb]].forEach(function (pair) {
+      pair[0].textContent = pair[1].textContent;
+      pair[0].classList.toggle('is-dnf', pair[1].textContent === 'DNF');
+    });
+  }
+
+  function formatAt(iso) {
+    var date = new Date(iso);
+    if (isNaN(date.getTime())) return '—';
+    function pad(value) { return String(value).padStart(2, '0'); }
+    return pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' +
+      pad(date.getHours()) + ':' + pad(date.getMinutes());
+  }
+
+  function renderHistory() {
+    el.historyCount.textContent = String(records.length);
+    el.historyEmpty.hidden = records.length > 0;
+    el.historyMore.hidden = !historyOpen || records.length <= historyLimit;
+    el.historyMore.textContent = '再显示 50 条 · 已显示 ' + Math.min(historyLimit, records.length) + ' / ' + records.length;
+    if (currentView !== 'review' || !historyOpen) {
+      if (historyVersion !== -1) { el.historyList.replaceChildren(); historyDetailButtons = []; historyVersion = -1; }
+      return;
+    }
+    if (historyVersion === dataVersion) return;
+    historyVersion = dataVersion;
+    var scrollTop = el.historyBody.scrollTop;
+    var fragment = document.createDocumentFragment();
+    historyDetailButtons = [];
+    for (var i = records.length - 1; i >= Math.max(0, records.length - historyLimit); i--) {
+      var record = records[i];
+      var item = document.createElement('li');
+      item.className = 'history-item';
+
+      var top = document.createElement('div');
+      top.className = 'history-top';
+
+      var id = document.createElement('span');
+      id.className = 'history-id';
+      id.textContent = '#' + (i + 1);
+
+      var result = document.createElement('button');
+      result.type = 'button';
+      result.className = 'history-result history-detail' + (record.penalty === 'dnf' ? ' is-dnf' : '');
+      result.setAttribute('data-record-uid', record.uid);
+      result.setAttribute('aria-label', '第 ' + (i + 1) + ' 次，' + Stats.formatResult(record) + '，查看详情与罚时');
+      result.disabled = !canChangeGroup() || editingGroup !== null;
+      historyDetailButtons.push(result);
+      result.textContent = Stats.formatResult(record);
+
+      top.appendChild(id);
+      top.appendChild(result);
+      if (i === records.length - 1) {
+        var newest = document.createElement('span');
+        newest.className = 'history-latest';
+        newest.textContent = '最新';
+        top.appendChild(newest);
+      }
+
+      var at = document.createElement('span');
+      at.className = 'history-at';
+      at.textContent = formatAt(record.at);
+      top.appendChild(at);
+
+      var scramble = document.createElement('div');
+      scramble.className = 'history-scramble';
+      scramble.textContent = record.scramble || '—';
+
+      item.appendChild(top);
+      item.appendChild(scramble);
+      fragment.appendChild(item);
+    }
+    el.historyList.replaceChildren(fragment);
+    el.historyBody.scrollTop = scrollTop;
+  }
+
+  function renderRecent() {
+    el.recentEmpty.hidden = records.length > 0;
+    if (recentVersion === dataVersion) return;
+    recentVersion = dataVersion;
+    var fragment = document.createDocumentFragment();
+    recentDetailButtons = [];
+    for (var i = records.length - 1; i >= Math.max(0, records.length - 5); i--) {
+      var record = records[i];
+      var item = document.createElement('li');
+      item.className = 'recent-item';
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'recent-result' + (record.penalty === 'dnf' ? ' is-dnf' : '');
+      button.setAttribute('data-record-uid', record.uid);
+      button.setAttribute('aria-label', '第 ' + (i + 1) + ' 次，' + Stats.formatResult(record) + '，查看详情与罚时');
+      var number = document.createElement('span'); number.className = 'recent-number'; number.textContent = '#' + (i + 1);
+      var value = document.createElement('span'); value.className = 'recent-value'; value.textContent = Stats.formatResult(record);
+      var time = document.createElement('span'); time.className = 'recent-at'; time.textContent = formatAt(record.at);
+      button.append(number, value, time);
+      recentDetailButtons.push(button);
+      item.appendChild(button);
+      fragment.appendChild(item);
+    }
+    el.recentList.replaceChildren(fragment);
+  }
+
+  function renderActions() {
+    var latest = latestRecord();
+    var show = (state === 'STOPPED' || state === 'IDLE') && !press && !activeScramble && !importing && !!latest;
+    el.actions.hidden = !show;
+    if (!show) return;
+    var plus = latest.penalty === '+2';
+    var dnf = latest.penalty === 'dnf';
+    el.plusBtn.classList.toggle('is-active', plus);
+    el.plusBtn.setAttribute('aria-pressed', String(plus));
+    el.dnfBtn.classList.toggle('is-active', dnf);
+    el.dnfBtn.setAttribute('aria-pressed', String(dnf));
+  }
+
+  function renderControls() {
+    el.switchBtn.setAttribute('aria-checked', String(settings.inspection));
+    var canToggle = canChangeGroup() && editingGroup === null;
+    historyDetailButtons.forEach(function (button) { button.disabled = !canToggle; });
+    recentDetailButtons.forEach(function (button) { button.disabled = !canToggle; });
+    [el.navTimer, el.navReview, el.recentReview].forEach(function (button) {
+      button.disabled = !canToggle;
+      button.title = canToggle ? '' : '请先完成当前操作';
+    });
+    el.switchBtn.disabled = !canToggle;
+    el.switchBtn.title = canToggle ? '切换 15 秒观察' : '观察开关仅在就绪或停止后可切换';
+    el.importBtn.disabled = !canToggle || memoryMode;
+    el.exportBtn.disabled = state === 'RUNNING' || state === 'INSPECTING' || state === 'READY' || !!press || importing;
+  }
+
+  function canChangeGroup() {
+    return (state === 'IDLE' || state === 'STOPPED') && !press && !activeScramble && !importing && !selectedRecordUid;
+  }
+
+  function renderGroups() {
+    if (groupsVersion !== dataVersion) {
+      groupsVersion = dataVersion;
+      var fragment = document.createDocumentFragment();
+      groups.forEach(function (group, index) {
+        var option = document.createElement('option');
+        option.value = group.id;
+        var sameName = groups.filter(function (other) { return other.name === group.name; }).length > 1;
+        option.textContent = group.name + (sameName ? ' · ' + (index + 1) : '');
+        fragment.appendChild(option);
+      });
+      el.groupSelect.replaceChildren(fragment);
+    }
+    el.groupSelect.value = currentGroupId;
+    var selected = groups.find(function (group) { return group.id === currentGroupId; });
+    el.groupSelect.title = selected ? selected.name : '';
+    el.timerGroupName.textContent = selected ? selected.name : '';
+    var disabled = !canChangeGroup() || editingGroup !== null;
+    el.groupSelect.disabled = disabled;
+    el.groupNew.disabled = disabled;
+    el.groupRename.disabled = disabled;
+  }
+
+  function selectGroup(id) {
+    if (!canChangeGroup() || editingGroup !== null || !groups.some(function (group) { return group.id === id; })) {
+      el.groupSelect.value = currentGroupId; return;
+    }
+    currentGroupId = id;
+    try { window.sessionStorage.setItem(SELECTION_KEY, id); }
+    catch (err) { el.feedback.textContent = '本页无法记住训练选择；刷新后可能恢复默认训练。'; }
+    historyLimit = 50;
+    reviewSelectedUid = null;
+    el.historyBody.scrollTop = 0;
+    dataChanged();
+    render();
+  }
+
+  function openGroupEditor(rename) {
+    if (!canChangeGroup() || editingGroup !== null) return;
+    editingGroup = rename ? currentGroupId : '';
+    el.groupLabel.textContent = rename ? '重命名训练' : '新建训练';
+    el.groupName.value = rename ? groups.find(function (g) { return g.id === currentGroupId; }).name : '';
+    el.groupError.textContent = '';
+    el.groupForm.hidden = false;
+    render();
+    el.groupName.focus();
+  }
+
+  function closeGroupEditor() {
+    editingGroup = null;
+    el.groupForm.hidden = true;
+    render();
+    el.groupSelect.focus();
+  }
+
+  function saveGroup(event) {
+    event.preventDefault();
+    if (editingGroup === null || !canChangeGroup()) return;
+    var group;
+    try {
+      var name = window.StarCubeStore.validateName(el.groupName.value);
+      var existing = groups.find(function (g) { return g.id === editingGroup; });
+      group = existing ? Object.assign({}, existing, { name: name }) :
+        { id: window.StarCubeStore.newUid(), origin: window.StarCubeStore.newUid(), name: name };
+      if (!memoryMode) {
+        try { store.putGroup(group); readStore(); }
+        catch (err) {
+          if (err.code === 'GROUP_CONFLICT') throw err;
+          setMemoryMode('训练分组写入失败');
+        }
+      }
+      var index = groups.findIndex(function (g) { return g.id === group.id; });
+      if (index < 0) groups.push(group); else groups[index] = group;
+      closeGroupEditor();
+      selectGroup(group.id);
+      if (currentView === 'timer') el.pad.focus(); else el.groupSelect.focus();
+      el.feedback.textContent = '已保存训练「' + group.name + '」' + (memoryMode ? '，请导出备份保存本页数据。' : '。');
+    } catch (err) { el.groupError.textContent = err.message; el.groupName.focus(); }
+  }
+
+  function reviewValue(value) { return value === null ? '—' : value === 'DNF' ? 'DNF' : Stats.formatMs(value); }
+
+  function renderReview() {
+    el.reviewInspect.disabled = !canChangeGroup() || editingGroup !== null || !records.length;
+    if (currentView !== 'review' || !reviewOpen) {
+      if (reviewVersion !== -1) { el.reviewChart.replaceChildren(); el.reviewRecord.replaceChildren(); reviewVersion = -1; }
+      return;
+    }
+    if (reviewVersion === dataVersion) return;
+    reviewVersion = dataVersion;
+    reviewData = Review.build(records, reviewLimit);
+    var data = reviewData;
+    el.reviewContent.hidden = !data.shown;
+    el.reviewEmpty.hidden = !!data.shown;
+    el.reviewSummary.textContent = data.shown ? '第 ' + (data.startIndex + 1) + '–' + data.total + ' 次 · 有效 ' + data.validCount + ' · DNF ' + data.dnfCount + ' · +2 ' + data.plus2Count : '本组还没有成绩';
+    el.reviewAverage.textContent = reviewValue(data.average);
+    el.reviewBest.textContent = reviewValue(data.best);
+    if (!data.points.some(function (p) { return p.uid === reviewSelectedUid; })) {
+      reviewSelectedUid = data.shown ? data.points[data.shown - 1].uid : null;
+    }
+    var options = document.createDocumentFragment();
+    data.points.forEach(function (p) {
+      var option = document.createElement('option');
+      option.value = p.uid;
+      option.textContent = '#' + p.number + ' · ' + Stats.formatResult(records[p.number - 1]) + ' · Ao5 ' + reviewValue(p.ao5);
+      options.appendChild(option);
+    });
+    el.reviewRecord.replaceChildren(options);
+    el.reviewRecord.value = reviewSelectedUid || '';
+    drawReviewChart();
+  }
+
+  function drawReviewChart() {
+    if (currentView !== 'review' || !reviewOpen) return;
+    el.reviewChart.replaceChildren();
+    if (!reviewData || !reviewData.shown) { el.reviewSelected.textContent = ''; return; }
+    var points = reviewData.points;
+    var width = Math.max(280, el.reviewChart.clientWidth || 760), height = Math.max(236, el.reviewChart.clientHeight || 236);
+    var left = 74, right = width - 14, top = 22, bottom = height - 62, dnfY = height - 38;
+    var values = [];
+    points.forEach(function (p) { if (p.value !== null) values.push(p.value); if (typeof p.ao5 === 'number') values.push(p.ao5); });
+    var minimum = values.length ? Math.min.apply(null, values) : 0;
+    var maximum = values.length ? Math.max.apply(null, values) : 1000;
+    var padding = Math.max(500, (maximum - minimum) * 0.12);
+    minimum = Math.max(0, minimum - padding); maximum += padding;
+    function x(i) { return points.length === 1 ? (left + right) / 2 : left + i * (right - left) / (points.length - 1); }
+    function y(value) { return bottom - (value - minimum) / (maximum - minimum) * (bottom - top); }
+    function mark(tag, attrs, text) {
+      var node = document.createElementNS(SVG_NS, tag);
+      Object.keys(attrs || {}).forEach(function (key) { node.setAttribute(key, attrs[key]); });
+      if (text !== undefined) node.textContent = text;
+      el.reviewChart.appendChild(node); return node;
+    }
+    el.reviewChart.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+    mark('title', { id: 'reviewChartTitle' }, '本组成绩趋势：单次实线，Ao5 虚线，越低越快');
+    mark('desc', {}, '横轴为本组次数，纵轴为用时。DNF 在下方单独以叉号标记，不计为零。每次具体数值可在下方选择成绩查看。');
+    for (var t = 0; t < 4; t++) {
+      var value = minimum + (maximum - minimum) * t / 3, yy = y(value);
+      mark('line', { x1: left, x2: right, y1: yy, y2: yy, 'class': 'review-grid' });
+      mark('text', { x: left - 8, y: yy + 4, 'text-anchor': 'end', 'class': 'review-axis' }, Stats.formatMs(value));
+    }
+    mark('text', { x: left - 8, y: dnfY + 4, 'text-anchor': 'end', 'class': 'review-axis' }, 'DNF');
+    mark('text', { x: x(0), y: height - 8, 'text-anchor': points.length === 1 ? 'middle' : 'start', 'class': 'review-axis' }, '#' + points[0].number);
+    if (points.length > 1) mark('text', { x: right, y: height - 8, 'text-anchor': 'end', 'class': 'review-axis' }, '#' + points[points.length - 1].number);
+    ['value', 'ao5'].forEach(function (key) {
+      var path = '', connected = false;
+      points.forEach(function (p, i) {
+        if (typeof p[key] !== 'number') { connected = false; return; }
+        path += (connected ? ' L' : ' M') + x(i).toFixed(2) + ',' + y(p[key]).toFixed(2); connected = true;
+      });
+      mark('path', { d: path.trim(), 'class': key === 'value' ? 'review-single' : 'review-ao5', 'data-series': key });
+    });
+    points.forEach(function (p, i) {
+      if (typeof p.ao5 === 'number') mark('circle', { cx: x(i), cy: y(p.ao5), r: 2.5, 'class': 'review-ao5-dot' });
+      if (p.value === null) {
+        mark('path', { d: 'M' + (x(i)-3) + ',' + (dnfY-3) + 'l6,6m-6,0l6,-6', 'class': 'review-dnf', 'data-dnf': p.uid });
+      } else mark('circle', { cx: x(i), cy: y(p.value), r: 2.5, 'class': 'review-dot' });
+      if (p.uid === reviewSelectedUid) {
+        var selectedY = p.value === null ? dnfY : y(p.value);
+        mark('line', { x1: x(i), x2: x(i), y1: top, y2: dnfY + 8, 'class': 'review-cursor' });
+        mark('circle', { cx: x(i), cy: selectedY, r: 6, 'class': 'review-selection' });
+        el.reviewSelected.textContent = '#' + p.number + ' · ' + Stats.formatResult(records[p.number - 1]) + ' · Ao5 ' + reviewValue(p.ao5);
+      }
+    });
+    if (!values.length) mark('text', { x: (left + right) / 2, y: 100, 'text-anchor': 'middle', 'class': 'review-axis' }, '暂无有效用时');
+  }
+
+  function openRecord(uid, trigger) {
+    if (!canChangeGroup() || editingGroup !== null) return;
+    if (!memoryMode) readStore();
+    if (!records.some(function (record) { return record.uid === uid; })) { render(); return; }
+    selectedRecordUid = uid;
+    recordReturnFocus = trigger || document.activeElement;
+    el.recordFeedback.textContent = '';
+    render();
+    el.recordDialog.showModal();
+    el.recordClose.focus();
+  }
+
+  function closeRecord() {
+    selectedRecordUid = null;
+    if (el.recordDialog.open) el.recordDialog.close();
+    render();
+    var target = recordReturnFocus;
+    recordReturnFocus = null;
+    // The timer view returns directly to the next solve. Review keeps its browsing
+    // position, or falls back to the history heading when an edited row was replaced.
+    if (currentView === 'timer') el.pad.focus({ preventScroll: true });
+    else if (target && target.isConnected && !target.disabled) target.focus();
+    else el.historyToggle.focus();
+  }
+
+  function renderRecordDialog() {
+    if (!selectedRecordUid) return;
+    var index = records.findIndex(function (record) { return record.uid === selectedRecordUid; });
+    if (index < 0) {
+      el.feedback.textContent = '该成绩已不在当前训练中，详情已关闭。';
+      closeRecord(); return;
+    }
+    var record = records[index];
+    var group = groups.find(function (item) { return item.id === currentGroupId; });
+    el.recordTitle.textContent = '第 ' + (index + 1) + ' 次成绩';
+    el.recordGroup.textContent = group ? group.name : '';
+    el.recordResult.textContent = Stats.formatResult(record);
+    el.recordResult.classList.toggle('is-dnf', record.penalty === 'dnf');
+    el.recordRaw.textContent = Stats.formatMs(record.ms);
+    el.recordDate.textContent = new Date(record.at).toLocaleString('zh-CN', { hour12: false });
+    el.recordScramble.textContent = record.scramble || '—';
+    el.recordAo5.textContent = reviewValue(Stats.aoN(records.slice(Math.max(0, index - 4), index + 1), 5));
+    [el.recordOk, el.recordPlus, el.recordDnf].forEach(function (button, i) {
+      var active = record.penalty === ['ok', '+2', 'dnf'][i];
+      button.setAttribute('aria-pressed', String(active)); button.classList.toggle('is-active', active);
+    });
+  }
+
+  function setRecordPenalty(penalty) {
+    if (!selectedRecordUid || !['ok', '+2', 'dnf'].includes(penalty) || press || activeScramble || importing || (state !== 'IDLE' && state !== 'STOPPED')) return;
+    var uid = selectedRecordUid;
+    if (!memoryMode) readStore();
+    var record = records.find(function (item) { return item.uid === uid; });
+    if (!record) { render(); return; }
+    saveRecord(Object.assign({}, record, { penalty: penalty }));
+    render();
+    if (selectedRecordUid) el.recordFeedback.textContent = memoryMode ? '已在本页修改；请导出备份保存。' : '已保存，统计与曲线已更新。';
+  }
+
+  function activeIsReady() {
+    return !!activeScramble && (engineDead || (!generating && !genFailed && !scrambleUsed &&
+      currentScramble && activeScramble.requestId === currentScramble.requestId));
+  }
+
+  function freezeScramble() {
+    activeScramble = currentScramble ? { algorithm: currentScramble.algorithm, facelets: currentScramble.facelets,
+      requestId: currentScramble.requestId } : { algorithm: '—', facelets: null, requestId: null };
+    activeScramble.groupId = currentGroupId;
+  }
+
+  function armHold() {
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(function () {
+      holdTimer = 0;
+      if (!press || press.suppressed || press.ready) return;
+      if (state !== 'IDLE' && state !== 'STOPPED' && state !== 'INSPECTING') return;
+      if (!activeIsReady()) { abortPress(); return; }
+      press.ready = true;
+      readyFrom = state;
+      state = 'READY';
+      render();
+    }, HOLD_MS);
+  }
+
+  function beginPress(source) {
+    if (state === 'RUNNING') {
+      stopRun();
+      press = { source: source, suppressed: true, ready: false };
+      renderControls();
+      return;
+    }
+    if (press) return;
+    if (state === 'BOOT' || state === 'READY') return;
+
+    if (state === 'INSPECTING') {
+      press = { source: source, suppressed: false, ready: false };
+      armHold();
+      renderTimerAndPad();
+      return;
+    }
+    if (state === 'IDLE' || state === 'STOPPED') {
+      if (!canStart()) return;
+      freezeScramble();
+      if (settings.inspection) {
+        press = { source: source, suppressed: true, ready: false };
+        startInspection(performance.now());
+      } else {
+        press = { source: source, suppressed: false, ready: false };
+        armHold();
+        render();
+      }
+    }
+  }
+
+  function endPress(source) {
+    if (!press || press.source !== source) return;
+    var current = press;
+    press = null;
+    if (holdTimer) {
+      clearTimeout(holdTimer);
+      holdTimer = 0;
+    }
+    if (current.ready) {
+      startRun();
+      return;
+    }
+    if (state !== 'INSPECTING') activeScramble = null;
+    render();
+  }
+
+  function abortPress() {
+    var oldPointer = pointerId;
+    pointerId = null;
+    pointerGesture = null;
+    if (oldPointer !== null) { try { el.pad.releasePointerCapture(oldPointer); } catch (err) {} }
+    if (!press) return;
+    var current = press;
+    press = null;
+    if (holdTimer) {
+      clearTimeout(holdTimer);
+      holdTimer = 0;
+    }
+    if (current.ready && state === 'READY') {
+      state = readyFrom || 'IDLE';
+      readyFrom = '';
+    }
+    if (state !== 'INSPECTING' && state !== 'RUNNING') activeScramble = null;
+    render();
+  }
+
+  function startInspection(now) {
+    state = 'INSPECTING';
+    inspectStart = now;
+    cancelAnimationFrame(inspectionRaf);
+    inspectionRaf = requestAnimationFrame(inspectionFrame);
+    render();
+  }
+
+  function cancelInspection() {
+    if (state !== 'INSPECTING' && state !== 'READY') return;
+    cancelAnimationFrame(inspectionRaf);
+    inspectionRaf = 0;
+    inspectStart = 0;
+    readyFrom = '';
+    activeScramble = null;
+    if (press) {
+      if (holdTimer) {
+        clearTimeout(holdTimer);
+        holdTimer = 0;
+      }
+      press = null;
+    }
+    state = 'IDLE';
+    render();
+  }
+
+  function startRun() {
+    if (state !== 'READY' || !activeIsReady()) {
+      cancelInspection();
+      return;
+    }
+    var now = performance.now();
+    var penalty = 'ok';
+    if (settings.inspection && inspectStart > 0) {
+      penalty = Stats.inspectionPenalty(now - inspectStart, true);
+    }
+    state = 'RUNNING';
+    runStart = now;
+    runPenalty = penalty;
+    scrambleUsed = true;
+    usedScramble = activeScramble.algorithm;
+    inspectStart = 0;
+    readyFrom = '';
+    cancelAnimationFrame(inspectionRaf);
+    inspectionRaf = 0;
+    press = null;
+    render();
+    cancelAnimationFrame(runRaf);
+    runRaf = requestAnimationFrame(runFrame);
+  }
+
+  function runFrame() {
+    if (state !== 'RUNNING') {
+      runRaf = 0;
+      return;
+    }
+    el.timer.textContent = Stats.formatMs(performance.now() - runStart);
+    el.timer.style.color = C.white;
+    runRaf = requestAnimationFrame(runFrame);
+  }
+
+  function stopRun() {
+    if (state !== 'RUNNING') return;
+    var ms = Math.max(0, Math.round(performance.now() - runStart));
+    cancelAnimationFrame(runRaf);
+    runRaf = 0;
+    var record = {
+      id: nextId++,
+      groupId: activeScramble.groupId,
+      ms: ms,
+      penalty: runPenalty,
+      scramble: usedScramble || '—',
+      at: new Date().toISOString()
+    };
+    saveRecord(record);
+    state = 'STOPPED';
+    runStart = 0;
+    runPenalty = 'ok';
+    usedScramble = '';
+    activeScramble = null;
+    render();
+    requestScramble(true);
+  }
+
+  function isValidAlgorithm(algorithm) {
+    var moves = algorithm.split(' ');
+    if (moves.length < 1 || moves.length > 22) return false;
+    for (var i = 0; i < moves.length; i++) {
+      if (!ALG_RE.test(moves[i])) return false;
+    }
+    return true;
+  }
+
+  function acceptScramble(data) {
+    if (!generating || pendingRequestId === null || !data || data.requestId !== pendingRequestId ||
+        activeScramble || (press && !(state === 'STOPPED' && press.suppressed)) ||
+        (state !== 'BOOT' && state !== 'IDLE' && state !== 'STOPPED')) return;
+    if (genTimer) {
+      clearTimeout(genTimer);
+      genTimer = 0;
+    }
+    var algorithm = String((data && data.algorithm) || '').replace(/\s+/g, ' ').trim();
+    var facelets = String((data && data.facelets) || '');
+    if (!isValidAlgorithm(algorithm) || !/^[URFDLB]{54}$/.test(facelets)) {
+      onGenFailure(new Error('打乱数据校验失败'));
+      return;
+    }
+    for (var faceIndex = 0; faceIndex < FACE_ORDER.length; faceIndex++) {
+      var letter = FACE_ORDER[faceIndex];
+      if (facelets.charAt(faceIndex * 9 + 4) !== letter || facelets.split(letter).length - 1 !== 9) {
+        onGenFailure(new Error('打乱配色数据校验失败'));
+        return;
+      }
+    }
+    generating = false;
+    genFailed = false;
+    currentScramble = { algorithm: algorithm, facelets: facelets, requestId: pendingRequestId };
+    pendingRequestId = null;
+    scrambleUsed = false;
+    if (state === 'BOOT') state = 'IDLE';
+    render();
+  }
+
+  function onGenFailure(err, requestId) {
+    if (requestId !== undefined && requestId !== pendingRequestId) return;
+    if (activeScramble || (press && !(state === 'STOPPED' && press.suppressed)) || !generating) return;
+    if (genTimer) {
+      clearTimeout(genTimer);
+      genTimer = 0;
+    }
+    console.warn('打乱生成失败：' + (err && err.message ? err.message : err));
+    generating = false;
+    pendingRequestId = null;
+    genFailed = true;
+    currentScramble = null;
+    scrambleUsed = false;
+    if (state === 'BOOT') state = 'IDLE';
+    render();
+  }
+
+  function requestScramble(force) {
+    if (engineDead || generating || !engineReady || press || activeScramble) return;
+    if (state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
+    if (!force && scrambleUsed) return;
+    generating = true;
+    var requestId = ++requestSerial;
+    pendingRequestId = requestId;
+    genFailed = false;
+    render();
+    genTimer = setTimeout(function () {
+      genTimer = 0;
+      if (!generating || pendingRequestId !== requestId) return;
+      console.warn('打乱生成超时');
+      generating = false;
+      pendingRequestId = null;
+      genFailed = true;
+      currentScramble = null;
+      scrambleUsed = false;
+      if (state === 'BOOT') state = 'IDLE';
+      render();
+    }, GEN_TIMEOUT);
+
+    if (engineMode === 'worker') {
+      if (!worker) {
+        onGenFailure(new Error('Worker 不可用'));
+        return;
+      }
+      try {
+        worker.postMessage({ cmd: 'scramble', requestId: requestId });
+      } catch (err) {
+        onGenFailure(err);
+      }
+      return;
+    }
+
+    setTimeout(function () {
+      if (!generating || pendingRequestId !== requestId) return;
+      try {
+        var result = self.StarCubeSolver.scramble();
+        if (!generating || pendingRequestId !== requestId) return;
+        result.requestId = requestId;
+        acceptScramble(result);
+      } catch (err) {
+        onGenFailure(err);
+      }
+    }, 0);
+  }
+
+  function handleWorkerMessage(event) {
+    var data = event.data || {};
+    if (data.cmd === 'ready') {
+      if (engineReady || engineMode !== 'worker') return;
+      if (initTimer) {
+        clearTimeout(initTimer);
+        initTimer = 0;
+      }
+      engineReady = true;
+      engineMode = 'worker';
+      render();
+      requestScramble(false);
+      return;
+    }
+    if (data.cmd === 'scramble') {
+      acceptScramble(data);
+      return;
+    }
+    if (data.cmd === 'error') {
+      if (!engineReady) {
+        fallbackToMain(data.message || 'Worker 初始化失败');
+      } else {
+        onGenFailure(new Error(data.message || 'Worker 运行错误'), data.requestId);
+      }
+    }
+  }
+
+  function handleWorkerError(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    if (!engineReady) {
+      fallbackToMain('Worker 启动失败');
+    } else {
+      onGenFailure(new Error('Worker 运行错误'));
+    }
+  }
+
+  function fallbackToMain(reason) {
+    if (engineReady || engineMode === 'main' || engineMode === 'dead') return;
+    console.warn('Worker 不可用，改用主线程：' + reason);
+    engineMode = 'main';
+    engineFallback = true;
+    if (initTimer) {
+      clearTimeout(initTimer);
+      initTimer = 0;
+    }
+    if (worker) {
+      try { worker.terminate(); } catch (err) {}
+      worker = null;
+    }
+    if (blobUrl) {
+      try { URL.revokeObjectURL(blobUrl); } catch (err) {}
+      blobUrl = '';
+    }
+    render();
+
+    setTimeout(function () {
+      if (engineMode !== 'main' || engineReady) return;
+      try {
+        new Function(solverSource)();
+        if (!self.StarCubeSolver || typeof self.StarCubeSolver.init !== 'function') {
+          throw new Error('求解器加载失败');
+        }
+        self.StarCubeSolver.init();
+        engineReady = true;
+        engineFallback = false;
+        render();
+        requestScramble(false);
+      } catch (err) {
+        console.warn('主线程初始化失败：' + (err && err.message ? err.message : err));
+        engineMode = 'dead';
+        engineDead = true;
+        engineReady = false;
+        engineFallback = false;
+        generating = false;
+        currentScramble = null;
+        if (state === 'BOOT') state = 'IDLE';
+        render();
+      }
+    }, 60);
+  }
+
+  function bootSolver() {
+    solverSource = el.solverSrc ? el.solverSrc.textContent : '';
+    if (!solverSource || solverSource.length < 1000) {
+      engineMode = 'dead';
+      engineDead = true;
+      if (state === 'BOOT') state = 'IDLE';
+      render();
+      return;
+    }
+    var url;
+    try {
+      url = URL.createObjectURL(new Blob([solverSource], { type: 'text/javascript' }));
+    } catch (err) {
+      fallbackToMain('Blob 创建失败');
+      return;
+    }
+    try {
+      worker = new Worker(url);
+    } catch (err) {
+      try { URL.revokeObjectURL(url); } catch (revokeErr) {}
+      fallbackToMain('Worker 创建失败');
+      return;
+    }
+    blobUrl = url;
+    worker.onmessage = handleWorkerMessage;
+    worker.onerror = handleWorkerError;
+    worker.onmessageerror = handleWorkerError;
+    try {
+      worker.postMessage({ cmd: 'init' });
+    } catch (err) {
+      fallbackToMain('Worker 通信失败');
+      return;
+    }
+    initTimer = setTimeout(function () {
+      initTimer = 0;
+      if (!engineReady) fallbackToMain('初始化超时');
+    }, INIT_TIMEOUT);
+  }
+
+  function togglePenalty(kind) {
+    if (currentView !== 'timer' || selectedRecordUid) return;
+    if ((state !== 'STOPPED' && state !== 'IDLE') || press || activeScramble || importing || !records.length) return;
+    var uid = latestRecord().uid;
+    if (!memoryMode) readStore();
+    var existing = records.find(function (item) { return item.uid === uid; });
+    if (!existing) { render(); return; }
+    var record = Object.assign({}, existing);
+    if (kind === '+2') {
+      record.penalty = record.penalty === '+2' ? 'ok' : '+2';
+    } else {
+      record.penalty = record.penalty === 'dnf' ? 'ok' : 'dnf';
+    }
+    saveRecord(record);
+    render();
+  }
+
+  function deleteLatest() {
+    if (currentView !== 'timer' || selectedRecordUid) return;
+    if ((state !== 'STOPPED' && state !== 'IDLE') || press || activeScramble || importing || !records.length) return;
+    var uid = latestRecord().uid;
+    if (!memoryMode) {
+      try { store.remove(uid); readStore(); render(); return; }
+      catch (err) { setMemoryMode('删除结果未能保存'); }
+    }
+    allRecords = allRecords.filter(function (item) { return item.uid !== uid; });
+    dataChanged();
+    render();
+  }
+
+  function toggleInspection() {
+    if (selectedRecordUid) return;
+    if ((state !== 'IDLE' && state !== 'STOPPED') || press || activeScramble) return;
+    settings.inspection = !settings.inspection;
+    persistSettings();
+    render();
+  }
+
+  function newScramble() {
+    if (currentView !== 'timer' || selectedRecordUid) return;
+    if (press || activeScramble) return;
+    if (state !== 'IDLE' && state !== 'STOPPED') return;
+    if (engineDead || !engineReady || generating) return;
+    if (genFailed) {
+      requestScramble(true);
+      return;
+    }
+    if (!currentScramble) {
+      requestScramble(true);
+      return;
+    }
+    if (scrambleUsed) return;
+    requestScramble(true);
+  }
+
+  function trackTouchStart(event) {
+    if (event.pointerType !== 'touch') return;
+    touchContacts.add(event.pointerId);
+    if (touchContacts.size > 1) {
+      touchGestureBlocked = true;
+      abandonPointerGesture();
+    }
+  }
+
+  function releaseTouchContact(event) {
+    if (event.pointerType !== 'touch') return;
+    touchContacts.delete(event.pointerId);
+    if (!touchContacts.size) touchGestureBlocked = false;
+  }
+
+  function abandonPointerGesture() {
+    var oldPointer = pointerId;
+    pointerId = null;
+    pointerGesture = null;
+    // A cancelled first touch must not leave the observation it just started
+    // running. A later cancelled preparation preserves an existing observation.
+    if (state === 'INSPECTING' && press && press.source === 'pointer' && press.suppressed) cancelInspection();
+    else if (press && press.source === 'pointer') abortPress();
+    if (oldPointer !== null) { try { el.pad.releasePointerCapture(oldPointer); } catch (err) {} }
+  }
+
+  function abortInput() {
+    touchContacts.clear();
+    touchGestureBlocked = false;
+    abortPress();
+  }
+
+  function getPointerPress(event) {
+    trackTouchStart(event);
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    if (event.pointerType === 'touch' && (touchGestureBlocked || touchContacts.size > 1)) return;
+    if (currentView !== 'timer' || selectedRecordUid || importing || editingGroup !== null) return;
+    if (pointerId !== null) return;
+    if (press && press.source !== 'pointer') return;
+    pointerId = event.pointerId;
+    pointerGesture = { x: event.clientX || 0, y: event.clientY || 0, type: event.pointerType };
+    try { el.pad.setPointerCapture(event.pointerId); } catch (err) {}
+    if (event.pointerType === 'mouse' && event.cancelable) event.preventDefault();
+    beginPress('pointer');
+  }
+
+  function movePointer(event) {
+    if (pointerId !== event.pointerId || !pointerGesture || pointerGesture.type === 'mouse') return;
+    var dx = (event.clientX || 0) - pointerGesture.x, dy = (event.clientY || 0) - pointerGesture.y;
+    if (dx * dx + dy * dy >= TOUCH_MOVE_PX * TOUCH_MOVE_PX) abandonPointerGesture();
+  }
+
+  function releasePointer(event) {
+    releaseTouchContact(event);
+    if (pointerId !== event.pointerId) return;
+    pointerId = null;
+    pointerGesture = null;
+    endPress('pointer');
+    try { el.pad.releasePointerCapture(event.pointerId); } catch (err) {}
+  }
+
+  function cancelPointer(event) {
+    if (event.type === 'pointercancel') releaseTouchContact(event);
+    if (pointerId !== event.pointerId) return;
+    abandonPointerGesture();
+  }
+
+  function exportData() {
+    if (el.exportBtn.disabled) return;
+    if (!memoryMode) readStore();
+    var payload = { format: 'starcube', version: 3, exportedAt: new Date().toISOString(),
+      groups: groups, records: allRecords, backups: store.backups() };
+    try {
+      var url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = 'starcube-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      el.feedback.textContent = '已导出全部 ' + groups.length + ' 个训练、' + allRecords.length + ' 条成绩及可恢复的原始备份。';
+    } catch (err) { el.feedback.textContent = '导出失败：' + err.message; }
+    render();
+  }
+
+  function importData() {
+    var file = el.importFile.files && el.importFile.files[0];
+    if (!file) return;
+    if (el.importBtn.disabled || importing) { el.importFile.value = ''; return; }
+    if (file.size > 10 * 1024 * 1024) {
+      el.feedback.textContent = '文件超过 10 MB，请拆分后导入。';
+      el.importFile.value = '';
+      return;
+    }
+    importing = true;
+    el.feedback.textContent = '正在校验备份…';
+    render();
+    file.text().then(function (raw) {
+      var result = store.importRecords(raw);
+      readStore();
+      el.feedback.textContent = '已导入 ' + result.added + ' 条，跳过 ' + result.skipped + ' 条重复或已删除成绩' +
+        (result.conflicts ? '，保留 ' + result.conflicts + ' 条编号冲突成绩' : '') +
+        '；新增 ' + result.groupsAdded + ' 个训练' +
+        (result.groupConflicts ? '，另存 ' + result.groupConflicts + ' 个 ID 冲突训练' : '') +
+        (result.recoveredGroups ? '，恢复 ' + result.recoveredGroups + ' 个缺失分组' : '') + '（同名训练保留独立身份）。';
+    }).catch(function (err) {
+      if (err.partial) readStore();
+      el.feedback.textContent = '导入失败：' + err.message;
+    }).finally(function () {
+      importing = false;
+      el.importFile.value = '';
+      render();
+    });
+  }
+
+  function bindEvents() {
+    function editableTarget(event) {
+      var target = event.target;
+      return event.isComposing || (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(target.tagName)));
+    }
+    window.addEventListener('keydown', function (event) {
+      if (selectedRecordUid) return;
+      // A timer stop must still work when a control retained focus after a touch start.
+      if (state === 'RUNNING' && !event.isComposing && !event.ctrlKey && !event.metaKey && !event.altKey && (event.code === 'Space' || event.key === ' ')) {
+        event.preventDefault();
+        if (!event.repeat) beginPress('key');
+        return;
+      }
+      if (currentView !== 'timer') return;
+      if (editableTarget(event)) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.code === 'Space' || event.key === ' ') {
+        event.preventDefault();
+        if (event.repeat) return;
+        beginPress('key');
+        return;
+      }
+      if (event.key === 'Escape') {
+        if (state === 'INSPECTING' || state === 'READY') {
+          event.preventDefault();
+          cancelInspection();
+        }
+        return;
+      }
+      if (event.key === 'n' || event.key === 'N') {
+        event.preventDefault();
+        newScramble();
+        return;
+      }
+      if (event.key === '1' || event.key === '2') {
+        event.preventDefault();
+        if (event.repeat) return;
+        togglePenalty(event.key === '1' ? '+2' : 'dnf');
+      }
+    });
+
+    window.addEventListener('keyup', function (event) {
+      if (selectedRecordUid) return;
+      if (editableTarget(event) && !(press && press.source === 'key')) return;
+      if (event.code === 'Space' || event.key === ' ') {
+        event.preventDefault();
+        endPress('key');
+      }
+    });
+
+    window.addEventListener('blur', abortInput);
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) abortInput();
+    });
+
+    window.addEventListener('pointerdown', trackTouchStart, true);
+    el.pad.addEventListener('pointerdown', getPointerPress);
+    el.pad.addEventListener('pointermove', movePointer);
+    el.pad.addEventListener('pointerup', releasePointer);
+    el.pad.addEventListener('pointercancel', cancelPointer);
+    el.pad.addEventListener('lostpointercapture', cancelPointer);
+    el.pad.addEventListener('contextmenu', function (event) { event.preventDefault(); });
+    window.addEventListener('pointerup', releasePointer);
+    window.addEventListener('pointercancel', cancelPointer);
+
+    el.navTimer.addEventListener('click', function () { switchView('timer'); });
+    el.navReview.addEventListener('click', function () { switchView('review'); });
+    el.recentReview.addEventListener('click', function () { switchView('review'); });
+    el.recentList.addEventListener('click', function (event) {
+      if (currentView !== 'timer') return;
+      var button = event.target.closest('[data-record-uid]');
+      if (button) openRecord(button.getAttribute('data-record-uid'), button);
+    });
+    el.switchBtn.addEventListener('click', function (event) { toggleInspection(); returnTimerFocus(event); });
+    el.groupSelect.addEventListener('pointerdown', function () { groupPointerSelection = true; });
+    el.groupSelect.addEventListener('keydown', function () { groupPointerSelection = false; });
+    el.groupSelect.addEventListener('change', function () {
+      selectGroup(el.groupSelect.value);
+      if (groupPointerSelection) returnTimerFocus({ detail: 1 });
+      groupPointerSelection = false;
+    });
+    el.groupNew.addEventListener('click', function () { openGroupEditor(false); });
+    el.groupRename.addEventListener('click', function () { openGroupEditor(true); });
+    el.groupForm.addEventListener('submit', saveGroup);
+    el.groupCancel.addEventListener('click', closeGroupEditor);
+    el.groupName.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') { event.preventDefault(); closeGroupEditor(); }
+    });
+    el.plusBtn.addEventListener('click', function (event) { togglePenalty('+2'); returnTimerFocus(event); });
+    el.dnfBtn.addEventListener('click', function (event) { togglePenalty('dnf'); returnTimerFocus(event); });
+    el.deleteBtn.addEventListener('click', function (event) { deleteLatest(); returnTimerFocus(event); });
+    el.cancelBtn.addEventListener('pointerdown', function (event) { event.stopPropagation(); });
+    el.cancelBtn.addEventListener('click', function (event) {
+      event.stopPropagation();
+      cancelInspection();
+      returnTimerFocus(event);
+    });
+    el.retryBtn.addEventListener('click', function (event) {
+      if (!engineDead && engineReady && !generating) requestScramble(true);
+      returnTimerFocus(event);
+    });
+    el.newScrambleBtn.addEventListener('click', function (event) { newScramble(); returnTimerFocus(event); });
+    el.exportBtn.addEventListener('click', exportData);
+    el.importBtn.addEventListener('click', function () { if (!el.importBtn.disabled) el.importFile.click(); });
+    el.importFile.addEventListener('change', importData);
+    el.historyToggle.addEventListener('click', function () {
+      if (currentView !== 'review') return;
+      historyOpen = !historyOpen;
+      el.historyBody.hidden = !historyOpen;
+      el.historyToggle.setAttribute('aria-expanded', String(historyOpen));
+      renderHistory();
+    });
+    el.historyMore.addEventListener('click', function () {
+      if (currentView !== 'review' || !historyOpen) return;
+      historyLimit += 50;
+      historyVersion = -1;
+      renderHistory();
+    });
+    el.historyList.addEventListener('click', function (event) {
+      if (currentView !== 'review') return;
+      var button = event.target.closest('[data-record-uid]');
+      if (button) openRecord(button.getAttribute('data-record-uid'), button);
+    });
+    el.reviewToggle.addEventListener('click', function () {
+      if (currentView !== 'review') return;
+      reviewOpen = !reviewOpen;
+      el.reviewBody.hidden = !reviewOpen;
+      el.reviewToggle.setAttribute('aria-expanded', String(reviewOpen));
+      renderReview();
+    });
+    el.reviewRange.addEventListener('change', function () {
+      reviewLimit = el.reviewRange.value === '100' ? 100 : 50;
+      reviewVersion = -1; renderReview();
+    });
+    el.reviewRecord.addEventListener('change', function () {
+      reviewSelectedUid = el.reviewRecord.value; drawReviewChart();
+    });
+    el.reviewInspect.addEventListener('click', function () { if (currentView === 'review' && reviewOpen) openRecord(reviewSelectedUid, el.reviewInspect); });
+    el.reviewChart.addEventListener('click', function (event) {
+      if (!reviewData || !reviewData.shown) return;
+      var rect = el.reviewChart.getBoundingClientRect();
+      var width = Math.max(280, el.reviewChart.clientWidth || 760);
+      var horizontal = (event.clientX - rect.left) * width / rect.width;
+      var i = Math.round((horizontal - 74) / (width - 88) * (reviewData.shown - 1));
+      i = Math.max(0, Math.min(reviewData.shown - 1, i));
+      reviewSelectedUid = reviewData.points[i].uid;
+      el.reviewRecord.value = reviewSelectedUid; drawReviewChart();
+    });
+    window.addEventListener('resize', function () { if (currentView === 'review' && reviewOpen) drawReviewChart(); });
+    el.recordClose.addEventListener('click', closeRecord);
+    el.recordDialog.addEventListener('cancel', function (event) { event.preventDefault(); closeRecord(); });
+    el.recordDialog.addEventListener('close', function () { if (!el.recordDialog.open && selectedRecordUid) closeRecord(); });
+    el.recordOk.addEventListener('click', function () { setRecordPenalty('ok'); });
+    el.recordPlus.addEventListener('click', function () { setRecordPenalty('+2'); });
+    el.recordDnf.addEventListener('click', function () { setRecordPenalty('dnf'); });
+    window.addEventListener('storage', function (event) {
+      var key = event.key;
+      if (key && key !== RECORDS_KEY && key.indexOf('starcube.records.v2.item.') !== 0 &&
+          key.indexOf('starcube.records.v2.deleted.') !== 0 && key.indexOf(window.StarCubeStore.keys.groupPrefix) !== 0) return;
+      pendingStorageRefresh = true;
+      clearTimeout(storageRefreshTimer);
+      storageRefreshTimer = setTimeout(function () { render(); }, 40);
+    });
+  }
+
+  loadData();
+  el.historyBody.hidden = !historyOpen;
+  el.historyToggle.setAttribute('aria-expanded', String(historyOpen));
+  el.reviewBody.hidden = !reviewOpen;
+  el.reviewToggle.setAttribute('aria-expanded', String(reviewOpen));
+  bindEvents();
+  render();
+  bootSolver();
+})();
+
+</script>
+</body>
+</html>

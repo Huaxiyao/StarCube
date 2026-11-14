@@ -1,0 +1,13 @@
+'use strict';
+const fs=require('fs'),path=require('path'),assert=require('assert/strict'),crypto=require('crypto');
+const read=name=>fs.readFileSync(path.join(__dirname,'../src',name),'utf8');
+const html=fs.readFileSync(path.join(__dirname,'../starcube.html'),'utf8');
+const escapeInline=source=>source.replace(/<\/script/gi,'<\\/script');
+const expected=read('template.html').replace('__SOLVER_SOURCE__',()=>escapeInline(read('solver.bundle.js'))).replace('//__APP_SCRIPTS__',()=>escapeInline(['stats.js','review.js','store.js','app.js'].map(read).join('\n')));
+assert.equal(html,expected,'Shipping single file must contain the current store, timer, stats and solver');
+assert.doesNotMatch(html,/<(?:script|link)\b[^>]*(?:src|href)\s*=/i,'No external script or stylesheet dependencies');
+assert.doesNotMatch(html,/__(?:SOLVER_SOURCE|APP_SCRIPTS)__/,'No unresolved template placeholders');
+assert.doesNotMatch(html,/(?:user-scalable\s*=\s*no|maximum-scale\s*=\s*1)/i,'Mobile zoom must remain available');
+for(const name of ['stats.js','review.js','store.js','app.js','solver.bundle.js']) new Function(read(name));
+console.log('PASS Single-file build includes exact current sources, standalone resources, resolved placeholders, zoom and parseable scripts');
+console.log('SHA256 '+crypto.createHash('sha256').update(html).digest('hex'));
