@@ -47,6 +47,11 @@
     importBtn: $('importData'),
     importFile: $('importFile'),
     feedback: $('dataFeedback'),
+    soundToggle: $('soundToggle'), soundPreview: $('soundPreview'), soundFeedback: $('soundFeedback'),
+    backupReminder: $('backupReminder'), backupMessage: $('backupMessage'), backupLater: $('backupLater'), backupExport: $('backupExport'), backupStatus: $('backupStatus'),
+    coreAo5Detail: $('coreAo5Detail'), coreAo12Detail: $('coreAo12Detail'), ao5Detail: $('ao5Detail'), ao12Detail: $('ao12Detail'),
+    averageDialog: $('averageDialog'), averageClose: $('averageClose'), averageTitle: $('averageTitle'), averageGroup: $('averageGroup'),
+    averageResult: $('averageResult'), averageFormula: $('averageFormula'), averageRows: $('averageRows'),
     historyMore: $('historyMore'),
     net: $('net'),
     pad: $('pad'),
@@ -100,7 +105,13 @@
   var currentGroupId = window.StarCubeStore.defaultGroupId;
   var editingGroup = null;
   var groupsVersion = -1;
-  var settings = { inspection: true };
+  var settings = { inspection: true, inspectionSound: false };
+  var backup = null;
+  function showAudioStatus(status) {
+    el.soundFeedback.textContent = status.message || '8 秒一声，12 秒两声';
+    el.soundPreview.setAttribute('aria-busy', String(status.state === 'loading'));
+  }
+  var audio = window.StarCubeAudio.create({ AudioContext: window.AudioContext || window.webkitAudioContext, onStatus: showAudioStatus });
   var nextId = 1;
   var memoryMode = false;
   var historyOpen = window.innerWidth >= 720;
@@ -124,6 +135,9 @@
   var reviewSelectedUid = null;
   var selectedRecordUid = null;
   var recordReturnFocus = null;
+  var selectedAverage = null;
+  var averageReturnFocus = null;
+  var averageVersion = -1;
 
   var currentScramble = null;
   var scrambleUsed = false;
@@ -165,10 +179,14 @@
       var settingsRaw = storage.getItem(SETTINGS_KEY);
       var parsedSettings = settingsRaw ? JSON.parse(settingsRaw) : null;
       if (parsedSettings && typeof parsedSettings.inspection === 'boolean') settings.inspection = parsedSettings.inspection;
+      if (parsedSettings && typeof parsedSettings.inspectionSound === 'boolean') settings.inspectionSound = parsedSettings.inspectionSound;
     } catch (err) {
       console.warn('设置读取失败，使用默认设置', err);
     }
     store = window.StarCubeStore.create({ storage: storage });
+    backup = window.StarCubeBackup.create({ storage: storage, threshold: 100 });
+    audio.setEnabled(settings.inspectionSound);
+    showAudioStatus(audio.getStatus());
     try { currentGroupId = window.sessionStorage.getItem(SELECTION_KEY) || currentGroupId; } catch (err) {}
     readStore();
     el.groupForm.hidden = true;
@@ -176,6 +194,7 @@
 
   function dataChanged() {
     dataVersion++;
+    if (backup) backup.observe(allRecords, groups);
     records = allRecords.filter(function (record) { return record.groupId === currentGroupId; });
     historyLimit = Math.max(50, historyLimit);
     nextId = allRecords.reduce(function (max, record) {
@@ -241,7 +260,7 @@
   }
 
   function canStart() {
-    if (currentView !== 'timer' || importing || editingGroup !== null || selectedRecordUid) return false;
+    if (currentView !== 'timer' || importing || editingGroup !== null || detailsOpen()) return false;
     if (state !== 'IDLE' && state !== 'STOPPED') return false;
     if (engineDead) return true;
     if (!engineReady || generating || genFailed) return false;
@@ -269,6 +288,8 @@
     renderGroups();
     renderReview();
     renderRecordDialog();
+    renderAverageDialog();
+    renderBackup();
     el.storageBanner.textContent = (memoryMode ? '成绩不会被保存：' : '') + dataNotice;
     el.storageBanner.hidden = !memoryMode && !dataNotice;
   }
@@ -440,6 +461,7 @@
     }
     if (state === 'INSPECTING') updateInspectionDisplay();
     if (state === 'READY') renderReadyHint();
+    if (settings.inspection) audio.updateInspection(performance.now() - inspectStart);
     inspectionRaf = requestAnimationFrame(inspectionFrame);
   }
 
@@ -665,13 +687,93 @@
       button.title = canToggle ? '' : '请先完成当前操作';
     });
     el.switchBtn.disabled = !canToggle;
+    el.soundToggle.disabled = !canToggle;
+    el.soundToggle.setAttribute('aria-checked', String(settings.inspectionSound));
+    el.soundPreview.disabled = !canToggle;
+    [[el.coreAo5Detail, 5], [el.ao5Detail, 5], [el.coreAo12Detail, 12], [el.ao12Detail, 12]].forEach(function (pair) {
+      pair[0].disabled = !canToggle || records.length < pair[1];
+      pair[0].title = records.length < pair[1] ? '本组满 ' + pair[1] + ' 次后可查看明细' : '查看 Ao' + pair[1] + ' 计算明细';
+    });
     el.switchBtn.title = canToggle ? '切换 15 秒观察' : '观察开关仅在就绪或停止后可切换';
     el.importBtn.disabled = !canToggle || memoryMode;
     el.exportBtn.disabled = state === 'RUNNING' || state === 'INSPECTING' || state === 'READY' || !!press || importing;
   }
 
   function canChangeGroup() {
-    return (state === 'IDLE' || state === 'STOPPED') && !press && !activeScramble && !importing && !selectedRecordUid;
+    return (state === 'IDLE' || state === 'STOPPED') && !press && !activeScramble && !importing && !detailsOpen();
+  }
+
+  function detailsOpen() { return !!selectedRecordUid || selectedAverage !== null; }
+
+  function renderBackup() {
+    var status = backup.status();
+    el.backupReminder.hidden = !status.due;
+    // Keep the reminder in its place during a solve; only its actions become unavailable.
+    el.backupExport.disabled = el.exportBtn.disabled || detailsOpen() || editingGroup !== null;
+    el.backupLater.disabled = !canChangeGroup() || editingGroup !== null;
+    el.backupMessage.textContent = '自上次导出净新增 ' + status.pendingCount + ' 条成绩，建议备份一份。';
+    el.backupStatus.textContent = status.lastExportRequestedAt ?
+      '上次发起导出：' + new Date(status.lastExportRequestedAt).toLocaleString('zh-CN', { hour12: false }) +
+      (status.changed ? ' · 此后数据有更改' : ' · 请确认文件已保存') : '尚未发起过备份导出';
+    if (!status.metadataWritable) el.backupStatus.textContent += ' · 提醒状态仅保留在本页';
+  }
+
+  function openAverage(n, trigger) {
+    if (!canChangeGroup() || editingGroup !== null) return;
+    if (!memoryMode) readStore();
+    if (!Stats.averageDetails(records, n)) { render(); return; }
+    audio.stop();
+    selectedAverage = n;
+    averageVersion = -1;
+    averageReturnFocus = trigger;
+    render();
+    el.averageDialog.showModal();
+    el.averageClose.focus();
+  }
+
+  function closeAverage() {
+    selectedAverage = null;
+    if (el.averageDialog.open) el.averageDialog.close();
+    render();
+    var target = averageReturnFocus;
+    averageReturnFocus = null;
+    if (target && target.isConnected && !target.disabled) target.focus({ preventScroll: true });
+    else if (currentView === 'timer') el.pad.focus({ preventScroll: true });
+    else el.historyToggle.focus();
+  }
+
+  function renderAverageDialog() {
+    if (selectedAverage === null || averageVersion === dataVersion) return;
+    averageVersion = dataVersion;
+    var detail = Stats.averageDetails(records, selectedAverage);
+    if (!detail) {
+      el.feedback.textContent = '当前训练成绩数量已变化，平均值明细已关闭。';
+      closeAverage(); return;
+    }
+    var group = groups.find(function (item) { return item.id === currentGroupId; });
+    el.averageTitle.textContent = 'Ao' + detail.n + ' 明细';
+    el.averageGroup.textContent = (group ? group.name : '') + ' · 第 ' + detail.rows[0].number + '–' + detail.rows[detail.rows.length - 1].number + ' 次';
+    el.averageResult.textContent = reviewValue(detail.value);
+    el.averageResult.classList.toggle('is-dnf', detail.value === 'DNF');
+    el.averageFormula.textContent = detail.sum === null ? '去尾后仍有 DNF，本次平均为 DNF。' :
+      '计入总用时 ' + Stats.formatMs(detail.sum) + ' ÷ ' + detail.includedCount + ' = ' + Stats.formatMs(detail.value);
+    var fragment = document.createDocumentFragment();
+    detail.rows.forEach(function (row) {
+      var item = document.createElement('li');
+      item.className = 'average-row' + (row.excluded ? ' is-excluded' : '');
+      item.setAttribute('data-record-uid', row.uid);
+      item.setAttribute('data-excluded', row.excluded || '');
+      var number = document.createElement('span'); number.className = 'average-number'; number.textContent = '#' + row.number;
+      var value = document.createElement('span'); value.className = 'average-value'; value.textContent = Stats.formatResult(row.record);
+      var label = document.createElement('span'); label.className = 'average-disposition';
+      label.textContent = row.excluded === 'best' ? '去掉 · 最好' : row.excluded === 'worst' ? '去掉 · 最差' : '计入平均';
+      item.append(number, value, label);
+      if (row.record.penalty === '+2') {
+        var raw = document.createElement('small'); raw.className = 'average-penalty'; raw.textContent = '原始 ' + Stats.formatMs(row.record.ms) + ' + 2 秒'; item.appendChild(raw);
+      }
+      fragment.appendChild(item);
+    });
+    el.averageRows.replaceChildren(fragment);
   }
 
   function renderGroups() {
@@ -943,6 +1045,8 @@
     }
     if (state === 'IDLE' || state === 'STOPPED') {
       if (!canStart()) return;
+      audio.stop();
+      if (settings.inspectionSound && settings.inspection) audio.unlock();
       freezeScramble();
       if (settings.inspection) {
         press = { source: source, suppressed: true, ready: false };
@@ -992,6 +1096,7 @@
   }
 
   function startInspection(now) {
+    audio.startInspection();
     state = 'INSPECTING';
     inspectStart = now;
     cancelAnimationFrame(inspectionRaf);
@@ -1001,6 +1106,7 @@
 
   function cancelInspection() {
     if (state !== 'INSPECTING' && state !== 'READY') return;
+    audio.stop();
     cancelAnimationFrame(inspectionRaf);
     inspectionRaf = 0;
     inspectStart = 0;
@@ -1018,6 +1124,7 @@
   }
 
   function startRun() {
+    audio.stop();
     if (state !== 'READY' || !activeIsReady()) {
       cancelInspection();
       return;
@@ -1300,7 +1407,7 @@
   }
 
   function togglePenalty(kind) {
-    if (currentView !== 'timer' || selectedRecordUid) return;
+    if (currentView !== 'timer' || detailsOpen()) return;
     if ((state !== 'STOPPED' && state !== 'IDLE') || press || activeScramble || importing || !records.length) return;
     var uid = latestRecord().uid;
     if (!memoryMode) readStore();
@@ -1317,7 +1424,7 @@
   }
 
   function deleteLatest() {
-    if (currentView !== 'timer' || selectedRecordUid) return;
+    if (currentView !== 'timer' || detailsOpen()) return;
     if ((state !== 'STOPPED' && state !== 'IDLE') || press || activeScramble || importing || !records.length) return;
     var uid = latestRecord().uid;
     if (!memoryMode) {
@@ -1330,7 +1437,7 @@
   }
 
   function toggleInspection() {
-    if (selectedRecordUid) return;
+    if (detailsOpen()) return;
     if ((state !== 'IDLE' && state !== 'STOPPED') || press || activeScramble) return;
     settings.inspection = !settings.inspection;
     persistSettings();
@@ -1338,7 +1445,7 @@
   }
 
   function newScramble() {
-    if (currentView !== 'timer' || selectedRecordUid) return;
+    if (currentView !== 'timer' || detailsOpen()) return;
     if (press || activeScramble) return;
     if (state !== 'IDLE' && state !== 'STOPPED') return;
     if (engineDead || !engineReady || generating) return;
@@ -1390,7 +1497,7 @@
     trackTouchStart(event);
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     if (event.pointerType === 'touch' && (touchGestureBlocked || touchContacts.size > 1)) return;
-    if (currentView !== 'timer' || selectedRecordUid || importing || editingGroup !== null) return;
+    if (currentView !== 'timer' || detailsOpen() || importing || editingGroup !== null) return;
     if (pointerId !== null) return;
     if (press && press.source !== 'pointer') return;
     pointerId = event.pointerId;
@@ -1434,8 +1541,9 @@
       document.body.appendChild(link);
       link.click();
       link.remove();
+      backup.markExportRequested();
       setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-      el.feedback.textContent = '已导出全部 ' + groups.length + ' 个训练、' + allRecords.length + ' 条成绩及可恢复的原始备份。';
+      el.feedback.textContent = '已发起下载：全部 ' + groups.length + ' 个训练、' + allRecords.length + ' 条成绩及可恢复的原始备份。请确认文件已保存。';
     } catch (err) { el.feedback.textContent = '导出失败：' + err.message; }
     render();
   }
@@ -1476,7 +1584,7 @@
       return event.isComposing || (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(target.tagName)));
     }
     window.addEventListener('keydown', function (event) {
-      if (selectedRecordUid) return;
+      if (detailsOpen()) return;
       // A timer stop must still work when a control retained focus after a touch start.
       if (state === 'RUNNING' && !event.isComposing && !event.ctrlKey && !event.metaKey && !event.altKey && (event.code === 'Space' || event.key === ' ')) {
         event.preventDefault();
@@ -1512,7 +1620,7 @@
     });
 
     window.addEventListener('keyup', function (event) {
-      if (selectedRecordUid) return;
+      if (detailsOpen()) return;
       if (editableTarget(event) && !(press && press.source === 'key')) return;
       if (event.code === 'Space' || event.key === ' ') {
         event.preventDefault();
@@ -1520,9 +1628,9 @@
       }
     });
 
-    window.addEventListener('blur', abortInput);
+    window.addEventListener('blur', function () { audio.stop(); abortInput(); });
     document.addEventListener('visibilitychange', function () {
-      if (document.hidden) abortInput();
+      if (document.hidden) { audio.stop(); abortInput(); }
     });
 
     window.addEventListener('pointerdown', trackTouchStart, true);
@@ -1544,6 +1652,31 @@
       if (button) openRecord(button.getAttribute('data-record-uid'), button);
     });
     el.switchBtn.addEventListener('click', function (event) { toggleInspection(); returnTimerFocus(event); });
+    el.soundToggle.addEventListener('click', function (event) {
+      if (!canChangeGroup() || editingGroup !== null) return;
+      settings.inspectionSound = !settings.inspectionSound;
+      audio.setEnabled(settings.inspectionSound);
+      if (settings.inspectionSound) audio.unlock();
+      persistSettings();
+      render();
+      returnTimerFocus(event);
+    });
+    el.soundPreview.addEventListener('click', function (event) {
+      if (canChangeGroup() && editingGroup === null) { audio.preview(); returnTimerFocus(event); }
+    });
+    [[el.coreAo5Detail, 5], [el.ao5Detail, 5], [el.coreAo12Detail, 12], [el.ao12Detail, 12]].forEach(function (pair) {
+      pair[0].addEventListener('click', function () { openAverage(pair[1], pair[0]); });
+    });
+    el.averageClose.addEventListener('click', closeAverage);
+    el.averageDialog.addEventListener('cancel', function (event) { event.preventDefault(); closeAverage(); });
+    el.averageDialog.addEventListener('close', function () { if (!el.averageDialog.open && selectedAverage !== null) closeAverage(); });
+    el.backupExport.addEventListener('click', function () { if (!el.backupExport.disabled) exportData(); });
+    el.backupLater.addEventListener('click', function () {
+      if (el.backupLater.disabled) return;
+      backup.snooze();
+      renderBackup();
+      el.exportBtn.focus({ preventScroll: true });
+    });
     el.groupSelect.addEventListener('pointerdown', function () { groupPointerSelection = true; });
     el.groupSelect.addEventListener('keydown', function () { groupPointerSelection = false; });
     el.groupSelect.addEventListener('change', function () {
@@ -1627,6 +1760,7 @@
     el.recordDnf.addEventListener('click', function () { setRecordPenalty('dnf'); });
     window.addEventListener('storage', function (event) {
       var key = event.key;
+      if (key === 'starcube.backup.v1') { backup.refresh(); renderBackup(); return; }
       if (key && key !== RECORDS_KEY && key.indexOf('starcube.records.v2.item.') !== 0 &&
           key.indexOf('starcube.records.v2.deleted.') !== 0 && key.indexOf(window.StarCubeStore.keys.groupPrefix) !== 0) return;
       pendingStorageRefresh = true;

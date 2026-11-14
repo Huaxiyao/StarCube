@@ -27,6 +27,49 @@
     return sum / trimmed.length;
   }
 
+  function averageDetails(records, n) {
+    if (!Array.isArray(records) || !Number.isInteger(n) || n < 3 || records.length < n) return null;
+    var start = records.length - n;
+    var rows = records.slice(start).map(function (record, index) {
+      return {
+        uid: record ? record.uid : undefined,
+        number: start + index + 1,
+        record: record,
+        effectiveMs: effectiveMs(record),
+        excluded: null
+      };
+    });
+    var sorted = rows.slice().sort(function (a, b) {
+      var aValue = a.effectiveMs === null ? Infinity : a.effectiveMs;
+      var bValue = b.effectiveMs === null ? Infinity : b.effectiveMs;
+      // Original position also makes tied times and DNF exclusions deterministic.
+      return (aValue - bValue) || (a.number - b.number);
+    });
+    var trimCount = Math.ceil(n / 20);
+    var includedCount = n - trimCount * 2;
+    for (var i = 0; i < trimCount; i++) {
+      sorted[i].excluded = 'best';
+      sorted[n - 1 - i].excluded = 'worst';
+    }
+    var sum = 0;
+    for (var j = trimCount; j < n - trimCount; j++) {
+      var value = sorted[j].effectiveMs;
+      if (value === null || !isFinite(value)) {
+        sum = null;
+        break;
+      }
+      sum += value;
+    }
+    return {
+      n: n,
+      trimCount: trimCount,
+      value: sum === null ? 'DNF' : sum / includedCount,
+      sum: sum,
+      includedCount: includedCount,
+      rows: rows
+    };
+  }
+
   function overallAverage(records) {
     var sum = 0;
     var count = 0;
@@ -90,6 +133,7 @@
   global.StarCubeStats = {
     effectiveMs: effectiveMs,
     aoN: aoN,
+    averageDetails: averageDetails,
     overallAverage: overallAverage,
     personalBest: personalBest,
     bestAo5: bestAo5,

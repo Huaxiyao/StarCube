@@ -74,9 +74,10 @@ function harness(options = {}) {
     requestAnimationFrame(callback){const id=sequence++;rafs.set(id,callback);return id;},cancelAnimationFrame(id){rafs.delete(id);},
     Blob:class{constructor(parts,settings){this.parts=parts;this.type=settings&&settings.type;}},URL:{createObjectURL(blob){const url='blob:test-app-regression-'+(++urlSequence);blobUrls.set(url,blob);return url;},revokeObjectURL(url){blobUrls.delete(url);}},Date,Math,JSON,String,Array,Object,Number,Map,Set,Infinity,isFinite};
   vm.createContext(context);
-  for(const name of ['stats.js','review.js','store.js','app.js']) {
+  for(const name of ['stats.js','review.js','store.js','audio.js','backup.js','app.js']) {
     const file=path.join(__dirname,'../src',name);
     if(name==='store.js'&&!fs.existsSync(file))continue;
+    if(name==='app.js'&&options.audioFactory)window.StarCubeAudio={create:options.audioFactory};
     vm.runInContext(fs.readFileSync(file,'utf8'),context,{filename:name});
     if(name==='store.js'&&options.importedRecords)window.StarCubeStore.create({storage}).importRecords(options.importedRecords);
   }
@@ -701,6 +702,150 @@ test('a running touch-down stops immediately and later movement never saves a se
   drag(h,'pointermove',1,100,180);h.advance(400);drag(h,'pointerup',1,100,180);
   assert.equal(h.readRecords().length,1);assert.notEqual(status(h),'计时中');
   h.respond(h.requests().at(-1));hold(h);assert.equal(status(h),'计时中');
+});
+
+test('average detail exposes chronological rows, trimmed extremes and the actual +2 calculation',()=>{
+  const rows=[record(0,10000),record(1,11000),{...record(2,10000),penalty:'+2'},record(3,13000),record(4,14000)];
+  const h=harness({records:rows});h.click('coreAo5Detail');
+  assert.equal(h.document.getElementById('averageDialog').open,true);
+  assert.equal(h.text('averageTitle'),'Ao5 明细');assert.equal(h.text('averageResult'),'12.000');
+  assert.match(h.text('averageFormula'),/36\.000.*3.*12\.000/);
+  const items=h.document.getElementById('averageRows').children;
+  assert.equal(items.length,5);assert.deepEqual(items.map(row=>row.children[0].textContent),['#1','#2','#3','#4','#5']);
+  assert.equal(items[0].getAttribute('data-excluded'),'best');assert.equal(items[4].getAttribute('data-excluded'),'worst');
+  assert.equal(items[2].getAttribute('data-excluded'),'');assert.match(items[2].textContent,/原始 10\.000 \+ 2 秒/);
+});
+
+test('average details stay unavailable for short sessions and Ao12 uses the current group only',()=>{
+  const short=harness({records:Array.from({length:4},(_,i)=>record(i))});
+  assert.equal(short.document.getElementById('coreAo5Detail').disabled,true);
+  short.click('coreAo5Detail');assert.equal(short.document.getElementById('averageDialog').open,false);
+  const h=harness({importedRecords:groupData()});select(h,'b');h.click('navReview');h.click('ao12Detail');
+  assert.equal(h.text('averageTitle'),'Ao12 明细');assert.equal(h.text('averageResult'),'20.000');
+  assert.match(h.text('averageGroup'),/^B · 第 89–100 次$/);
+  assert.equal(h.document.getElementById('averageRows').children.length,12);
+  assert.ok(h.document.getElementById('averageRows').children.every(row=>row.getAttribute('data-record-uid').startsWith('b')));
+});
+
+test('average modal locks timer and penalty shortcuts, then cancel restores its trigger focus',()=>{
+  const h=harness({records:Array.from({length:5},(_,i)=>record(i))});const trigger=h.document.getElementById('coreAo5Detail');
+  const before=JSON.stringify(h.readRecords()),requests=h.requests().length;
+  h.click('coreAo5Detail');h.key('keydown');h.advance(400);h.key('keyup');
+  for(const key of ['1','2','n']){h.key('keydown',key);h.key('keyup',key);}
+  h.click('deleteLatest');assert.equal(JSON.stringify(h.readRecords()),before);
+  assert.equal(h.requests().length,requests);assert.notEqual(status(h),'计时中');
+  assert.equal(h.document.getElementById('soundToggle').disabled,true);
+  const event=h.document.getElementById('averageDialog').dispatch('cancel');assert.equal(event.defaultPrevented,true);
+  assert.equal(h.document.getElementById('averageDialog').open,false);assert.equal(h.document.activeElement,trigger);
+  hold(h);assert.equal(status(h),'计时中');
+});
+
+test('open average details refresh on peer edits and close if deletion leaves too few solves',()=>{
+  const h=harness({records:Array.from({length:5},(_,i)=>record(i,10000+i*1000))});h.click('coreAo5Detail');
+  const api=h.window.StarCubeStore,peer=api.create({storage:h.storage}),row=h.readRecords()[2];
+  peer.put({...row,penalty:'+2'});h.window.dispatch('storage',{key:api.keys.itemPrefix+row.uid});h.advance(40);
+  assert.equal(h.document.getElementById('averageDialog').open,true);assert.equal(h.text('averageResult'),'12.667');
+  assert.match(h.text('averageRows'),/原始 12\.000 \+ 2 秒/);
+  peer.remove(row.uid);h.window.dispatch('storage',{key:api.keys.deletedPrefix+row.uid});h.advance(40);
+  assert.equal(h.document.getElementById('averageDialog').open,false);assert.equal(h.text('count'),'4');
+  assert.match(h.text('dataFeedback'),/平均值明细已关闭/);
+});
+
+function audioProbe() {
+  const calls=[];
+  return {calls,create(options){return {
+    setEnabled(value){calls.push(['enabled',value]);},unlock(){calls.push(['unlock']);},
+    startInspection(){calls.push(['start']);},updateInspection(elapsed){calls.push(['update',elapsed]);},
+    stop(){calls.push(['stop']);},preview(){calls.push(['preview']);},
+    getStatus(){return {state:'ready',message:''};}
+  };}};
+}
+
+test('inspection sound defaults off and an explicit choice survives reload',()=>{
+  const probe=audioProbe(),h=harness({inspection:true,audioFactory:probe.create});
+  assert.equal(h.document.getElementById('soundToggle').getAttribute('aria-checked'),'false');
+  assert.deepEqual(probe.calls,[['enabled',false]]);
+  h.click('soundToggle');assert.equal(JSON.parse(h.storage.getItem('starcube.settings.v1')).inspectionSound,true);
+  const next=audioProbe(),reloaded=harness({storageEntries:h.entries,audioFactory:next.create});
+  assert.equal(reloaded.document.getElementById('soundToggle').getAttribute('aria-checked'),'true');
+  assert.deepEqual(next.calls,[['enabled',true]],'Reload alone must not attempt gesture-only audio unlock');
+});
+
+test('unsupported audio reports its limitation without preventing ordinary timing',()=>{
+  const h=harness();h.click('soundPreview');h.click('soundToggle');
+  assert.match(h.text('soundFeedback'),/不支持提示音/);
+  assert.equal(h.document.getElementById('soundPreview').getAttribute('aria-busy'),'false');
+  hold(h);finish(h,1234);assert.equal(h.readRecords()[0].ms,1234);
+});
+
+test('sound preview is independent of the enabled setting, records and timer state',()=>{
+  const probe=audioProbe(),h=harness({inspection:true,records:[record(0)],audioFactory:probe.create});
+  const before=JSON.stringify(h.readRecords()),scramble=h.text('scrambleText'),state=status(h),requests=h.requests().length;
+  h.click('soundPreview');assert.deepEqual(probe.calls,[['enabled',false],['preview']]);
+  assert.equal(JSON.stringify(h.readRecords()),before);assert.equal(h.text('scrambleText'),scramble);
+  assert.equal(status(h),state);assert.equal(h.requests().length,requests);
+  assert.equal(h.document.getElementById('soundToggle').getAttribute('aria-checked'),'false');
+  const button=h.document.getElementById('soundPreview');button.tagName='BUTTON';button.focus();
+  button.dispatch('click',{target:button,detail:0});assert.equal(h.document.activeElement,button);
+  button.dispatch('click',{target:button,detail:1});assert.equal(h.document.activeElement,h.document.getElementById('pad'));
+  focusedSpace(h);assert.equal(status(h),'观察中','Pointer preview returns focus for the next timer action');
+});
+
+test('inspection audio unlocks before starting, receives elapsed frames, and stops on run or cancellation',()=>{
+  const probe=audioProbe(),h=harness({inspection:true,audioFactory:probe.create});h.click('soundToggle');probe.calls.length=0;
+  h.key('keydown');h.key('keyup');assert.deepEqual(probe.calls.slice(0,3),[['stop'],['unlock'],['start']]);
+  h.advance(8000);assert.ok(probe.calls.some(call=>call[0]==='update'&&call[1]===8000));
+  hold(h);assert.equal(probe.calls.at(-1)[0],'stop');
+  for(const cancel of ['escape','blur','hidden']){
+    const audio=audioProbe(),other=harness({inspection:true,audioFactory:audio.create});other.click('soundToggle');
+    other.key('keydown');other.key('keyup');audio.calls.length=0;
+    if(cancel==='escape')other.key('keydown','Escape');
+    if(cancel==='blur')other.window.dispatch('blur');
+    if(cancel==='hidden'){other.document.hidden=true;other.document.dispatch('visibilitychange');}
+    assert.equal(audio.calls.at(-1)[0],'stop',cancel);assert.equal(other.readRecords().length,0);
+  }
+});
+
+test('backup appears at 100 old records and snooze persists until another 100 net records',()=>{
+  const h=harness({records:Array.from({length:100},(_,i)=>record(i))});
+  assert.equal(h.document.getElementById('backupReminder').hidden,false);h.click('backupLater');
+  assert.equal(h.document.getElementById('backupReminder').hidden,true);
+  const reloaded=harness({storageEntries:h.entries}),api=reloaded.window.StarCubeStore,peer=api.create({storage:reloaded.storage});
+  assert.equal(reloaded.document.getElementById('backupReminder').hidden,true);
+  for(let i=100;i<199;i++)peer.put({...record(i),uid:'added-'+i});
+  reloaded.window.dispatch('storage',{key:api.keys.itemPrefix+'added-198'});reloaded.advance(40);
+  assert.equal(reloaded.document.getElementById('backupReminder').hidden,true);
+  peer.put({...record(199),uid:'added-199'});reloaded.window.dispatch('storage',{key:api.keys.itemPrefix+'added-199'});reloaded.advance(40);
+  assert.equal(reloaded.document.getElementById('backupReminder').hidden,false);assert.equal(reloaded.text('count'),'200');
+});
+
+test('backup export includes every group, resets reminder and excludes reminder metadata from JSON',()=>{
+  const h=harness({importedRecords:groupData()});select(h,'a');h.click('backupExport');
+  const payload=h.exportedPayloads().at(-1);assert.ok(payload);assert.equal(payload.records.length,200);
+  assert.ok(payload.groups.some(group=>group.id==='b'));assert.equal(h.document.getElementById('backupReminder').hidden,true);
+  assert.deepEqual(Object.keys(payload).sort(),['backups','exportedAt','format','groups','records','version']);
+  assert.doesNotMatch(JSON.stringify(payload),/lastExportRequestedAt|exportedFingerprint|reminderCount|starcube\.backup\.v1/);
+  assert.ok(JSON.parse(h.storage.getItem('starcube.backup.v1')).lastExportRequestedAt>0);
+  assert.match(h.text('backupStatus'),/上次发起导出/);assert.match(h.text('dataFeedback'),/请确认文件已保存/);
+  h.key('keydown','1');assert.match(h.text('backupStatus'),/此后数据有更改/);
+});
+
+test('backup metadata write failure does not put record storage into memory mode',()=>{
+  const h=harness({records:Array.from({length:100},(_,i)=>record(i))});h.failWrites(key=>key==='starcube.backup.v1');
+  h.click('backupExport');assert.equal(h.exportedPayloads().at(-1).records.length,100);
+  assert.match(h.text('backupStatus'),/提醒状态仅保留在本页/);assert.doesNotMatch(h.text('storageBanner'),/不会被保存|写入失败/);
+  hold(h);h.advance(1234);h.key('keydown');h.key('keyup');
+  assert.equal(h.readRecords().length,101);assert.ok(h.readRecords().some(row=>row.ms===1234));
+  assert.equal(h.document.getElementById('storageBanner').hidden,true);
+});
+
+test('cross-tab backup-only events refresh reminders without changing records',()=>{
+  const a=harness({records:Array.from({length:100},(_,i)=>record(i))});
+  const b=harness({sharedEntries:a.entries}),before=JSON.stringify(b.readRecords());
+  assert.equal(b.document.getElementById('backupReminder').hidden,false);a.click('backupLater');
+  b.window.dispatch('storage',{key:'starcube.backup.v1'});assert.equal(b.document.getElementById('backupReminder').hidden,true);
+  a.click('exportData');b.window.dispatch('storage',{key:'starcube.backup.v1'});
+  assert.match(b.text('backupStatus'),/上次发起导出/);assert.equal(JSON.stringify(b.readRecords()),before);
 });
 
 console.log('\n'+passed+' passed, '+failures+' failed');

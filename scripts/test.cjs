@@ -13,6 +13,9 @@ if (args.some(arg => arg !== '--report')) {
 }
 const scripts = [
   'test-stats.js',
+  'test-average.cjs',
+  'test-audio.cjs',
+  'test-backup.cjs',
   'test-review.cjs',
   'test-store.cjs',
   'test-domain-regression.cjs',
