@@ -185,9 +185,15 @@ main { min-width:0; }
 .brand-symbol .cube-top { fill:var(--cube-top); }
 .brand-symbol .cube-left { fill:var(--cube-left); }
 .brand-symbol .cube-right { fill:var(--cube-right); }
+.brand-symbol .cube-grid { stroke:var(--text); stroke-opacity:.34; }
+.brand-symbol .cube-star-bg { fill:var(--text); }
+.brand-symbol .cube-star { fill:#ffffff; }
 .brand-wordmark { white-space:nowrap; }
 .brand-wordmark span { color:var(--accent); }
 .brand-sub { display:none; }
+.mobile-group-btn,.mobile-icon-btn,.sheet-head,.mobile-sheet-backdrop { display:none; }
+.btn-icon { width:16px; height:16px; flex:none; display:none; }
+.undo-dismiss { display:none; }
 
 /* 分段胶囊导航 */
 .view-nav { display:inline-flex; align-items:center; gap:4px; padding:4px; background:var(--control); border-radius:12px; }
@@ -247,9 +253,16 @@ kbd { display:inline-block; padding:1px 5px; margin-left:6px; border:1px solid v
 .scramble-text { font:500 1.0625rem/1.7 var(--mono); color:var(--text); min-height:3.6rem; letter-spacing:0; word-spacing:.14em; overflow-wrap:anywhere; user-select:text; }
 .scramble-text.is-message { color:var(--muted); font-family:inherit; font-size:0.875rem; font-weight:400; line-height:1.8; }
 .scramble-hint { display:flex; gap:8px; align-items:center; min-height:18px; margin-top:6px; color:var(--muted); font-size:0.75rem; }
-.net-wrap { width:108px; flex:none; padding:8px; background:var(--control); border:1px solid var(--line-soft); border-radius:12px; }
+.net-wrap { display:block; width:108px; flex:none; padding:8px; background:var(--control); border:1px solid var(--line-soft); border-radius:12px; cursor:pointer; transition:border-color 140ms ease,transform 140ms ease; }
+.net-wrap:hover { border-color:var(--accent-border); }
+.net-wrap:active { transform:scale(.97); }
 .net svg { display:block; width:100%; height:auto; }
 .net svg rect { stroke:var(--net-stroke); stroke-width:.75; }
+.net-preview-dialog { width:min(440px,calc(100% - 28px)); }
+.net-preview-stage { margin:14px 0 12px; padding:18px 16px; border-radius:16px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
+.net-preview-stage .net svg { width:100%; max-width:320px; margin:0 auto; }
+.net-preview-orient { margin:0 0 10px; font-size:0.75rem; color:var(--muted); text-align:center; }
+.net-preview-scramble { margin:0; padding:10px 12px; border-radius:10px; background:var(--control); font:500 0.875rem/1.6 var(--mono); color:var(--text); text-align:center; overflow-wrap:anywhere; user-select:text; }
 
 /* 核心计时器舞台卡片 */
 .timer-console { background:var(--panel); color:var(--text); border:1px solid var(--line-soft); border-radius:var(--radius-lg); box-shadow:var(--shadow-md); overflow:visible; }
@@ -522,130 +535,187 @@ button:active:not(:disabled) { background:var(--control-active); }
   .data-feedback { text-align:left; }
 }
 
-/* 响应式：手机 */
+@keyframes sheet-up {
+  from { opacity:.6; transform:translateY(24px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+/* 响应式：手机原生一屏沉浸体验 */
 @media (max-width:720px) {
   html { scrollbar-gutter:auto; }
-  #app { padding:10px 14px calc(92px + env(safe-area-inset-bottom)); }
-  .topbar { position:static; min-height:52px; flex-wrap:wrap; gap:8px 10px; padding:6px 12px; margin-bottom:12px; border-radius:14px; background:var(--panel); backdrop-filter:none; -webkit-backdrop-filter:none; }
-  .brand { gap:8px; font-size:1.0625rem; }
-  .brand-symbol { width:22px; height:22px; }
-  .topbar-right { margin:0 0 0 auto; gap:6px; flex-wrap:wrap; justify-content:flex-end; max-width:100%; }
-  .theme-btn { padding:0 10px; gap:5px; font-size:0.75rem; }
-  .status { font-size:0.75rem; padding:0 8px; }
-  .status::before { display:none; }
-  .switch { padding:0 4px; gap:6px; font-size:0.75rem; }
-  .view-nav { position:fixed; left:0; right:0; bottom:0; z-index:9; width:auto; border-radius:0; gap:8px; margin:0; padding:8px 14px calc(8px + env(safe-area-inset-bottom)); background:var(--mobile-nav-bg); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-top:1px solid var(--line-soft); box-shadow:0 -4px 16px rgb(15 23 42 / .05); }
-  .nav-button { flex:1; min-height:46px; gap:7px; padding:8px 14px; font-size:0.875rem; }
-  .nav-button svg { width:18px; height:18px; }
-  .training { padding:0 0 12px; }
-  .training-bar { gap:6px; }
-  .training select { flex:1 1 136px; min-width:136px; width:auto; padding:8px 10px; }
-  .training button { padding:0 10px; }
-  .timer-layout { display:flex; flex-direction:column; gap:14px; }
-  .timer-stage { width:100%; gap:12px; }
-  .scramble { display:grid; grid-template-columns:minmax(0,1fr) 58px; gap:8px 10px; padding:12px 14px; align-items:center; }
+  #app { padding:6px 14px calc(72px + env(safe-area-inset-bottom)); }
+  #app[data-view="timer"] { height:100dvh; max-height:100dvh; display:flex; flex-direction:column; overflow:hidden; padding:6px 14px calc(66px + env(safe-area-inset-bottom)); }
+  #app[data-view="timer"] main { flex:1; min-height:0; display:flex; flex-direction:column; }
+  #app[data-view="timer"] #timerView { flex:1; min-height:0; display:flex; flex-direction:column; }
+  #app[data-view="timer"] .timer-layout { flex:1; min-height:0; display:flex; flex-direction:column; gap:0; }
+  #app[data-view="timer"] .timer-stage { flex:1; min-height:0; width:100%; display:flex; flex-direction:column; gap:8px; }
+
+  /* 极简顶栏：去卡片化、去冗余状态胶囊，左侧放训练分组切换，右侧放观察/主题/设置 */
+  .topbar { position:static; min-height:46px; flex-wrap:nowrap; gap:6px; padding:2px 0; margin-bottom:6px; border:0; border-radius:0; background:transparent; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; transition:opacity 160ms ease; }
+  .brand { display:none; }
+  .status { display:none; }
+  .mobile-group-btn { display:inline-flex; align-items:center; gap:7px; min-height:40px; max-width:46vw; padding:0 12px 0 8px; border-radius:var(--radius-pill); background:var(--panel); border:1px solid var(--line-soft); color:var(--text); font-size:0.875rem; font-weight:600; box-shadow:0 1px 2px rgb(15 23 42 / .04); min-width:0; }
+  .mobile-group-btn .brand-symbol { width:20px; height:20px; flex:none; }
+  .mobile-group-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .mobile-group-chevron { width:14px; height:14px; color:var(--muted); flex:none; }
+  .topbar-right { margin:0 0 0 auto; gap:4px; flex-wrap:nowrap; align-items:center; flex:none; }
+  .switch { min-height:38px; padding:0 6px; gap:6px; font-size:0.75rem; color:var(--muted); }
+  .theme-btn { width:38px; min-width:38px; min-height:38px; padding:0; border:1px solid var(--line-soft); border-radius:var(--radius-pill); background:var(--panel); box-shadow:0 1px 2px rgb(15 23 42 / .04); }
+  .theme-label { display:none; }
+  .mobile-icon-btn { position:relative; display:inline-flex; align-items:center; justify-content:center; width:38px; min-width:38px; min-height:38px; padding:0; border:1px solid var(--line-soft); border-radius:var(--radius-pill); background:var(--panel); color:var(--text); box-shadow:0 1px 2px rgb(15 23 42 / .04); flex:none; }
+  .mobile-icon-btn svg { width:17px; height:17px; }
+  .mobile-icon-btn[data-badge="true"]::after { content:""; position:absolute; top:7px; right:7px; width:7px; height:7px; border-radius:50%; background:var(--red-text); box-shadow:0 0 0 2px var(--panel); }
+
+  /* 原生风格贴底 Tab Bar：去黑砖感，改用图标+小字+主题强调色 */
+  .view-nav { position:fixed; left:0; right:0; bottom:0; z-index:12; width:auto; border-radius:0; gap:8px; margin:0; padding:6px 20px calc(6px + env(safe-area-inset-bottom)); background:var(--mobile-nav-bg); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-top:1px solid var(--line-soft); box-shadow:0 -2px 12px rgb(15 23 42 / .04); transition:opacity 160ms ease; }
+  .nav-button { flex:1; flex-direction:column; min-height:48px; gap:3px; padding:4px 10px; border-radius:12px; font-size:0.72rem; font-weight:600; color:var(--muted); background:transparent; box-shadow:none; }
+  .nav-button svg { width:20px; height:20px; }
+  .nav-button[aria-pressed="true"] { background:var(--accent-soft); color:var(--accent); box-shadow:none; }
+
+  /* 手机端训练分组与设置页脚收进底部抽屉，平时完全不占主屏空间 */
+  .mobile-sheet-backdrop:not([hidden]) { display:block; position:fixed; inset:0; z-index:35; background:rgb(15 23 42 / .42); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); }
+  .training,.footer-dock { display:none; }
+  .training.is-sheet-open,.footer-dock.is-sheet-open { display:block; position:fixed; left:0; right:0; bottom:0; z-index:40; max-height:82dvh; overflow-y:auto; margin:0; padding:10px 18px calc(22px + env(safe-area-inset-bottom)); background:var(--panel); border:0; border-top:1px solid var(--line-soft); border-radius:22px 22px 0 0; box-shadow:0 -12px 36px rgb(15 23 42 / .24); animation:sheet-up 180ms cubic-bezier(.2,.8,.2,1) both; }
+  .training.is-sheet-open::before,.footer-dock.is-sheet-open::before { content:""; display:block; width:36px; height:4px; margin:0 auto 12px; border-radius:999px; background:var(--line); }
+  .sheet-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+  .sheet-head h3 { margin:0; font-size:1rem; font-weight:700; color:var(--text); }
+  .sheet-head .small-btn { min-height:36px; padding:0 14px; border-radius:var(--radius-pill); }
+  .training.is-sheet-open .training-bar { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  .training.is-sheet-open .training-bar label { display:none; }
+  .training.is-sheet-open .training-bar select { grid-column:1/-1; width:100%; min-width:0; }
+  .training.is-sheet-open .training-bar button { min-height:42px; padding:0 10px; border:1px solid var(--control-border); background:var(--panel-subtle); color:var(--text); }
+  .training.is-sheet-open .training-bar .group-delete { color:var(--red-text); border-color:var(--danger-border); background:var(--danger-soft); }
+  .training.is-sheet-open .training-bar .group-delete:disabled { opacity:.45; }
+  .training.is-sheet-open .training-form { max-width:none; margin-top:12px; padding:14px; background:var(--panel-subtle); box-shadow:none; }
+  .footer-dock.is-sheet-open { display:flex; flex-direction:column; gap:14px; }
+  .footer-dock.is-sheet-open .practice-tools { padding:12px 14px; border-radius:14px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
+  .footer-dock.is-sheet-open .workspace-tools { justify-content:flex-start; padding:12px 14px; border-radius:14px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
+  .footer-dock.is-sheet-open .storage-caption { width:100%; margin-bottom:4px; }
+  .footer-dock.is-sheet-open .data-tools { width:100%; justify-content:flex-start; }
+  .footer-dock.is-sheet-open .data-tools .small-btn { flex:1; }
+  .footer-dock.is-sheet-open .data-feedback { text-align:left; }
+
+  /* 撤销删除改为底部悬浮 Snackbar，绝不顶动计时区 */
+  .undo-notice { position:fixed; left:14px; right:14px; bottom:calc(68px + env(safe-area-inset-bottom)); z-index:25; margin:0; padding:10px 10px 10px 14px; border:0; border-radius:14px; background:var(--toast-bg); color:var(--toast-text); box-shadow:0 10px 26px rgb(15 23 42 / .26); gap:8px; flex-wrap:nowrap; }
+  .undo-notice p { font-size:0.8125rem; line-height:1.4; color:var(--toast-text); }
+  .undo-notice .small-btn { min-height:34px; padding:0 12px; border:0; border-radius:var(--radius-pill); background:var(--accent-fill); color:var(--on-accent); font-size:0.75rem; font-weight:600; flex:none; }
+  .undo-dismiss { display:inline-flex; align-items:center; justify-content:center; width:30px; min-width:30px; min-height:30px; padding:0; border-radius:999px; color:var(--toast-text); opacity:.72; font-size:1.1rem; line-height:1; flex:none; }
+
+  /* 紧凑高辨识度打乱区 */
+  .scramble { flex:none; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 10px; padding:12px 14px 10px; border-radius:16px; background:var(--panel); border:1px solid var(--line-soft); box-shadow:none; align-items:center; transition:opacity 160ms ease; }
   .scramble-main,.scramble-top { display:contents; }
-  .scramble-top .label { grid-column:1; grid-row:1; font-size:0.75rem; min-width:0; }
-  .scramble-actions { grid-column:1/-1; grid-row:4; display:flex; flex-wrap:wrap; gap:8px; }
-  .scramble-actions .small-btn { flex:1 1 110px; min-width:0; padding:0 10px; }
-  .scramble-text { grid-column:1/-1; grid-row:2; font-size:0.9375rem; line-height:1.6; min-height:3.1rem; }
-  .scramble-hint { grid-column:1/-1; grid-row:3; margin:0; min-height:18px; font-size:0.75rem; flex-wrap:wrap; }
-  .net-wrap { grid-column:2; grid-row:1; width:58px; padding:4px; border-radius:8px; justify-self:end; }
-  .pad { min-height:244px; padding:2.75rem 12px 1.75rem; }
-  .pad-caption { top:14px; left:16px; right:16px; font-size:0.75rem; }
-  .timer { font-size:clamp(3.25rem,20vw,6.25rem); }
-  .timer.is-empty { font-size:3rem; }
-  .sub-status { min-height:24px; margin-top:12px; font-size:0.8125rem; }
+  .scramble-top .label { display:none; }
+  .scramble-text { grid-column:1/-1; grid-row:1; font-size:1.0625rem; line-height:1.5; min-height:3.1rem; text-align:center; letter-spacing:.01em; word-spacing:.12em; }
+  .scramble-text.is-message { font-size:0.875rem; min-height:2.4rem; }
+  .scramble-hint { grid-column:1/-1; grid-row:2; margin:0; min-height:0; justify-content:center; font-size:0.75rem; }
+  .scramble-hint:not([data-important="true"]) { display:none; }
+  .net-wrap { grid-column:1; grid-row:3; width:66px; padding:4px 5px; border-radius:9px; justify-self:start; background:var(--panel-subtle); }
+  .scramble-actions { grid-column:2; grid-row:3; display:flex; align-items:center; justify-content:flex-end; gap:8px; }
+  .scramble-actions .small-btn { min-height:38px; min-width:38px; width:38px; padding:0; border-radius:11px; flex:none; box-shadow:none; background:var(--panel-subtle); }
+  .scramble-actions #newScramble { background:var(--accent-soft); border-color:var(--accent-border); color:var(--accent); }
+  .scramble-actions .btn-icon { display:block; width:17px; height:17px; }
+  .scramble-actions .btn-text { display:none; }
+
+  /* 计时舞台：去框化、撑满屏幕中央剩余全部空间 */
+  .timer-console { flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center; background:transparent; border:0; border-radius:0; box-shadow:none; }
+  .pad { flex:1; min-height:176px; width:100%; padding:14px 8px 10px; border-radius:24px; touch-action:none; }
+  .pad-caption { top:6px; left:0; right:0; justify-content:center; }
+  .pad-caption > span:first-child { display:none; }
+  .timer { font-size:clamp(3.9rem,19.5vw,6.25rem); font-weight:700; letter-spacing:-.045em; }
+  .timer.is-empty { font-size:3.4rem; }
+  .sub-status { min-height:22px; margin-top:12px; font-size:0.8125rem; }
   .pad::after { margin-top:12px; }
-  .cancel { right:6px; bottom:4px; }
-  .timer-controls { min-height:60px; padding:10px 12px; }
-  .actions { width:100%; gap:8px; }
-  .action-btn { padding:0 8px; }
+  .cancel { position:static; margin-top:14px; min-height:38px; padding:0 18px; border-radius:var(--radius-pill); background:var(--panel); border:1px solid var(--line-soft); color:var(--text); }
+  .timer-controls { flex:none; min-height:0; padding:0 0 6px; border:0; border-radius:0; background:transparent; justify-content:center; transition:opacity 160ms ease; }
+  .actions { width:auto; gap:8px; justify-content:center; }
+  .actions[hidden] { display:none !important; }
+  .action-btn { flex:none; min-height:38px; min-width:74px; padding:0 14px; border-radius:var(--radius-pill); font-size:0.8125rem; box-shadow:none; background:var(--panel); }
+  .action-btn.danger { border-color:var(--line-soft); background:var(--panel); color:var(--muted); }
   .timer-help,.keyboard-help,kbd { display:none; }
-  .core-stats { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-  .core-stat { padding:12px 14px; }
-  .core-stat dd { font-size:1.375rem; margin-top:4px; }
-  .global-best { padding:8px 14px; font-size:0.75rem; }
-  .timer-sidebar { width:100%; padding:14px; }
-  .timer-sidebar > .label,.group-name { display:none; }
-  .recent-result { display:flex; align-items:center; gap:12px; min-height:50px; padding:4px 6px; margin:0 -6px; width:calc(100% + 12px); font-size:1.1875rem; }
-  .recent-number { min-width:28px; }
-  .recent-at { margin-left:auto; font-size:0.75rem; }
-  .footer-dock { margin-top:16px; padding:14px; grid-template-columns:minmax(0,1fr); gap:12px; }
-  .workspace-tools { justify-content:flex-start; }
-  .storage-caption { width:100%; }
-  .data-tools { justify-content:flex-start; }
-  .data-tools .small-btn { flex:1; }
-  .data-feedback { text-align:left; }
-  .view-heading { margin:2px 0 12px; flex-wrap:wrap; gap:4px; }
-  .view-heading h2 { font-size:1.25rem; }
-  .view-heading p { width:100%; }
-  .review-layout { display:flex; flex-direction:column; gap:14px; }
-  .stats { display:grid; grid-template-columns:minmax(0,1fr); width:100%; gap:14px; padding:14px 14px 4px; }
+
+  /* 首屏底部紧凑 4 列实时统计条 */
+  .timer-metrics { flex:none; gap:0; transition:opacity 160ms ease; }
+  .core-stats { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+  .core-stat { padding:8px 6px; border-radius:13px; text-align:center; box-shadow:none; }
+  .core-stat dt { justify-content:center; font-size:0.6875rem; }
+  .core-stat .average-hint { display:none; }
+  .core-stat dd { font-size:1.0625rem; margin-top:3px; text-align:center; }
+  .core-stat .average-trigger { justify-content:center; min-height:28px; }
+  .global-best,.timer-sidebar { display:none; }
+
+  /* 专注模式：观察 / 准备 / 计时中自动淡出全部非计时元素 */
+  #app[data-focus="true"] .topbar,
+  #app[data-focus="true"] .scramble,
+  #app[data-focus="true"] .timer-controls,
+  #app[data-focus="true"] .timer-metrics,
+  #app[data-focus="true"] .view-nav,
+  #app[data-focus="true"] .undo-notice { opacity:0; pointer-events:none; }
+
+  /* 复盘页移动端优化 */
+  .view-heading { margin:4px 0 10px; flex-wrap:wrap; gap:2px; }
+  .view-heading h2 { font-size:1.1875rem; }
+  .view-heading p { width:100%; font-size:0.75rem; }
+  .review-layout { display:flex; flex-direction:column; gap:12px; }
+  .stats { display:grid; grid-template-columns:minmax(0,1fr); width:100%; gap:12px; padding:14px 14px 6px; box-shadow:none; }
   .stats-scope,.stats-help { grid-column:auto; }
-  .stats-row { grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
-  .stats-row + .stats-row { margin:0; padding:12px 0 0; border:0; border-top:1px solid var(--line-soft); }
-  .stat-label { font-size:0.75rem; }
-  .stat-value { font-size:1.125rem; }
-  .review,.history-wrap { width:100%; min-width:0; }
-  .review-body { padding:0 14px 16px; }
+  .stats-row { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+  .stats-row + .stats-row { margin:0; padding:10px 0 0; border:0; border-top:1px solid var(--line-soft); }
+  .stat-label { font-size:0.72rem; }
+  .stat-value { font-size:1.0625rem; }
+  .review,.history-wrap { width:100%; min-width:0; box-shadow:none; }
+  .review-body { padding:0 14px 14px; }
   .history-wrap { padding:4px 14px 12px; }
   .history-head { padding:8px 14px; gap:8px; }
   .history-bar { gap:10px; }
-  .history-export { padding:0 14px; font-size:0.875rem; }
+  .history-export { padding:0 14px; font-size:0.8125rem; }
   .review-toolbar { gap:8px; }
   .review-legend { gap:8px; }
   .review-metrics { gap:12px 24px; }
   .review-metrics strong { font-size:1.0625rem; }
-  .review-chart { height:236px; }
+  .review-chart { height:220px; }
   .review-picker { flex-wrap:wrap; }
   .review-picker label { flex-basis:100%; }
   .review-selected { font-size:0.75rem; }
-  .history-body { max-height:480px; padding:4px 0 8px; }
+  .history-body { max-height:460px; padding:4px 0 8px; }
   .history-top { gap:4px; }
-  .history-result { font-size:1.1875rem; }
+  .history-result { font-size:1.125rem; }
   .history-id { min-width:28px; }
-  .record-dialog { padding:18px; }
+  .record-dialog { padding:18px; border-radius:20px; }
   .record-result { font-size:clamp(2.25rem,14vw,3.5rem); }
   .record-scramble-actions .small-btn { flex:1 1 110px; }
   .group-delete-actions { justify-content:stretch; }
   .group-delete-actions .small-btn,.group-delete-actions .action-btn { flex:1 1 110px; }
-  .toast { top:auto; bottom:calc(74px + env(safe-area-inset-bottom)); left:50%; right:auto; transform:translateX(-50%); width:max-content; max-width:calc(100vw - 24px); text-align:center; animation:toast-in-mobile 160ms ease-out both; }
+  .toast { top:auto; bottom:calc(70px + env(safe-area-inset-bottom)); left:50%; right:auto; transform:translateX(-50%); width:max-content; max-width:calc(100vw - 28px); text-align:center; animation:toast-in-mobile 160ms ease-out both; }
   .toast.is-leaving { animation:toast-out-mobile 160ms ease-in both; }
 }
 
 @media (max-width:720px) and (max-height:660px) {
-  .toast { top:calc(70px + env(safe-area-inset-top)); bottom:auto; }
+  .scramble { padding:9px 12px 8px; gap:6px 8px; }
+  .scramble-text { font-size:0.9375rem; min-height:2.6rem; }
+  .pad { min-height:140px; padding:8px; }
+  .timer { font-size:clamp(3.25rem,17vw,5rem); }
+  .core-stat { padding:6px 4px; }
+  .toast { top:calc(54px + env(safe-area-inset-top)); bottom:auto; }
 }
 
 @media (max-width:360px) {
-  #app { padding-left:10px; padding-right:10px; }
-  .topbar { padding:6px 10px; gap:6px 8px; }
-  .brand { font-size:1rem; }
-  .brand-symbol { width:20px; }
-  .topbar-right { gap:4px; }
-  .theme-btn { width:44px; padding:0; }
-  .theme-label { display:none; }
-  .switch { gap:4px; }
-  .training select { flex:1 1 220px; min-width:220px; }
-  .scramble-text { min-height:4.6rem; }
-  .core-stat { padding:10px 12px; }
-  .core-stat dd { font-size:1.1875rem; }
-  .stats-row { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
-  .pad { min-height:220px; }
-  .history-head .history-count { font-size:0.75rem; }
+  #app,#app[data-view="timer"] { padding-left:10px; padding-right:10px; }
+  .mobile-group-btn { max-width:42vw; padding:0 10px 0 7px; font-size:0.8125rem; }
+  .scramble-text { font-size:0.9375rem; }
+  .core-stat dd { font-size:0.95rem; }
+  .stats-row { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .history-head .history-count { font-size:0.72rem; }
   .history-bar { gap:8px; }
-  .history-export { padding:0 12px; font-size:0.8125rem; }
+  .history-export { padding:0 12px; font-size:0.78rem; }
 }
 
 @media (max-height:500px) {
-  #app { padding-left:20px; padding-right:20px; padding-bottom:max(24px,env(safe-area-inset-bottom)); }
-  .topbar { position:static; flex-wrap:wrap; min-height:54px; padding:6px 12px; gap:8px 12px; }
+  #app,#app[data-view="timer"] { height:auto; max-height:none; overflow:visible; padding-left:20px; padding-right:20px; padding-bottom:max(24px,env(safe-area-inset-bottom)); }
+  .topbar { position:static; flex-wrap:wrap; min-height:48px; padding:4px 0; gap:8px 12px; }
   .view-nav { position:static; width:auto; border-radius:10px; padding:3px; border:0; box-shadow:none; background:var(--control); }
-  .nav-button { min-height:44px; padding:0 14px; }
+  .nav-button { flex-direction:row; min-height:40px; padding:0 14px; font-size:0.8125rem; }
   .nav-button svg { display:none; }
-  .training { padding:0 0 10px; }
-  .pad { min-height:216px; }
+  .pad { min-height:180px; }
 }
 
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none !important; animation:none !important; scroll-behavior:auto !important; } }
@@ -655,16 +725,18 @@ button:active:not(:disabled) { background:var(--control-active); }
 <body>
 <div id="app" data-view="timer">
   <header class="topbar">
-    <h1 class="brand"><svg class="brand-symbol" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" aria-hidden="true"><path class="cube-top" d="M14 2 25 8.5 14 15 3 8.5Z"/><path class="cube-left" d="M3 8.5 14 15v12L3 20.5Z"/><path class="cube-right" d="m14 15 11-6.5v12L14 27Z"/><path d="m8.5 5.2 11 6.5v12M19.5 5.2l-11 6.5v12M3 14.5 14 21l11-6.5"/></svg><span class="brand-wordmark">Star<span>Cube</span></span><span class="brand-sub">三阶魔方计时</span></h1>
+    <h1 class="brand"><svg class="brand-symbol" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round" aria-hidden="true"><path class="cube-top" stroke="none" d="M16 2.4 28 9.2 16 16 4 9.2Z"/><path class="cube-left" stroke="none" d="M4 9.2 16 16v13.6L4 22.8Z"/><path class="cube-right" stroke="none" d="M16 16 28 9.2v13.6L16 29.6Z"/><path class="cube-grid" stroke-width=".65" stroke-linecap="round" d="M12 4.67 24 11.47M8 6.93 20 13.73M20 4.67 8 11.47M24 6.93 12 13.73M8 11.47v13.6M12 13.73v13.6M4 13.73 16 20.53M4 18.27 16 25.07M20 13.73v13.6M24 11.47v13.6M16 20.53 28 13.73M16 25.07 28 18.27"/><path d="M16 2.4 28 9.2v13.6L16 29.6 4 22.8V9.2ZM16 16 4 9.2M16 16l12-6.8M16 16v13.6"/><path class="cube-star-bg" stroke="none" d="M16 11.2Q16.3 15 20.6 16 16.3 17 16 20.8 15.7 17 11.4 16 15.7 15 16 11.2Z"/><path class="cube-star" stroke="none" d="M16 12.2Q16.25 15.25 19.6 16 16.25 16.75 16 19.8 15.75 16.75 12.4 16 15.75 15.25 16 12.2Z"/></svg><span class="brand-wordmark">Star<span>Cube</span></span><span class="brand-sub">三阶魔方计时</span></h1>
+    <button id="mobileGroupBtn" class="mobile-group-btn" type="button" aria-label="切换或管理训练分组"><svg class="brand-symbol" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round" aria-hidden="true"><path class="cube-top" stroke="none" d="M16 2.4 28 9.2 16 16 4 9.2Z"/><path class="cube-left" stroke="none" d="M4 9.2 16 16v13.6L4 22.8Z"/><path class="cube-right" stroke="none" d="M16 16 28 9.2v13.6L16 29.6Z"/><path class="cube-grid" stroke-width=".65" stroke-linecap="round" d="M12 4.67 24 11.47M8 6.93 20 13.73M20 4.67 8 11.47M24 6.93 12 13.73M8 11.47v13.6M12 13.73v13.6M4 13.73 16 20.53M4 18.27 16 25.07M20 13.73v13.6M24 11.47v13.6M16 20.53 28 13.73M16 25.07 28 18.27"/><path d="M16 2.4 28 9.2v13.6L16 29.6 4 22.8V9.2ZM16 16 4 9.2M16 16l12-6.8M16 16v13.6"/><path class="cube-star-bg" stroke="none" d="M16 11.2Q16.3 15 20.6 16 16.3 17 16 20.8 15.7 17 11.4 16 15.7 15 16 11.2Z"/><path class="cube-star" stroke="none" d="M16 12.2Q16.25 15.25 19.6 16 16.25 16.75 16 19.8 15.75 16.75 12.4 16 15.75 15.25 16 12.2Z"/></svg><span id="mobileGroupName" class="mobile-group-name">默认训练</span><svg class="mobile-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
     <nav class="view-nav" aria-label="主视图">
-      <button id="navTimer" class="nav-button" type="button" aria-pressed="true" aria-controls="timerView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="14" r="8"/><path d="M9 2h6M12 2v4M12 10v5l3 2"/></svg>计时</button>
-      <button id="navReview" class="nav-button" type="button" aria-pressed="false" aria-controls="reviewView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 3v17h17M7 15l4-5 4 2 6-7"/></svg>复盘</button>
+      <button id="navTimer" class="nav-button" type="button" aria-pressed="true" aria-controls="timerView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="14" r="8"/><path d="M9 2h6M12 2v4M12 10v5l3 2"/></svg>计时</button>
+      <button id="navReview" class="nav-button" type="button" aria-pressed="false" aria-controls="reviewView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 3v17h17M7 15l4-5 4 2 6-7"/></svg>复盘</button>
     </nav>
-    <div class="topbar-right"><button id="themeToggle" class="theme-btn" type="button" data-theme="light" aria-label="切换主题，当前：纯净纸白，点击切换为复古暖纸" title="当前主题：纯净纸白（点击切换为复古暖纸）"><svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg><svg class="theme-icon theme-icon-warm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v18H7.5A2.5 2.5 0 0 0 5 22V4.5Z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19"/><path d="M9.5 7h5.5M9.5 11h4"/></svg><svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a6.7 6.7 0 0 0 11 11Z"/></svg><span id="themeLabel" class="theme-label">纸白</span></button><button id="inspectionToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="15 秒观察"><span class="switch-label">观察</span><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button><span id="status" class="status" role="status">初始化中…</span></div>
+    <div class="topbar-right"><button id="inspectionToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="15 秒观察"><span class="switch-label">观察</span><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button><button id="themeToggle" class="theme-btn" type="button" data-theme="light" aria-label="切换主题，当前：纯净纸白，点击切换为复古暖纸" title="当前主题：纯净纸白（点击切换为复古暖纸）"><svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg><svg class="theme-icon theme-icon-warm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v18H7.5A2.5 2.5 0 0 0 5 22V4.5Z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19"/><path d="M9.5 7h5.5M9.5 11h4"/></svg><svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a6.7 6.7 0 0 0 11 11Z"/></svg><span id="themeLabel" class="theme-label">纸白</span></button><button id="mobileSettingsBtn" class="mobile-icon-btn" type="button" aria-label="练习设置与数据备份"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></button><span id="status" class="status" role="status">初始化中…</span></div>
   </header>
   <div id="storageBanner" class="banner" hidden>成绩不会被保存：浏览器存储不可用</div>
   <main>
-    <section class="training" aria-label="训练分组">
+    <section id="trainingPanel" class="training" aria-label="训练分组">
+      <div class="sheet-head"><h3>训练分组</h3><button id="groupSheetClose" class="small-btn" type="button">完成</button></div>
       <div class="training-bar">
         <label for="groupSelect">训练</label>
         <select id="groupSelect" aria-label="当前训练"></select>
@@ -681,19 +753,19 @@ button:active:not(:disabled) { background:var(--control-active); }
       </form>
     </section>
 
-    <aside id="undoNotice" class="undo-notice" aria-label="删除与撤销" hidden><p id="undoMessage" role="status"></p><button id="undoDelete" class="small-btn" type="button">撤销删除</button></aside>
+    <aside id="undoNotice" class="undo-notice" aria-label="删除与撤销" hidden><p id="undoMessage" role="status"></p><button id="undoDelete" class="small-btn" type="button">撤销</button><button id="undoDismiss" class="undo-dismiss" type="button" aria-label="关闭提示">×</button></aside>
     <section id="timerView" aria-label="计时">
       <div class="timer-layout"><div class="timer-stage">
     <section class="scramble" aria-label="打乱">
       <div class="scramble-main">
-        <div class="scramble-top"><div class="label">3 × 3 <span class="label-divider" aria-hidden="true">/</span> 随机打乱</div><div class="scramble-actions"><button id="copyScramble" class="small-btn" type="button" title="复制当前打乱公式">复制打乱</button><button id="newScramble" class="small-btn" type="button" title="换一条打乱（N）">换打乱<kbd>N</kbd></button></div></div>
+        <div class="scramble-top"><div class="label">3 × 3 <span class="label-divider" aria-hidden="true">/</span> 随机打乱</div><div class="scramble-actions"><button id="copyScramble" class="small-btn" type="button" title="复制当前打乱公式" aria-label="复制打乱"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="btn-text">复制打乱</span></button><button id="newScramble" class="small-btn" type="button" title="换一条打乱（N）" aria-label="换一条打乱"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg><span class="btn-text">换打乱</span><kbd>N</kbd></button></div></div>
         <div id="scrambleText" class="scramble-text is-message">打乱引擎初始化中…</div>
-        <div class="scramble-hint">
+        <div id="scrambleHintWrap" class="scramble-hint">
           <span id="scrambleHint"></span>
           <button id="retryBtn" class="retry" type="button" hidden>重试</button>
         </div>
       </div>
-      <div class="net-wrap"><div id="net" class="net" aria-hidden="true"></div></div>
+      <button id="netPreviewTrigger" class="net-wrap" type="button" title="点击放大查看魔方展开图" aria-label="点击放大查看魔方展开图"><div id="net" class="net" aria-hidden="true"></div></button>
     </section>
 
     <div class="timer-console">
@@ -808,7 +880,8 @@ button:active:not(:disabled) { background:var(--control-active); }
 
       </div>
     </section>
-    <div class="footer-dock">
+    <div id="settingsPanel" class="footer-dock">
+      <div class="sheet-head"><h3>练习设置与备份</h3><button id="settingsSheetClose" class="small-btn" type="button">完成</button></div>
       <section class="practice-tools" aria-label="观察提示音设置">
         <button id="soundToggle" class="switch" type="button" role="switch" aria-checked="false" aria-describedby="soundFeedback"><span class="switch-label">观察提示音</span><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button>
         <button id="soundPreview" class="small-btn" type="button" aria-describedby="soundFeedback">试听</button>
@@ -826,7 +899,15 @@ button:active:not(:disabled) { background:var(--control-active); }
   </main>
 </div>
 
+<div id="mobileSheetBackdrop" class="mobile-sheet-backdrop" hidden></div>
 <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+
+<dialog id="netPreviewDialog" class="record-dialog net-preview-dialog" aria-labelledby="netPreviewTitle">
+  <div class="record-heading"><h2 id="netPreviewTitle">魔方打乱展开图</h2><button id="netPreviewClose" class="small-btn" type="button" autofocus>关闭</button></div>
+  <div class="net-preview-stage"><div id="netPreviewCanvas" class="net" aria-hidden="true"></div></div>
+  <p class="net-preview-orient">标准朝向：白顶（U）· 绿前（F）</p>
+  <p id="netPreviewScramble" class="net-preview-scramble"></p>
+</dialog>
 
 <dialog id="recordDialog" class="record-dialog" aria-labelledby="recordTitle" aria-describedby="recordGroup">
   <div class="record-heading"><h2 id="recordTitle">成绩详情</h2><button id="recordClose" class="small-btn" type="button" autofocus>关闭</button></div>
@@ -2365,16 +2446,25 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     corePb: $('corePb'), coreCount: $('coreCount'), coreGlobalPb: $('coreGlobalPb'),
     recentList: $('recentList'), recentEmpty: $('recentEmpty'),
     themeToggle: $('themeToggle'), themeLabel: $('themeLabel'),
+    mobileGroupBtn: $('mobileGroupBtn'), mobileGroupName: $('mobileGroupName'), mobileSettingsBtn: $('mobileSettingsBtn'),
+    trainingPanel: $('trainingPanel'), settingsPanel: $('settingsPanel'),
+    groupSheetClose: $('groupSheetClose'), settingsSheetClose: $('settingsSheetClose'), mobileSheetBackdrop: $('mobileSheetBackdrop'),
     metaColorScheme: $('metaColorScheme'), metaThemeColor: $('metaThemeColor'),
     toast: $('toast'),
     status: $('status'),
     switchBtn: $('inspectionToggle'),
     storageBanner: $('storageBanner'),
     scrambleText: $('scrambleText'),
+    scrambleHintWrap: $('scrambleHintWrap'),
     scrambleHint: $('scrambleHint'),
     retryBtn: $('retryBtn'),
     copyScrambleBtn: $('copyScramble'),
     newScrambleBtn: $('newScramble'),
+    netPreviewTrigger: $('netPreviewTrigger'),
+    netPreviewDialog: $('netPreviewDialog'),
+    netPreviewClose: $('netPreviewClose'),
+    netPreviewCanvas: $('netPreviewCanvas'),
+    netPreviewScramble: $('netPreviewScramble'),
     exportBtn: $('exportData'),
     importBtn: $('importData'),
     importFile: $('importFile'),
@@ -2386,7 +2476,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     averageResult: $('averageResult'), averageFormula: $('averageFormula'), averageRows: $('averageRows'),
     corePbDetail: $('corePbDetail'), pbDetail: $('pbDetail'), bestAo5Detail: $('bestAo5Detail'),
     coreGlobalPbDetail: $('coreGlobalPbDetail'), globalPbDetail: $('globalPbDetail'),
-    undoNotice: $('undoNotice'), undoMessage: $('undoMessage'), undoDelete: $('undoDelete'),
+    undoNotice: $('undoNotice'), undoMessage: $('undoMessage'), undoDelete: $('undoDelete'), undoDismiss: $('undoDismiss'),
     recordUndoNotice: $('recordUndoNotice'), recordUndoMessage: $('recordUndoMessage'), recordUndo: $('recordUndo'),
     averageUndoNotice: $('averageUndoNotice'), averageUndoMessage: $('averageUndoMessage'), averageUndo: $('averageUndo'),
     historyMore: $('historyMore'),
@@ -2462,6 +2552,8 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   var editingGroup = null;
   var deletingGroupId = null;
   var deleteGroupFocus = null;
+  var activeMobileSheet = null;
+  var netPreviewOpen = false;
   var groupsVersion = -1;
   var settings = { inspection: true, inspectionSound: false, reviewRange: '50', theme: 'light' };
   var toastLeaveTimer = 0;
@@ -2766,6 +2858,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
 
   function switchView(view) {
     if (!canChangeGroup() || editingGroup !== null || (view !== 'timer' && view !== 'review')) return;
+    closeMobileSheet();
     if (currentView !== view) {
       currentView = view;
       if (!undoDeletions.length) undoMessage = '';
@@ -2953,16 +3046,20 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     el.scrambleText.textContent = text;
     el.scrambleText.classList.toggle('is-message', message);
     el.scrambleHint.textContent = hint;
+    if (el.scrambleHintWrap) {
+      el.scrambleHintWrap.dataset.important = String(showRetry || !!(currentScramble && currentScramble.replayed) || engineDead);
+    }
     el.retryBtn.hidden = !showRetry;
     el.copyScrambleBtn.disabled = !currentCopyableScramble() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
     el.newScrambleBtn.disabled = !!press || !!activeScramble || !engineReady || engineDead || generating ||
       (state !== 'IDLE' && state !== 'STOPPED');
+    if (el.netPreviewTrigger) {
+      el.netPreviewTrigger.disabled = !facelets || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
+    }
     renderNet(facelets);
   }
 
-  function renderNet(facelets) {
-    if (facelets === netKey) return;
-    netKey = facelets;
+  function buildNetSvg(facelets) {
     var svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('viewBox', '0 0 ' + NET_W + ' ' + NET_H);
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
@@ -2989,7 +3086,52 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
         svg.appendChild(rect);
       }
     }
-    el.net.replaceChildren(svg);
+    return svg;
+  }
+
+  function renderNet(facelets) {
+    if (facelets === netKey) return;
+    netKey = facelets;
+    el.net.replaceChildren(buildNetSvg(facelets));
+  }
+
+  function openMobileSheet(kind) {
+    if (kind !== 'groups' && kind !== 'settings') return;
+    if (detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
+    activeMobileSheet = kind;
+    if (el.trainingPanel) el.trainingPanel.classList.toggle('is-sheet-open', kind === 'groups');
+    if (el.settingsPanel) el.settingsPanel.classList.toggle('is-sheet-open', kind === 'settings');
+    if (el.mobileSheetBackdrop) el.mobileSheetBackdrop.hidden = false;
+  }
+
+  function closeMobileSheet() {
+    if (!activeMobileSheet) return;
+    activeMobileSheet = null;
+    if (el.trainingPanel) el.trainingPanel.classList.remove('is-sheet-open');
+    if (el.settingsPanel) el.settingsPanel.classList.remove('is-sheet-open');
+    if (el.mobileSheetBackdrop) el.mobileSheetBackdrop.hidden = true;
+    if (editingGroup !== null) closeGroupEditor();
+  }
+
+  function openNetPreview() {
+    if (!el.netPreviewDialog || !currentScramble || !currentScramble.facelets) return;
+    if (detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
+    closeMobileSheet();
+    netPreviewOpen = true;
+    if (el.netPreviewCanvas) el.netPreviewCanvas.replaceChildren(buildNetSvg(currentScramble.facelets));
+    if (el.netPreviewScramble) el.netPreviewScramble.textContent = currentScramble.algorithm || '';
+    if (!el.netPreviewDialog.open && typeof el.netPreviewDialog.showModal === 'function') {
+      el.netPreviewDialog.showModal();
+    }
+    if (el.netPreviewClose && typeof el.netPreviewClose.focus === 'function') {
+      el.netPreviewClose.focus({ preventScroll: true });
+    }
+  }
+
+  function closeNetPreview() {
+    if (!netPreviewOpen && (!el.netPreviewDialog || !el.netPreviewDialog.open)) return;
+    netPreviewOpen = false;
+    if (el.netPreviewDialog && el.netPreviewDialog.open) el.netPreviewDialog.close();
   }
 
   function inspectionColor(elapsed, holding) {
@@ -3032,20 +3174,37 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     el.subStatus.textContent = '准备好了 · 松开起表' + (penalty === 'dnf' ? ' · DNF' : penalty === '+2' ? ' · +2' : '');
   }
 
+  function isTouchOnlyUi() {
+    var nativeBridge = getNativeBridge();
+    if (nativeBridge) return true;
+    return typeof window !== 'undefined' && typeof window.innerWidth === 'number' && window.innerWidth <= 720;
+  }
+
+  function triggerNativeHaptic(kind) {
+    var nativeBridge = getNativeBridge();
+    if (nativeBridge && typeof nativeBridge.haptic === 'function') {
+      try { nativeBridge.haptic(kind); } catch (err) {}
+    }
+  }
+
   function idleHintText() {
+    var touchOnly = isTouchOnlyUi();
     if (state === 'BOOT') return '打乱引擎初始化中…';
     if (engineDead) return '打乱不可用，仍可计时';
     if (generating) return (state === 'STOPPED' ? (memoryMode ? '已留在本页 · ' : '已保存 · ') : '') + '下一条打乱生成中…';
-    if (genFailed) return '打乱生成失败，按 N 或点击重试';
+    if (genFailed) return touchOnly ? '打乱生成失败，点击重试' : '打乱生成失败，按 N 或点击重试';
     if (state === 'STOPPED') {
-      return (memoryMode ? '已留在本页 · ' : '已保存 · ') + (settings.inspection ? '空格 / 轻点进入观察' : '按住 0.3 秒开始下一次');
+      return (memoryMode ? '已留在本页 · ' : '已保存 · ') + (settings.inspection ? (touchOnly ? '轻点进入观察' : '空格 / 轻点进入观察') : '按住 0.3 秒开始下一次');
     }
-    return settings.inspection ? '空格 / 轻点进入 15 秒观察' : '按住 0.3 秒起表';
+    return settings.inspection ? (touchOnly ? '轻点进入 15 秒观察' : '空格 / 轻点进入 15 秒观察') : '按住 0.3 秒起表';
   }
 
   function renderTimerAndPad() {
     var latest = latestRecord();
     var holding = !!press && !press.suppressed && !press.ready;
+    var focusing = holding || state === 'INSPECTING' || state === 'READY' || state === 'RUNNING';
+    if (el.app && el.app.dataset) el.app.dataset.focus = focusing ? 'true' : 'false';
+    if (focusing && activeMobileSheet) closeMobileSheet();
     el.pad.dataset.state = holding && state !== 'INSPECTING' ? 'holding' : state.toLowerCase();
     if (state !== 'INSPECTING') el.pad.dataset.penalty = 'ok';
     el.cancelBtn.hidden = !(settings.inspection && (state === 'INSPECTING' || state === 'READY'));
@@ -3053,7 +3212,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
 
     if (state === 'RUNNING') {
       setTimer(Stats.formatMs(performance.now() - runStart), C.white);
-      el.subStatus.textContent = '空格 / 轻点停表';
+      el.subStatus.textContent = isTouchOnlyUi() ? '轻点任意处停表' : '空格 / 轻点停表';
       return;
     }
     if (state === 'READY') {
@@ -3298,6 +3457,8 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     });
     el.switchBtn.disabled = !canToggle;
     if (el.themeToggle) el.themeToggle.disabled = detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
+    if (el.mobileGroupBtn) el.mobileGroupBtn.disabled = !canToggle;
+    if (el.mobileSettingsBtn) el.mobileSettingsBtn.disabled = detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
     el.soundToggle.disabled = !canToggle;
     el.soundToggle.setAttribute('aria-checked', String(settings.inspectionSound));
     el.soundPreview.disabled = !canToggle;
@@ -3323,6 +3484,9 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   function renderBackup() {
     var status = backup.status();
     el.backupReminder.hidden = !status.due;
+    if (el.mobileSettingsBtn && el.mobileSettingsBtn.dataset) {
+      el.mobileSettingsBtn.dataset.badge = status.due ? 'true' : 'false';
+    }
     // Keep the reminder in its place during a solve; only its actions become unavailable.
     el.backupExport.disabled = el.exportBtn.disabled || detailsOpen() || editingGroup !== null;
     el.backupLater.disabled = !canChangeGroup() || editingGroup !== null;
@@ -3493,6 +3657,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     var selected = groups.find(function (group) { return group.id === currentGroupId; });
     el.groupSelect.title = selected ? selected.name : '';
     el.timerGroupName.textContent = selected ? selected.name : '';
+    if (el.mobileGroupName) el.mobileGroupName.textContent = selected ? selected.name : '默认训练';
     var disabled = !canChangeGroup() || editingGroup !== null;
     var isDefault = currentGroupId === window.StarCubeStore.defaultGroupId;
     el.groupSelect.disabled = disabled;
@@ -3514,6 +3679,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     historyLimit = 50;
     reviewSelectedUid = null;
     el.historyBody.scrollTop = 0;
+    if (activeMobileSheet === 'groups') closeMobileSheet();
     dataChanged();
     render();
   }
@@ -3571,6 +3737,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   }
 
   function openGroupDeleteDialog(group, count) {
+    closeMobileSheet();
     deletingGroupId = group.id;
     deleteGroupFocus = el.groupDelete;
     el.groupDeleteTitle.textContent = '删除训练「' + group.name + '」';
@@ -3947,6 +4114,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       press.ready = true;
       readyFrom = state;
       state = 'READY';
+      triggerNativeHaptic('ready');
       render();
     }, HOLD_MS);
   }
@@ -4098,6 +4266,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     };
     saveRecord(record);
     state = 'STOPPED';
+    triggerNativeHaptic('stop');
     runStart = 0;
     runPenalty = 'ok';
     usedScramble = '';
@@ -4395,6 +4564,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     }
     undoDeletions.push(entry);
     undoMessage = (entry.memoryOnly ? '仅在本页删除「' : '已删除「') + entry.groupName + '」第 ' + entry.number + ' 次 · ' + Stats.formatResult(record) + '。本页可撤销。';
+    if (!groupRecords(currentGroupId).length && state === 'STOPPED') state = 'IDLE';
     if (selectedRecordUid === uid) closeRecord(); else render();
     focusUndo();
   }
@@ -4979,6 +5149,28 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       var record = allRecords.find(function (item) { return item.uid === selectedRecordUid; });
       if (record) openAverage(5, el.recordAo5Detail, record.uid, record.groupId);
     });
+    if (el.mobileGroupBtn) el.mobileGroupBtn.addEventListener('click', function () {
+      if (activeMobileSheet === 'groups') closeMobileSheet(); else openMobileSheet('groups');
+    });
+    if (el.mobileSettingsBtn) el.mobileSettingsBtn.addEventListener('click', function () {
+      if (activeMobileSheet === 'settings') closeMobileSheet(); else openMobileSheet('settings');
+    });
+    if (el.groupSheetClose) el.groupSheetClose.addEventListener('click', closeMobileSheet);
+    if (el.settingsSheetClose) el.settingsSheetClose.addEventListener('click', closeMobileSheet);
+    if (el.mobileSheetBackdrop) el.mobileSheetBackdrop.addEventListener('click', closeMobileSheet);
+    if (el.undoDismiss) el.undoDismiss.addEventListener('click', function () {
+      undoMessage = '';
+      renderUndo();
+    });
+    if (el.netPreviewTrigger) el.netPreviewTrigger.addEventListener('click', openNetPreview);
+    if (el.netPreviewClose) el.netPreviewClose.addEventListener('click', closeNetPreview);
+    if (el.netPreviewDialog) {
+      el.netPreviewDialog.addEventListener('cancel', function (event) { event.preventDefault(); closeNetPreview(); });
+      el.netPreviewDialog.addEventListener('close', function () { if (!el.netPreviewDialog.open && netPreviewOpen) closeNetPreview(); });
+      el.netPreviewDialog.addEventListener('click', function (event) {
+        if (event.target === el.netPreviewDialog) closeNetPreview();
+      });
+    }
     window.addEventListener('storage', function (event) {
       var key = event.key;
       if (key === SETTINGS_KEY) {
@@ -5001,6 +5193,10 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   }
 
   function handleNativeBack() {
+    if (netPreviewOpen || (el.netPreviewDialog && el.netPreviewDialog.open)) {
+      closeNetPreview();
+      return true;
+    }
     if (deletingGroupId !== null) {
       closeGroupDeleteDialog();
       return true;
@@ -5011,6 +5207,10 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     }
     if (editingGroup !== null) {
       closeGroupEditor();
+      return true;
+    }
+    if (activeMobileSheet) {
+      closeMobileSheet();
       return true;
     }
     if (state === 'INSPECTING') {
@@ -5042,6 +5242,10 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   }
   render();
   bootSolver();
+  var readyBridge = getNativeBridge();
+  if (readyBridge && typeof readyBridge.onReady === 'function') {
+    try { readyBridge.onReady(); } catch (err) {}
+  }
 })();
 
 </script>

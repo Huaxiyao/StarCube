@@ -35,9 +35,9 @@ function test(name, fn) {
   }
 }
 
-test('android-bridge.js bridges exportFile promises, theme sync, json accept and double-back exit', async () => {
+test('android-bridge.js bridges exportFile promises, theme sync, haptics, splash ready, json accept and double-back exit', async () => {
   let now = 10000;
-  const calls = { themes: [], exports: [], toasts: [], exits: 0 };
+  const calls = { themes: [], exports: [], toasts: [], exits: 0, haptics: [], ready: 0 };
   const attrs = {};
   const importInput = {
     setAttribute(k, v) { attrs[k] = String(v); },
@@ -51,6 +51,8 @@ test('android-bridge.js bridges exportFile promises, theme sync, json accept and
   const appToasts = [];
   const window = {
     StarCubeAndroid: {
+      onAppReady() { calls.ready++; },
+      haptic(kind) { calls.haptics.push(kind); },
       setSystemTheme(color, isDark) { calls.themes.push({ color, isDark }); },
       exportFile(reqId, filename, mimeType, content) { calls.exports.push({ reqId, filename, mimeType, content }); },
       showToast(msg) { calls.toasts.push(msg); },
@@ -74,8 +76,11 @@ test('android-bridge.js bridges exportFile promises, theme sync, json accept and
     filename: 'android-bridge.js'
   });
 
-  // 初始主题已同步且 importFile accept 已放宽
+  // 初始主题已同步、启动页就绪已通知、importFile accept 已放宽、震动桥接正常
   assert.deepEqual(calls.themes, [{ color: '#efe6d5', isDark: false }]);
+  assert.equal(calls.ready, 1);
+  window.StarCubeNative.haptic('ready');
+  assert.deepEqual(calls.haptics, ['ready']);
   assert.match(importInput.getAttribute('accept'), /application\/octet-stream/);
 
   // 原生导出 Promise 配对回调
@@ -131,9 +136,11 @@ test('configure-android.cjs patches MainActivity, adaptive icons, manifest, vers
     fs.mkdirSync(path.join(appMain, 'java', 'com', 'starcube', 'timer'), { recursive: true });
     fs.mkdirSync(path.join(appMain, 'res', 'drawable-v24'), { recursive: true });
     fs.mkdirSync(path.join(appMain, 'res', 'mipmap-hdpi'), { recursive: true });
+    fs.mkdirSync(path.join(appMain, 'res', 'values'), { recursive: true });
     fs.writeFileSync(path.join(appMain, 'java', 'com', 'starcube', 'timer', 'MainActivity.java'), 'package com.starcube.timer;\npublic class MainActivity {}\n');
     fs.writeFileSync(path.join(appMain, 'res', 'drawable-v24', 'ic_launcher_foreground.xml'), '<vector/>');
     fs.writeFileSync(path.join(appMain, 'res', 'mipmap-hdpi', 'ic_launcher_foreground.png'), 'stub');
+    fs.writeFileSync(path.join(appMain, 'res', 'values', 'styles.xml'), '<resources><style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen"><item name="android:background">@drawable/splash</item></style></resources>');
     fs.writeFileSync(path.join(appMain, 'AndroidManifest.xml'), '<manifest><application><activity android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation" /></application></manifest>');
     fs.writeFileSync(path.join(tempMobile, 'android', 'app', 'build.gradle'), [
       'android {',
@@ -165,7 +172,15 @@ test('configure-android.cjs patches MainActivity, adaptive icons, manifest, vers
     assert.equal(fs.existsSync(path.join(appMain, 'res', 'drawable-v24', 'ic_launcher_foreground.xml')), false);
     assert.equal(fs.existsSync(path.join(appMain, 'res', 'mipmap-hdpi', 'ic_launcher_foreground.png')), false);
     assert.ok(fs.existsSync(path.join(appMain, 'res', 'drawable', 'ic_launcher_foreground.xml')));
+    assert.ok(fs.existsSync(path.join(appMain, 'res', 'drawable', 'ic_launcher_background.xml')));
+    assert.ok(fs.existsSync(path.join(appMain, 'res', 'drawable', 'ic_splash_mark.xml')));
+    assert.ok(fs.existsSync(path.join(appMain, 'res', 'drawable', 'launch_screen_bg.xml')));
     assert.ok(fs.existsSync(path.join(appMain, 'res', 'mipmap-anydpi-v26', 'ic_launcher.xml')));
+
+    const styles = fs.readFileSync(path.join(appMain, 'res', 'values', 'styles.xml'), 'utf8');
+    assert.match(styles, /@drawable\/launch_screen_bg/);
+    assert.match(styles, /windowSplashScreenAnimatedIcon/);
+    assert.equal((styles.match(/windowSplashScreenBackground/g) || []).length, 1, 'styles.xml patch must be idempotent');
 
     const manifest = fs.readFileSync(path.join(appMain, 'AndroidManifest.xml'), 'utf8');
     assert.match(manifest, /density\|fontScale/);

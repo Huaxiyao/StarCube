@@ -1863,6 +1863,56 @@ test('Native back handler unwinds modal, view, inspection, and blocks accidental
   assert.equal(h.window.StarCubeApp.handleBack(),false);
 });
 
+test('Mobile focus mode, touch copy, haptics, bottom sheets, net preview, and empty-after-delete reset',()=>{
+  const haptics=[];
+  let readyCalls=0;
+  const h=harness({
+    width:390,
+    inspection:true,
+    nativeBridge:{
+      setTheme(){},
+      onReady(){readyCalls++;},
+      haptic(kind){haptics.push(kind);}
+    }
+  });
+  assert.equal(readyCalls,1,'Initial render notifies native splash to dismiss');
+  assert.doesNotMatch(h.text('subStatus'),/空格/,'Touch-only UI omits desktop spacebar copy');
+  assert.equal(h.document.getElementById('app').dataset.focus,'false');
+
+  // 底部抽屉打开与返回键关闭
+  h.click('mobileGroupBtn');
+  assert.equal(h.document.getElementById('trainingPanel').classList.contains('is-sheet-open'),true);
+  assert.equal(h.document.getElementById('mobileSheetBackdrop').hidden,false);
+  assert.equal(h.window.StarCubeApp.handleBack(),true);
+  assert.equal(h.document.getElementById('trainingPanel').classList.contains('is-sheet-open'),false);
+
+  // 魔方展开图大图预览与返回键关闭
+  h.click('netPreviewTrigger');
+  assert.equal(h.document.getElementById('netPreviewDialog').open,true);
+  assert.equal(h.descendants(h.document.getElementById('netPreviewCanvas')).filter(n=>n.tagName==='RECT').length,54);
+  assert.equal(h.window.StarCubeApp.handleBack(),true);
+  assert.equal(h.document.getElementById('netPreviewDialog').open,false);
+
+  // 观察 + 准备 + 计时触发专注模式与触觉反馈
+  h.key('keydown');h.key('keyup');
+  assert.equal(h.document.getElementById('app').dataset.focus,'true');
+  hold(h);
+  assert.deepEqual(haptics,['ready']);
+  assert.equal(h.document.getElementById('app').dataset.focus,'true');
+  assert.equal(h.text('subStatus'),'轻点任意处停表');
+  h.advance(1200);
+  h.key('keydown');h.key('keyup');
+  assert.deepEqual(haptics,['ready','stop']);
+  assert.equal(h.document.getElementById('app').dataset.focus,'false');
+
+  // 删掉唯一成绩后不再停留于「已保存 / 已停止」矛盾文案
+  h.respond(h.requests().at(-1));
+  h.click('deleteLatest');
+  assert.equal(h.readRecords().length,0);
+  assert.equal(status(h),'就绪');
+  assert.doesNotMatch(h.text('subStatus'),/已保存/);
+});
+
 Promise.all(pendingTests).then(()=>{
   console.log('\n'+passed+' passed, '+failures+' failed');
   if(failures)process.exitCode=1;

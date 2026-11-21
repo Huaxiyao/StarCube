@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="84dp"
+    android:height="84dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <!-- 顶面 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M16,2.4 L28,9.2 L16,16 L4,9.2 Z" />
+    <!-- 左侧面 -->
+    <path
+        android:fillColor="#CBD5E1"
+        android:pathData="M4,9.2 L16,16 L16,29.6 L4,22.8 Z" />
+    <!-- 右侧面 -->
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="M16,16 L28,9.2 L28,22.8 L16,29.6 Z" />
+    <!-- 三阶 3x3 精细网格 -->
+    <path
+        android:strokeColor="#0F172A"
+        android:strokeAlpha="0.34"
+        android:strokeWidth="0.65"
+        android:strokeLineCap="round"
+        android:pathData="M12,4.67 L24,11.47 M8,6.93 L20,13.73 M20,4.67 L8,11.47 M24,6.93 L12,13.73 M8,11.47 L8,25.07 M12,13.73 L12,27.33 M4,13.73 L16,20.53 M4,18.27 L16,25.07 M20,13.73 L20,27.33 M24,11.47 L24,25.07 M16,20.53 L28,13.73 M16,25.07 L28,18.27" />
+    <!-- 外轮廓与主棱线 -->
+    <path
+        android:strokeColor="#0F172A"
+        android:strokeWidth="1.05"
+        android:strokeLineJoin="round"
+        android:pathData="M16,2.4 L28,9.2 L28,22.8 L16,29.6 L4,22.8 L4,9.2 Z M16,16 L4,9.2 M16,16 L28,9.2 M16,16 L16,29.6" />
+    <!-- 中心星核 -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M16,11.2 Q16.3,15.0 20.6,16 Q16.3,17.0 16,20.8 Q15.7,17.0 11.4,16 Q15.7,15.0 16,11.2 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M16,12.2 Q16.25,15.25 19.6,16 Q16.25,16.75 16,19.8 Q15.75,16.75 12.4,16 Q15.75,15.25 16,12.2 Z" />
+</vector>

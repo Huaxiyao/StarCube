@@ -34,7 +34,7 @@ for (const entry of fs.readdirSync(resDir, { withFileTypes: true })) {
   if (fs.existsSync(fgPng)) fs.unlinkSync(fgPng);
 }
 
-// 3. 写入 StarCube 矢量自适应图标资源
+// 3. 写入 StarCube 矢量自适应图标与启动过场资源
 function copyRecursive(srcDir, dstDir) {
   fs.mkdirSync(dstDir, { recursive: true });
   for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
@@ -48,6 +48,20 @@ function copyRecursive(srcDir, dstDir) {
   }
 }
 copyRecursive(path.join(overridesDir, 'res'), resDir);
+
+// 3.5 修补 styles.xml：使用 StarCube 品牌启动背景替代默认黑屏/占位 Splash
+const stylesPath = path.join(resDir, 'values', 'styles.xml');
+if (fs.existsSync(stylesPath)) {
+  let styles = fs.readFileSync(stylesPath, 'utf8');
+  styles = styles.replace(/@drawable\/splash\b/g, '@drawable/launch_screen_bg');
+  if (styles.includes('AppTheme.NoActionBarLaunch') && !styles.includes('windowSplashScreenBackground')) {
+    styles = styles.replace(
+      /(<style\s+name="AppTheme\.NoActionBarLaunch"[^>]*>)/,
+      '$1\n        <item name="android:windowBackground">@drawable/launch_screen_bg</item>\n        <item name="windowSplashScreenBackground">#F3F4F6</item>\n        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_mark</item>'
+    );
+  }
+  fs.writeFileSync(stylesPath, styles, 'utf8');
+}
 
 // 4. 更新 AndroidManifest.xml：确保屏幕旋转不重载 WebView（保留正在进行的计时状态），且不强行依赖相机等无关特性
 const manifestPath = path.join(appMainDir, 'AndroidManifest.xml');

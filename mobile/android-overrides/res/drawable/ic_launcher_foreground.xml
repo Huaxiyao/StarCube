@@ -5,32 +5,42 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <group
-        android:translateX="26"
-        android:translateY="25"
-        android:scaleX="2.0"
-        android:scaleY="2.0">
+        android:translateX="24.4"
+        android:translateY="24.4"
+        android:scaleX="1.85"
+        android:scaleY="1.85">
+        <!-- 顶面：纯净亮白 -->
+        <path
+            android:fillColor="#F8FAFC"
+            android:pathData="M16,2.4 L28,9.2 L16,16 L4,9.2 Z" />
+        <!-- 左侧面：清冷银蓝 -->
+        <path
+            android:fillColor="#94A3B8"
+            android:pathData="M4,9.2 L16,16 L16,29.6 L4,22.8 Z" />
+        <!-- 右侧面：科技亮蓝 -->
+        <path
+            android:fillColor="#3B82F6"
+            android:pathData="M16,16 L28,9.2 L28,22.8 L16,29.6 Z" />
+        <!-- 三阶 3x3 精细网格 -->
+        <path
+            android:strokeColor="#0B1222"
+            android:strokeAlpha="0.38"
+            android:strokeWidth="0.65"
+            android:strokeLineCap="round"
+            android:pathData="M12,4.67 L24,11.47 M8,6.93 L20,13.73 M20,4.67 L8,11.47 M24,6.93 L12,13.73 M8,11.47 L8,25.07 M12,13.73 L12,27.33 M4,13.73 L16,20.53 M4,18.27 L16,25.07 M20,13.73 L20,27.33 M24,11.47 L24,25.07 M16,20.53 L28,13.73 M16,25.07 L28,18.27" />
+        <!-- 立方体外轮廓与主棱线 -->
+        <path
+            android:strokeColor="#0B1222"
+            android:strokeWidth="1.05"
+            android:strokeLineJoin="round"
+            android:pathData="M16,2.4 L28,9.2 L28,22.8 L16,29.6 L4,22.8 L4,9.2 Z M16,16 L4,9.2 M16,16 L28,9.2 M16,16 L16,29.6" />
+        <!-- 中心星核底托 -->
+        <path
+            android:fillColor="#0B1222"
+            android:pathData="M16,11.2 Q16.3,15.0 20.6,16 Q16.3,17.0 16,20.8 Q15.7,17.0 11.4,16 Q15.7,15.0 16,11.2 Z" />
+        <!-- 核心四芒星（StarCube 标志） -->
         <path
             android:fillColor="#FFFFFF"
-            android:strokeColor="#0F172A"
-            android:strokeWidth="1.2"
-            android:strokeLineJoin="round"
-            android:pathData="M14,2 L25,8.5 L14,15 L3,8.5 Z" />
-        <path
-            android:fillColor="#CBD5E1"
-            android:strokeColor="#0F172A"
-            android:strokeWidth="1.2"
-            android:strokeLineJoin="round"
-            android:pathData="M3,8.5 L14,15 L14,27 L3,20.5 Z" />
-        <path
-            android:fillColor="#2563EB"
-            android:strokeColor="#0F172A"
-            android:strokeWidth="1.2"
-            android:strokeLineJoin="round"
-            android:pathData="M14,15 L25,8.5 L25,20.5 L14,27 Z" />
-        <path
-            android:strokeColor="#0F172A"
-            android:strokeWidth="1.2"
-            android:strokeLineJoin="round"
-            android:pathData="M8.5,5.2 L19.5,11.7 L19.5,23.7 M19.5,5.2 L8.5,11.7 L8.5,23.7 M3,14.5 L14,21 L25,14.5" />
+            android:pathData="M16,12.2 Q16.25,15.25 19.6,16 Q16.25,16.75 16,19.8 Q15.75,16.75 12.4,16 Q15.75,15.25 16,12.2 Z" />
     </group>
 </vector>

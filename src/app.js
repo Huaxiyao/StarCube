@@ -54,16 +54,25 @@
     corePb: $('corePb'), coreCount: $('coreCount'), coreGlobalPb: $('coreGlobalPb'),
     recentList: $('recentList'), recentEmpty: $('recentEmpty'),
     themeToggle: $('themeToggle'), themeLabel: $('themeLabel'),
+    mobileGroupBtn: $('mobileGroupBtn'), mobileGroupName: $('mobileGroupName'), mobileSettingsBtn: $('mobileSettingsBtn'),
+    trainingPanel: $('trainingPanel'), settingsPanel: $('settingsPanel'),
+    groupSheetClose: $('groupSheetClose'), settingsSheetClose: $('settingsSheetClose'), mobileSheetBackdrop: $('mobileSheetBackdrop'),
     metaColorScheme: $('metaColorScheme'), metaThemeColor: $('metaThemeColor'),
     toast: $('toast'),
     status: $('status'),
     switchBtn: $('inspectionToggle'),
     storageBanner: $('storageBanner'),
     scrambleText: $('scrambleText'),
+    scrambleHintWrap: $('scrambleHintWrap'),
     scrambleHint: $('scrambleHint'),
     retryBtn: $('retryBtn'),
     copyScrambleBtn: $('copyScramble'),
     newScrambleBtn: $('newScramble'),
+    netPreviewTrigger: $('netPreviewTrigger'),
+    netPreviewDialog: $('netPreviewDialog'),
+    netPreviewClose: $('netPreviewClose'),
+    netPreviewCanvas: $('netPreviewCanvas'),
+    netPreviewScramble: $('netPreviewScramble'),
     exportBtn: $('exportData'),
     importBtn: $('importData'),
     importFile: $('importFile'),
@@ -75,7 +84,7 @@
     averageResult: $('averageResult'), averageFormula: $('averageFormula'), averageRows: $('averageRows'),
     corePbDetail: $('corePbDetail'), pbDetail: $('pbDetail'), bestAo5Detail: $('bestAo5Detail'),
     coreGlobalPbDetail: $('coreGlobalPbDetail'), globalPbDetail: $('globalPbDetail'),
-    undoNotice: $('undoNotice'), undoMessage: $('undoMessage'), undoDelete: $('undoDelete'),
+    undoNotice: $('undoNotice'), undoMessage: $('undoMessage'), undoDelete: $('undoDelete'), undoDismiss: $('undoDismiss'),
     recordUndoNotice: $('recordUndoNotice'), recordUndoMessage: $('recordUndoMessage'), recordUndo: $('recordUndo'),
     averageUndoNotice: $('averageUndoNotice'), averageUndoMessage: $('averageUndoMessage'), averageUndo: $('averageUndo'),
     historyMore: $('historyMore'),
@@ -151,6 +160,8 @@
   var editingGroup = null;
   var deletingGroupId = null;
   var deleteGroupFocus = null;
+  var activeMobileSheet = null;
+  var netPreviewOpen = false;
   var groupsVersion = -1;
   var settings = { inspection: true, inspectionSound: false, reviewRange: '50', theme: 'light' };
   var toastLeaveTimer = 0;
@@ -455,6 +466,7 @@
 
   function switchView(view) {
     if (!canChangeGroup() || editingGroup !== null || (view !== 'timer' && view !== 'review')) return;
+    closeMobileSheet();
     if (currentView !== view) {
       currentView = view;
       if (!undoDeletions.length) undoMessage = '';
@@ -642,16 +654,20 @@
     el.scrambleText.textContent = text;
     el.scrambleText.classList.toggle('is-message', message);
     el.scrambleHint.textContent = hint;
+    if (el.scrambleHintWrap) {
+      el.scrambleHintWrap.dataset.important = String(showRetry || !!(currentScramble && currentScramble.replayed) || engineDead);
+    }
     el.retryBtn.hidden = !showRetry;
     el.copyScrambleBtn.disabled = !currentCopyableScramble() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
     el.newScrambleBtn.disabled = !!press || !!activeScramble || !engineReady || engineDead || generating ||
       (state !== 'IDLE' && state !== 'STOPPED');
+    if (el.netPreviewTrigger) {
+      el.netPreviewTrigger.disabled = !facelets || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
+    }
     renderNet(facelets);
   }
 
-  function renderNet(facelets) {
-    if (facelets === netKey) return;
-    netKey = facelets;
+  function buildNetSvg(facelets) {
     var svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('viewBox', '0 0 ' + NET_W + ' ' + NET_H);
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
@@ -678,7 +694,52 @@
         svg.appendChild(rect);
       }
     }
-    el.net.replaceChildren(svg);
+    return svg;
+  }
+
+  function renderNet(facelets) {
+    if (facelets === netKey) return;
+    netKey = facelets;
+    el.net.replaceChildren(buildNetSvg(facelets));
+  }
+
+  function openMobileSheet(kind) {
+    if (kind !== 'groups' && kind !== 'settings') return;
+    if (detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
+    activeMobileSheet = kind;
+    if (el.trainingPanel) el.trainingPanel.classList.toggle('is-sheet-open', kind === 'groups');
+    if (el.settingsPanel) el.settingsPanel.classList.toggle('is-sheet-open', kind === 'settings');
+    if (el.mobileSheetBackdrop) el.mobileSheetBackdrop.hidden = false;
+  }
+
+  function closeMobileSheet() {
+    if (!activeMobileSheet) return;
+    activeMobileSheet = null;
+    if (el.trainingPanel) el.trainingPanel.classList.remove('is-sheet-open');
+    if (el.settingsPanel) el.settingsPanel.classList.remove('is-sheet-open');
+    if (el.mobileSheetBackdrop) el.mobileSheetBackdrop.hidden = true;
+    if (editingGroup !== null) closeGroupEditor();
+  }
+
+  function openNetPreview() {
+    if (!el.netPreviewDialog || !currentScramble || !currentScramble.facelets) return;
+    if (detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
+    closeMobileSheet();
+    netPreviewOpen = true;
+    if (el.netPreviewCanvas) el.netPreviewCanvas.replaceChildren(buildNetSvg(currentScramble.facelets));
+    if (el.netPreviewScramble) el.netPreviewScramble.textContent = currentScramble.algorithm || '';
+    if (!el.netPreviewDialog.open && typeof el.netPreviewDialog.showModal === 'function') {
+      el.netPreviewDialog.showModal();
+    }
+    if (el.netPreviewClose && typeof el.netPreviewClose.focus === 'function') {
+      el.netPreviewClose.focus({ preventScroll: true });
+    }
+  }
+
+  function closeNetPreview() {
+    if (!netPreviewOpen && (!el.netPreviewDialog || !el.netPreviewDialog.open)) return;
+    netPreviewOpen = false;
+    if (el.netPreviewDialog && el.netPreviewDialog.open) el.netPreviewDialog.close();
   }
 
   function inspectionColor(elapsed, holding) {
@@ -721,20 +782,37 @@
     el.subStatus.textContent = '准备好了 · 松开起表' + (penalty === 'dnf' ? ' · DNF' : penalty === '+2' ? ' · +2' : '');
   }
 
+  function isTouchOnlyUi() {
+    var nativeBridge = getNativeBridge();
+    if (nativeBridge) return true;
+    return typeof window !== 'undefined' && typeof window.innerWidth === 'number' && window.innerWidth <= 720;
+  }
+
+  function triggerNativeHaptic(kind) {
+    var nativeBridge = getNativeBridge();
+    if (nativeBridge && typeof nativeBridge.haptic === 'function') {
+      try { nativeBridge.haptic(kind); } catch (err) {}
+    }
+  }
+
   function idleHintText() {
+    var touchOnly = isTouchOnlyUi();
     if (state === 'BOOT') return '打乱引擎初始化中…';
     if (engineDead) return '打乱不可用，仍可计时';
     if (generating) return (state === 'STOPPED' ? (memoryMode ? '已留在本页 · ' : '已保存 · ') : '') + '下一条打乱生成中…';
-    if (genFailed) return '打乱生成失败，按 N 或点击重试';
+    if (genFailed) return touchOnly ? '打乱生成失败，点击重试' : '打乱生成失败，按 N 或点击重试';
     if (state === 'STOPPED') {
-      return (memoryMode ? '已留在本页 · ' : '已保存 · ') + (settings.inspection ? '空格 / 轻点进入观察' : '按住 0.3 秒开始下一次');
+      return (memoryMode ? '已留在本页 · ' : '已保存 · ') + (settings.inspection ? (touchOnly ? '轻点进入观察' : '空格 / 轻点进入观察') : '按住 0.3 秒开始下一次');
     }
-    return settings.inspection ? '空格 / 轻点进入 15 秒观察' : '按住 0.3 秒起表';
+    return settings.inspection ? (touchOnly ? '轻点进入 15 秒观察' : '空格 / 轻点进入 15 秒观察') : '按住 0.3 秒起表';
   }
 
   function renderTimerAndPad() {
     var latest = latestRecord();
     var holding = !!press && !press.suppressed && !press.ready;
+    var focusing = holding || state === 'INSPECTING' || state === 'READY' || state === 'RUNNING';
+    if (el.app && el.app.dataset) el.app.dataset.focus = focusing ? 'true' : 'false';
+    if (focusing && activeMobileSheet) closeMobileSheet();
     el.pad.dataset.state = holding && state !== 'INSPECTING' ? 'holding' : state.toLowerCase();
     if (state !== 'INSPECTING') el.pad.dataset.penalty = 'ok';
     el.cancelBtn.hidden = !(settings.inspection && (state === 'INSPECTING' || state === 'READY'));
@@ -742,7 +820,7 @@
 
     if (state === 'RUNNING') {
       setTimer(Stats.formatMs(performance.now() - runStart), C.white);
-      el.subStatus.textContent = '空格 / 轻点停表';
+      el.subStatus.textContent = isTouchOnlyUi() ? '轻点任意处停表' : '空格 / 轻点停表';
       return;
     }
     if (state === 'READY') {
@@ -987,6 +1065,8 @@
     });
     el.switchBtn.disabled = !canToggle;
     if (el.themeToggle) el.themeToggle.disabled = detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
+    if (el.mobileGroupBtn) el.mobileGroupBtn.disabled = !canToggle;
+    if (el.mobileSettingsBtn) el.mobileSettingsBtn.disabled = detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
     el.soundToggle.disabled = !canToggle;
     el.soundToggle.setAttribute('aria-checked', String(settings.inspectionSound));
     el.soundPreview.disabled = !canToggle;
@@ -1012,6 +1092,9 @@
   function renderBackup() {
     var status = backup.status();
     el.backupReminder.hidden = !status.due;
+    if (el.mobileSettingsBtn && el.mobileSettingsBtn.dataset) {
+      el.mobileSettingsBtn.dataset.badge = status.due ? 'true' : 'false';
+    }
     // Keep the reminder in its place during a solve; only its actions become unavailable.
     el.backupExport.disabled = el.exportBtn.disabled || detailsOpen() || editingGroup !== null;
     el.backupLater.disabled = !canChangeGroup() || editingGroup !== null;
@@ -1182,6 +1265,7 @@
     var selected = groups.find(function (group) { return group.id === currentGroupId; });
     el.groupSelect.title = selected ? selected.name : '';
     el.timerGroupName.textContent = selected ? selected.name : '';
+    if (el.mobileGroupName) el.mobileGroupName.textContent = selected ? selected.name : '默认训练';
     var disabled = !canChangeGroup() || editingGroup !== null;
     var isDefault = currentGroupId === window.StarCubeStore.defaultGroupId;
     el.groupSelect.disabled = disabled;
@@ -1203,6 +1287,7 @@
     historyLimit = 50;
     reviewSelectedUid = null;
     el.historyBody.scrollTop = 0;
+    if (activeMobileSheet === 'groups') closeMobileSheet();
     dataChanged();
     render();
   }
@@ -1260,6 +1345,7 @@
   }
 
   function openGroupDeleteDialog(group, count) {
+    closeMobileSheet();
     deletingGroupId = group.id;
     deleteGroupFocus = el.groupDelete;
     el.groupDeleteTitle.textContent = '删除训练「' + group.name + '」';
@@ -1636,6 +1722,7 @@
       press.ready = true;
       readyFrom = state;
       state = 'READY';
+      triggerNativeHaptic('ready');
       render();
     }, HOLD_MS);
   }
@@ -1787,6 +1874,7 @@
     };
     saveRecord(record);
     state = 'STOPPED';
+    triggerNativeHaptic('stop');
     runStart = 0;
     runPenalty = 'ok';
     usedScramble = '';
@@ -2084,6 +2172,7 @@
     }
     undoDeletions.push(entry);
     undoMessage = (entry.memoryOnly ? '仅在本页删除「' : '已删除「') + entry.groupName + '」第 ' + entry.number + ' 次 · ' + Stats.formatResult(record) + '。本页可撤销。';
+    if (!groupRecords(currentGroupId).length && state === 'STOPPED') state = 'IDLE';
     if (selectedRecordUid === uid) closeRecord(); else render();
     focusUndo();
   }
@@ -2668,6 +2757,28 @@
       var record = allRecords.find(function (item) { return item.uid === selectedRecordUid; });
       if (record) openAverage(5, el.recordAo5Detail, record.uid, record.groupId);
     });
+    if (el.mobileGroupBtn) el.mobileGroupBtn.addEventListener('click', function () {
+      if (activeMobileSheet === 'groups') closeMobileSheet(); else openMobileSheet('groups');
+    });
+    if (el.mobileSettingsBtn) el.mobileSettingsBtn.addEventListener('click', function () {
+      if (activeMobileSheet === 'settings') closeMobileSheet(); else openMobileSheet('settings');
+    });
+    if (el.groupSheetClose) el.groupSheetClose.addEventListener('click', closeMobileSheet);
+    if (el.settingsSheetClose) el.settingsSheetClose.addEventListener('click', closeMobileSheet);
+    if (el.mobileSheetBackdrop) el.mobileSheetBackdrop.addEventListener('click', closeMobileSheet);
+    if (el.undoDismiss) el.undoDismiss.addEventListener('click', function () {
+      undoMessage = '';
+      renderUndo();
+    });
+    if (el.netPreviewTrigger) el.netPreviewTrigger.addEventListener('click', openNetPreview);
+    if (el.netPreviewClose) el.netPreviewClose.addEventListener('click', closeNetPreview);
+    if (el.netPreviewDialog) {
+      el.netPreviewDialog.addEventListener('cancel', function (event) { event.preventDefault(); closeNetPreview(); });
+      el.netPreviewDialog.addEventListener('close', function () { if (!el.netPreviewDialog.open && netPreviewOpen) closeNetPreview(); });
+      el.netPreviewDialog.addEventListener('click', function (event) {
+        if (event.target === el.netPreviewDialog) closeNetPreview();
+      });
+    }
     window.addEventListener('storage', function (event) {
       var key = event.key;
       if (key === SETTINGS_KEY) {
@@ -2690,6 +2801,10 @@
   }
 
   function handleNativeBack() {
+    if (netPreviewOpen || (el.netPreviewDialog && el.netPreviewDialog.open)) {
+      closeNetPreview();
+      return true;
+    }
     if (deletingGroupId !== null) {
       closeGroupDeleteDialog();
       return true;
@@ -2700,6 +2815,10 @@
     }
     if (editingGroup !== null) {
       closeGroupEditor();
+      return true;
+    }
+    if (activeMobileSheet) {
+      closeMobileSheet();
       return true;
     }
     if (state === 'INSPECTING') {
@@ -2731,4 +2850,8 @@
   }
   render();
   bootSolver();
+  var readyBridge = getNativeBridge();
+  if (readyBridge && typeof readyBridge.onReady === 'function') {
+    try { readyBridge.onReady(); } catch (err) {}
+  }
 })();

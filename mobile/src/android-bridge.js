@@ -4,9 +4,27 @@
   var pendingExports = Object.create(null);
   var exportSeq = 0;
   var lastBackPressAt = 0;
+  var readyNotified = false;
 
   function getAndroid() {
     return typeof window !== 'undefined' && window.StarCubeAndroid ? window.StarCubeAndroid : null;
+  }
+
+  function notifyReadyOnce() {
+    if (readyNotified) return;
+    readyNotified = true;
+    var android = getAndroid();
+    if (!android || typeof android.onAppReady !== 'function') return;
+    var notify = function () {
+      try { android.onAppReady(); } catch (err) {}
+    };
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(notify);
+      });
+    } else {
+      notify();
+    }
   }
 
   window.__starCubeOnExportResult = function (requestId, status, message) {
@@ -69,6 +87,15 @@
 
   window.StarCubeNative = {
     platform: 'android',
+    onReady: notifyReadyOnce,
+    haptic: function (kind) {
+      var android = getAndroid();
+      if (android && typeof android.haptic === 'function') {
+        try {
+          android.haptic(String(kind || 'tap'));
+        } catch (err) {}
+      }
+    },
     setTheme: function (themeColor, isDark) {
       var android = getAndroid();
       if (android && typeof android.setSystemTheme === 'function') {
@@ -112,9 +139,11 @@
     document.addEventListener('DOMContentLoaded', function () {
       syncCurrentTheme();
       relaxAndroidJsonPicker();
+      notifyReadyOnce();
     });
   } else {
     syncCurrentTheme();
     relaxAndroidJsonPicker();
+    notifyReadyOnce();
   }
 })();
