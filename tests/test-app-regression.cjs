@@ -17,6 +17,13 @@ function record(index, ms = 10000 + index) {
 
 function harness(options = {}) {
   let now = 1000, sequence = 1;
+  let wallEpoch = options.now === undefined ? Date.now() : new Date(options.now).getTime();
+  function HarnessDate(...args) {
+    if (!new.target) return new Date(wallEpoch + now - 1000).toString();
+    return args.length ? new Date(...args) : new Date(wallEpoch + now - 1000);
+  }
+  Object.setPrototypeOf(HarnessDate,Date);HarnessDate.prototype=Date.prototype;
+  HarnessDate.now=()=>wallEpoch + now - 1000;
   const timers = new Map(), rafs = new Map(), nodes = new Map(), allNodes = [], workers = [], warnings = [];
   let writeFailure = null, urlSequence = 0;
   const blobUrls = new Map(), downloads = [];
@@ -38,7 +45,7 @@ function harness(options = {}) {
   function element(tag='div',id='') {
     let content = '', className = '';
     const captured = new Set();
-    const node=Object.assign(eventTarget(),{tagName:tag.toUpperCase(),id,hidden:false,disabled:false,open:false,style:{},dataset:{},children:[],attributes:{},scrollTop:0,textWrites:0,replacements:0,focusCalls:[],
+    const node=Object.assign(eventTarget(),{tagName:tag.toUpperCase(),id,hidden:false,disabled:false,open:false,style:{},dataset:{},children:[],attributes:{},scrollTop:0,textWrites:0,replacements:0,focusCalls:[],scrollIntoViewCalls:[],
       classList:{toggle(){},add(){},remove(){},contains(){return false;}},
       appendChild(child){this.children.push(child);child.parentNode=this;return child;},
       append(...children){for(const child of children)this.appendChild(child);},
@@ -46,7 +53,7 @@ function harness(options = {}) {
       remove(){if(this.parentNode)this.parentNode.children=this.parentNode.children.filter(child=>child!==this);},
       setAttribute(key,value){this.attributes[key]=String(value);},getAttribute(key){return this.attributes[key] ?? null;},
       setPointerCapture(id){captured.add(id);},releasePointerCapture(id){if(captured.delete(id))this.dispatch('lostpointercapture',{pointerId:id});},hasPointerCapture(id){return captured.has(id);},
-      click(){if(this.tagName==='A')downloads.push({name:this.download,blob:blobUrls.get(this.href)});this.dispatch('click',{target:this});},focus(options){this.focusCalls.push(options||null);document.activeElement=this;},querySelectorAll(selector){return descendants(this).filter(child=>selector===child.tagName.toLowerCase());},
+      click(){if(this.tagName==='A')downloads.push({name:this.download,blob:blobUrls.get(this.href)});this.dispatch('click',{target:this});},focus(options){this.focusCalls.push(options||null);document.activeElement=this;},scrollIntoView(options){this.scrollIntoViewCalls.push(options||null);},querySelectorAll(selector){return descendants(this).filter(child=>selector===child.tagName.toLowerCase());},
       closest(selector){const match=/^\[([^\]]+)\]$/.exec(selector);if(match&&this.getAttribute(match[1])!==null)return this;return this.parentNode?.closest(selector)||null;},
       showModal(){this.open=true;},close(){if(this.open){this.open=false;this.dispatch('close',{target:this});}},
       getBoundingClientRect(){return {left:0,top:0,width:this.clientWidth||760,height:236};}});
@@ -71,8 +78,9 @@ function harness(options = {}) {
   const quietConsole={warn(...args){warnings.push(args.join(' '));},error(...args){warnings.push(args.join(' '));},log(){}};
   const context={window,self:window,document,localStorage:storage,Worker,performance:{now:()=>now},console:quietConsole,
     setTimeout(callback,delay){const id=sequence++;timers.set(id,{callback,at:now+(delay||0)});return id;},clearTimeout(id){timers.delete(id);},
+    setInterval(callback,delay){const id=sequence++,interval=Math.max(1,Number(delay)||0);timers.set(id,{callback,at:now+interval,interval});return id;},clearInterval(id){timers.delete(id);},
     requestAnimationFrame(callback){const id=sequence++;rafs.set(id,callback);return id;},cancelAnimationFrame(id){rafs.delete(id);},
-    Blob:class{constructor(parts,settings){this.parts=parts;this.type=settings&&settings.type;}},URL:{createObjectURL(blob){const url='blob:test-app-regression-'+(++urlSequence);blobUrls.set(url,blob);return url;},revokeObjectURL(url){blobUrls.delete(url);}},Date,Math,JSON,String,Array,Object,Number,Map,Set,Infinity,isFinite};
+    Blob:class{constructor(parts,settings){this.parts=parts;this.type=settings&&settings.type;}},URL:{createObjectURL(blob){const url='blob:test-app-regression-'+(++urlSequence);blobUrls.set(url,blob);return url;},revokeObjectURL(url){blobUrls.delete(url);}},Date:HarnessDate,Math,JSON,String,Array,Object,Number,Map,Set,Infinity,isFinite};
   vm.createContext(context);
   for(const name of ['stats.js','review.js','store.js','audio.js','backup.js','app.js']) {
     const file=path.join(__dirname,'../src',name);
@@ -81,7 +89,8 @@ function harness(options = {}) {
     vm.runInContext(fs.readFileSync(file,'utf8'),context,{filename:name});
     if(name==='store.js'&&options.importedRecords)window.StarCubeStore.create({storage}).importRecords(options.importedRecords);
   }
-  function advance(milliseconds){const end=now+milliseconds;while(true){let next=null;for(const [id,timer] of timers)if(timer.at<=end&&(!next||timer.at<next[1].at))next=[id,timer];if(!next)break;now=next[1].at;timers.delete(next[0]);next[1].callback();}now=end;const frames=[...rafs.values()];rafs.clear();for(const callback of frames)callback(now);}
+  function advance(milliseconds){const end=now+milliseconds;while(true){let next=null;for(const [id,timer] of timers)if(timer.at<=end&&(!next||timer.at<next[1].at))next=[id,timer];if(!next)break;now=next[1].at;if(next[1].interval)next[1].at+=next[1].interval;else timers.delete(next[0]);next[1].callback();}now=end;const frames=[...rafs.values()];rafs.clear();for(const callback of frames)callback(now);}
+  function setNow(value){wallEpoch=new Date(value).getTime()-now+1000;}
   const worker=workers[0];assert.ok(worker,'Worker was created');worker.deliver({cmd:'ready'});
   function requests(){return worker.requests.filter(message=>message.cmd==='scramble');}
   function respond(request,algorithm=ALGORITHMS[0]){assert.ok(request,'a matching scramble request exists');worker.deliver({cmd:'scramble',requestId:request.requestId,algorithm,facelets:SOLVED});}
@@ -94,7 +103,7 @@ function harness(options = {}) {
   const metrics=()=>({statWrites:STAT_IDS.reduce((sum,id)=>sum+document.getElementById(id).textWrites,0),historyReplacements:document.getElementById('historyList').replacements,historyItemsCreated:allNodes.filter(node=>node.className==='history-item').length});
   const failWrites=predicate=>{writeFailure=predicate;};
   const exportedPayloads=()=>downloads.map(download=>JSON.parse(download.blob.parts.join('')));
-  return {advance,key,pointer,click,text,readRecords,requests,respond,initialRequest,worker,window,document,nodes,allNodes,storage,entries,sessionEntries,warnings,metrics,descendants,failWrites,exportedPayloads};
+  return {advance,setNow,key,pointer,click,text,readRecords,requests,respond,initialRequest,worker,window,document,nodes,allNodes,storage,entries,sessionEntries,warnings,metrics,descendants,failWrites,downloads,exportedPayloads};
 }
 
 let failures=0,passed=0;
@@ -846,6 +855,565 @@ test('cross-tab backup-only events refresh reminders without changing records',(
   b.window.dispatch('storage',{key:'starcube.backup.v1'});assert.equal(b.document.getElementById('backupReminder').hidden,true);
   a.click('exportData');b.window.dispatch('storage',{key:'starcube.backup.v1'});
   assert.match(b.text('backupStatus'),/上次发起导出/);assert.equal(JSON.stringify(b.readRecords()),before);
+});
+
+function openAverageRecord(h,uid) {
+  const list=h.document.getElementById('averageRows');
+  const button=h.descendants(list).find(node=>node.tagName==='BUTTON'&&node.getAttribute('data-record-uid')===uid);
+  assert.ok(button,'The average contains an accessible result button');
+  list.dispatch('click',{target:button});return button;
+}
+
+test('historical deletion restores the exact UID, group, penalty and statistics on undo',()=>{
+  const payload=groupData();payload.records.find(row=>row.uid==='a55').penalty='+2';
+  const h=harness({importedRecords:payload});select(h,'a');h.click('navReview');
+  const original=JSON.stringify(h.readRecords()),average=h.text('avg');
+  openHistoryRecord(h,'a55');h.click('recordDelete');
+  assert.equal(h.document.getElementById('recordDialog').open,false);assert.equal(h.text('count'),'99');
+  assert.equal(h.readRecords().some(row=>row.uid==='a55'),false);
+  assert.equal(h.readRecords().filter(row=>row.groupId==='b').length,100);
+  assert.match(h.text('undoMessage'),/A.*第 56 次.*12\.000\+/);assert.equal(h.document.activeElement,h.document.getElementById('undoDelete'));
+  h.click('undoDelete');assert.equal(h.text('count'),'100');assert.equal(h.text('avg'),average);
+  assert.equal(JSON.stringify(h.readRecords()),original,'Undo must retain identity and every stored field');
+  assert.equal(h.document.getElementById('undoDelete').hidden,true);assert.match(h.text('undoMessage'),/已恢复/);
+});
+
+test('multiple deletions undo in reverse order and remain available after changing groups',()=>{
+  const h=harness({importedRecords:groupData()});select(h,'a');h.click('deleteLatest');
+  select(h,'b');h.click('deleteLatest');assert.equal(h.readRecords().length,198);
+  assert.match(h.text('undoDelete'),/2/);h.click('undoDelete');
+  assert.ok(h.readRecords().some(row=>row.uid==='b99'));assert.ok(!h.readRecords().some(row=>row.uid==='a99'));
+  assert.equal(h.document.getElementById('groupSelect').value,'b');assert.equal(h.text('count'),'100');
+  h.click('undoDelete');assert.equal(h.readRecords().length,200);assert.ok(h.readRecords().some(row=>row.uid==='a99'));
+  assert.equal(h.document.getElementById('groupSelect').value,'b','Undo must not change the active training');
+});
+
+test('cross-page deletion and explicit restoration refresh the other page through storage events',()=>{
+  const a=harness({records:[record(0),record(1)]}),b=harness({sharedEntries:a.entries});
+  const api=a.window.StarCubeStore,uid=a.readRecords()[1].uid;
+  a.click('deleteLatest');b.window.dispatch('storage',{key:api.keys.deletedPrefix+uid});b.advance(40);
+  assert.equal(b.text('count'),'1');a.click('undoDelete');
+  const restoreKey=[...a.entries.keys()].find(key=>key.startsWith(api.keys.restoredPrefix));assert.ok(restoreKey);
+  b.window.dispatch('storage',{key:restoreKey});b.advance(40);assert.equal(b.text('count'),'2');
+  assert.equal(JSON.stringify(b.readRecords()),JSON.stringify(a.readRecords()));
+});
+
+test('an obsolete undo cannot revive a newer deletion in another page',()=>{
+  const h=harness({records:[record(0)]}),api=h.window.StarCubeStore,uid=h.readRecords()[0].uid;
+  h.click('deleteLatest');api.create({storage:h.storage}).remove(uid);h.click('undoDelete');
+  assert.equal(h.readRecords().length,0);assert.equal(h.text('count'),'0');
+  assert.match(h.text('undoMessage'),/未能撤销/);assert.equal(h.document.getElementById('undoDelete').hidden,true);
+});
+
+test('failed delete retains the record and failed undo remains retryable without a success message',()=>{
+  const h=harness({records:[record(0),record(1)]}),api=h.window.StarCubeStore;
+  const before=JSON.stringify(h.readRecords());h.click('navReview');openHistoryRecord(h,h.readRecords()[0].uid);
+  h.failWrites(key=>key.startsWith(api.keys.deletedPrefix));h.click('recordDelete');
+  assert.equal(JSON.stringify(h.readRecords()),before);assert.equal(h.document.getElementById('recordDialog').open,true);
+  assert.match(h.text('recordFeedback'),/删除未完成.*成绩仍保留/);
+  h.failWrites(null);h.click('recordDelete');assert.equal(h.text('count'),'1');
+  h.failWrites(key=>key.startsWith(api.keys.restoredPrefix));h.click('undoDelete');
+  assert.equal(h.readRecords().length,1);assert.match(h.text('undoMessage'),/未能撤销/);
+  assert.equal(h.document.getElementById('undoDelete').hidden,false,'A transient failure must leave undo available');
+  h.failWrites(null);h.click('undoDelete');assert.equal(JSON.stringify(h.readRecords()),before);assert.match(h.text('undoMessage'),/已恢复/);
+});
+
+test('average to result to penalty edit returns to the same window, focus and scroll position',()=>{
+  const h=harness({records:Array.from({length:7},(_,i)=>record(i,10000+i*1000))});
+  const edited=h.readRecords()[4],anchor=h.readRecords()[6].uid;h.click('coreAo5Detail');
+  const average=h.document.getElementById('averageDialog');average.scrollTop=96;
+  openAverageRecord(h,edited.uid);assert.equal(average.open,false);assert.equal(h.document.getElementById('recordDialog').open,true);
+  assert.equal(h.text('recordClose'),'返回明细');h.click('recordPlus');h.click('recordClose');
+  assert.equal(average.open,true);assert.equal(h.document.getElementById('recordDialog').open,false);assert.equal(average.scrollTop,96);
+  assert.match(h.text('averageGroup'),/第 3–7 次/);assert.equal(h.text('averageResult'),'14.667');
+  assert.equal(h.document.activeElement.getAttribute('data-record-uid'),edited.uid);
+  assert.equal(h.document.getElementById('averageRows').children.at(-1).getAttribute('data-record-uid'),anchor);
+  h.click('averageClose');assert.equal(average.open,false);assert.equal(h.document.activeElement,h.document.getElementById('coreAo5Detail'));
+});
+
+test('historical result opens its own Ao5 and returns through native cancel without stacking dialogs',()=>{
+  const h=harness({records:Array.from({length:10},(_,i)=>record(i,(i+1)*1000))});h.click('navReview');
+  const uid=h.readRecords()[5].uid;openHistoryRecord(h,uid);h.document.getElementById('recordDialog').scrollTop=42;
+  assert.equal(h.text('recordAo5'),'4.000');h.click('recordAo5Detail');
+  assert.equal(h.document.getElementById('recordDialog').open,false);assert.equal(h.document.getElementById('averageDialog').open,true);
+  assert.match(h.text('averageGroup'),/第 2–6 次/);assert.equal(h.text('averageResult'),'4.000');assert.equal(h.text('averageClose'),'返回成绩');
+  h.document.getElementById('averageDialog').dispatch('cancel');
+  assert.equal(h.document.getElementById('recordDialog').open,true);assert.equal(h.document.getElementById('averageDialog').open,false);
+  assert.equal(h.text('recordTitle'),'第 6 次成绩');assert.equal(h.document.getElementById('recordDialog').scrollTop,42);
+  assert.equal(h.document.activeElement,h.document.getElementById('recordAo5Detail'));
+});
+
+test('best Ao5 links to its historical five solves rather than the latest window',()=>{
+  const h=harness({records:[10,11,12,13,14,30,31,32,33,34].map((seconds,i)=>record(i,seconds*1000))});h.click('navReview');
+  assert.equal(h.text('ao5'),'32.000');assert.equal(h.text('bestAo5'),'12.000');h.click('bestAo5Detail');
+  assert.equal(h.text('averageResult'),'12.000');assert.match(h.text('averageGroup'),/第 1–5 次/);
+  const api=h.window.StarCubeStore,peer=api.create({storage:h.storage});peer.put({...record(10,35000),uid:'later-solve'});
+  h.window.dispatch('storage',{key:api.keys.itemPrefix+'later-solve'});h.advance(40);
+  assert.match(h.text('averageGroup'),/第 1–5 次/,'An appended solve must not move the open historical window');
+});
+
+test('PB entry points inspect and edit their original group without switching current training',()=>{
+  const h=harness({importedRecords:groupData()});select(h,'b');
+  h.click('corePbDetail');assert.equal(h.text('recordGroup'),'B');assert.equal(h.text('recordResult'),'20.000');h.click('recordClose');
+  h.click('coreGlobalPbDetail');assert.equal(h.text('recordGroup'),'A');assert.equal(h.text('recordResult'),'10.000');
+  h.click('recordPlus');assert.equal(h.readRecords().find(row=>row.uid==='a0').penalty,'+2');
+  assert.equal(h.document.getElementById('groupSelect').value,'b');assert.equal(h.text('corePb'),'20.000');h.click('recordClose');
+  h.click('navReview');h.click('pbDetail');assert.equal(h.text('recordGroup'),'B');h.click('recordClose');
+  h.click('globalPbDetail');assert.equal(h.text('recordGroup'),'A');assert.equal(h.text('recordResult'),'10.000');
+  h.click('recordDelete');assert.equal(h.document.getElementById('groupSelect').value,'b');assert.equal(h.text('count'),'100');
+  assert.equal(h.readRecords().filter(row=>row.groupId==='a').length,99);h.click('undoDelete');assert.equal(h.readRecords().length,200);
+});
+
+test('empty and all-DNF sessions disable best links while historical short windows disable Ao5',()=>{
+  for(const rows of [[],Array.from({length:5},(_,i)=>({...record(i),penalty:'dnf'}))]) {
+    const h=harness({records:rows});
+    for(const id of ['corePbDetail','pbDetail','coreGlobalPbDetail','globalPbDetail','bestAo5Detail']) {
+      assert.equal(h.document.getElementById(id).disabled,true,id);h.click(id);
+      assert.equal(h.document.getElementById('recordDialog').open,false);assert.equal(h.document.getElementById('averageDialog').open,false);
+    }
+  }
+  const h=harness({records:Array.from({length:4},(_,i)=>record(i))});h.click('corePbDetail');
+  assert.equal(h.document.getElementById('recordAo5Detail').disabled,true);h.click('recordAo5Detail');
+  assert.equal(h.document.getElementById('recordDialog').open,true);assert.equal(h.document.getElementById('averageDialog').open,false);
+});
+
+test('deleting an average endpoint safely exits invalid parents and undo restores the window',()=>{
+  const h=harness({records:Array.from({length:6},(_,i)=>record(i))}),uid=h.readRecords()[5].uid;
+  h.click('coreAo5Detail');openAverageRecord(h,uid);h.click('recordDelete');
+  assert.equal(h.document.getElementById('recordDialog').open,false);assert.equal(h.document.getElementById('averageDialog').open,false);
+  assert.equal(h.text('count'),'5');assert.equal(h.document.activeElement,h.document.getElementById('undoDelete'));
+  h.click('undoDelete');h.click('coreAo5Detail');assert.match(h.text('averageGroup'),/第 2–6 次/);
+  assert.equal(h.document.getElementById('averageRows').children.at(-1).getAttribute('data-record-uid'),uid);
+});
+
+test('deleting an inner average result returns to valid parent and supports undo inside that dialog',()=>{
+  const h=harness({records:Array.from({length:7},(_,i)=>record(i,10000+i*1000))}),uid=h.readRecords()[4].uid;
+  h.click('coreAo5Detail');openAverageRecord(h,uid);h.click('recordDelete');
+  assert.equal(h.document.getElementById('recordDialog').open,false);assert.equal(h.document.getElementById('averageDialog').open,true);
+  assert.equal(h.text('count'),'6');assert.equal(h.document.activeElement,h.document.getElementById('averageUndo'));
+  h.click('averageUndo');assert.equal(h.text('count'),'7');assert.match(h.text('averageGroup'),/第 3–7 次/);assert.equal(h.text('averageResult'),'14.000');
+});
+
+test('new detail entry points and undo respect active timing and nested dialogs keep shortcut locks',()=>{
+  const h=harness({records:Array.from({length:7},(_,i)=>record(i))});h.click('deleteLatest');const afterDelete=JSON.stringify(h.readRecords());
+  hold(h);assert.equal(h.document.getElementById('undoDelete').disabled,true);
+  for(const id of ['undoDelete','corePbDetail','coreGlobalPbDetail','bestAo5Detail'])h.click(id);
+  assert.equal(JSON.stringify(h.readRecords()),afterDelete);assert.equal(h.document.getElementById('recordDialog').open,false);
+  h.key('keydown');h.key('keyup');h.respond(h.requests().at(-1));h.click('undoDelete');
+  h.click('coreAo5Detail');openAverageRecord(h,h.readRecords().at(-1).uid);
+  const before=JSON.stringify(h.readRecords()),requests=h.requests().length;
+  for(const key of [' ','1','2','n']){h.key('keydown',key);h.advance(400);h.key('keyup',key);}
+  assert.equal(JSON.stringify(h.readRecords()),before);assert.equal(h.requests().length,requests);assert.notEqual(status(h),'计时中');
+});
+
+const REVIEW_NOW = new Date(2026,10,14,12,0,0).getTime();
+function dateRecord(index,offset,ms,penalty='ok',groupId) {
+  const row={...record(index,ms),uid:'date-'+index,penalty,at:new Date(2026,10,14+offset,10,0,index).toISOString()};
+  if(groupId)row.groupId=groupId;
+  return row;
+}
+function reviewRange(h,value) {
+  h.click('navReview');const range=h.document.getElementById('reviewRange');range.value=String(value);range.dispatch('change');
+}
+
+test('today comparison uses local dates and displays full-period counts, averages, spread and DNF rates',()=>{
+  const rows=[dateRecord(0,-1,10000),dateRecord(1,-1,14000),dateRecord(2,-1,9000,'dnf'),
+    dateRecord(3,0,8000),dateRecord(4,0,12000),dateRecord(5,0,16000),dateRecord(6,0,9000,'dnf')];
+  const h=harness({now:REVIEW_NOW,records:rows});reviewRange(h,'today');
+  assert.equal(h.document.getElementById('reviewComparison').hidden,false);
+  assert.equal(h.text('reviewCurrentLabel'),'今天');assert.equal(h.text('reviewPreviousLabel'),'昨天');
+  assert.equal(h.text('compareCountCurrent'),'4');assert.equal(h.text('compareCountPrevious'),'3');
+  assert.equal(h.text('compareAverageCurrent'),'12.000');assert.equal(h.text('compareAveragePrevious'),'12.000');
+  assert.equal(h.text('compareStddevCurrent'),'3.266');assert.equal(h.text('compareStddevPrevious'),'2.000');
+  assert.equal(parseFloat(h.text('compareDnfCurrent')),25);assert.equal(parseFloat(h.text('compareDnfPrevious')),33.3);
+  assert.equal(h.text('compareCountDelta'),'多 1 次');assert.equal(h.text('compareAverageDelta'),'持平');
+  assert.equal(h.text('compareStddevDelta'),'增大 1.266 秒');assert.equal(h.text('compareDnfDelta'),'下降 8.3 个百分点');
+  assert.equal(h.document.getElementById('reviewRecord').children.length,4);
+  assert.ok(h.document.getElementById('reviewRecord').children[0].textContent.startsWith('#4'));
+  assert.match(h.text('reviewPeriod'),/11/);assert.match(h.text('reviewPeriod'),/14/);
+});
+
+test('seven-day comparison includes today and compares against the immediately preceding seven local dates',()=>{
+  const rows=[dateRecord(0,-14,99000),dateRecord(1,-13,40000),dateRecord(2,-7,30000),
+    dateRecord(3,-6,20000),dateRecord(4,-1,10000),dateRecord(5,0,15000),dateRecord(6,1,99000)];
+  const h=harness({now:REVIEW_NOW,records:rows});reviewRange(h,'7days');
+  assert.equal(h.text('reviewCurrentLabel'),'最近 7 天');assert.equal(h.text('reviewPreviousLabel'),'前 7 天');
+  assert.equal(h.text('compareCountCurrent'),'3');assert.equal(h.text('compareCountPrevious'),'2');
+  assert.equal(h.text('compareAverageCurrent'),'15.000');assert.equal(h.text('compareAveragePrevious'),'35.000');
+  assert.equal(h.text('compareStddevCurrent'),'4.082');assert.equal(h.text('compareStddevPrevious'),'5.000');
+  assert.equal(h.text('compareAverageDelta'),'快 20.000 秒');assert.equal(h.text('compareStddevDelta'),'减小 0.918 秒');
+  assert.equal(h.document.getElementById('reviewRecord').children.length,3);
+});
+
+test('an empty current period still shows previous-period comparison and does not invent zero averages',()=>{
+  const h=harness({now:REVIEW_NOW,records:[dateRecord(0,-1,10000),dateRecord(1,-1,14000)]});reviewRange(h,'today');
+  assert.equal(h.document.getElementById('reviewComparison').hidden,false);
+  assert.equal(h.document.getElementById('reviewContent').hidden,true);assert.equal(h.document.getElementById('reviewEmpty').hidden,false);
+  assert.equal(h.text('compareCountCurrent'),'0');assert.equal(h.text('compareCountPrevious'),'2');
+  for(const id of ['compareAverageCurrent','compareStddevCurrent','compareDnfCurrent','compareAverageDelta','compareStddevDelta','compareDnfDelta'])assert.equal(h.text(id),'—',id);
+  assert.equal(h.text('compareAveragePrevious'),'12.000');assert.equal(h.text('compareStddevPrevious'),'2.000');
+  assert.equal(h.document.getElementById('reviewRecord').children.length,0);
+});
+
+test('all-DNF and single-valid-solve date periods retain counts but leave unsupported spread blank',()=>{
+  const rows=[dateRecord(0,-1,9000),dateRecord(1,0,10000,'dnf'),dateRecord(2,0,12000,'dnf')];
+  const h=harness({now:REVIEW_NOW,records:rows});reviewRange(h,'today');
+  assert.equal(h.text('compareCountCurrent'),'2');assert.equal(h.text('compareCountPrevious'),'1');
+  assert.equal(h.text('compareAverageCurrent'),'—');assert.equal(h.text('compareAveragePrevious'),'9.000');
+  assert.equal(h.text('compareStddevCurrent'),'—');assert.equal(h.text('compareStddevPrevious'),'—');
+  assert.equal(parseFloat(h.text('compareDnfCurrent')),100);assert.equal(parseFloat(h.text('compareDnfPrevious')),0);
+  assert.equal(h.text('compareAverageDelta'),'—');assert.equal(h.text('compareStddevDelta'),'—');
+  assert.match(h.text('reviewCompareNote'),/样本|不足/);
+});
+
+test('date comparisons immediately follow penalty edits, historical deletion and undo',()=>{
+  const h=harness({now:REVIEW_NOW,importedRecords:[dateRecord(0,-1,20000),dateRecord(1,0,10000),dateRecord(2,0,12000)]});reviewRange(h,'today');
+  openHistoryRecord(h,'date-1');h.click('recordPlus');
+  assert.equal(h.text('compareAverageCurrent'),'12.000');assert.equal(h.text('compareStddevCurrent'),'0.000');
+  h.click('recordDelete');assert.equal(h.text('compareCountCurrent'),'1');assert.equal(h.text('compareStddevCurrent'),'—');
+  assert.equal(h.text('compareCountPrevious'),'1');assert.equal(h.text('compareAveragePrevious'),'20.000');
+  h.click('undoDelete');assert.equal(h.text('compareCountCurrent'),'2');assert.equal(h.text('compareAverageCurrent'),'12.000');
+  openHistoryRecord(h,'date-2');h.click('recordDnf');
+  assert.equal(h.text('compareAverageCurrent'),'12.000');assert.equal(h.text('compareStddevCurrent'),'—');
+  assert.equal(parseFloat(h.text('compareDnfCurrent')),50);
+});
+
+test('date review preserves its range across groups without leaking another training into comparison',()=>{
+  const payload={format:'starcube',version:3,groups:[{id:'a',origin:'oa',name:'A'},{id:'b',origin:'ob',name:'B'}],
+    records:[dateRecord(0,-1,20000,'ok','a'),dateRecord(1,0,10000,'ok','a'),dateRecord(2,0,14000,'ok','a'),
+      dateRecord(3,-1,50000,'ok','b'),dateRecord(4,0,40000,'ok','b')]};
+  const h=harness({now:REVIEW_NOW,importedRecords:payload});select(h,'a');reviewRange(h,'today');
+  assert.equal(h.text('compareAverageCurrent'),'12.000');assert.equal(h.text('compareCountCurrent'),'2');
+  select(h,'b');assert.equal(h.document.getElementById('reviewRange').value,'today');
+  assert.equal(h.text('compareAverageCurrent'),'40.000');assert.equal(h.text('compareAveragePrevious'),'50.000');
+  assert.equal(h.text('compareCountCurrent'),'1');assert.equal(h.document.getElementById('reviewRecord').children.length,1);
+});
+
+test('a date-filtered graph keeps group solve numbers and opens historical Ao5 across the date boundary',()=>{
+  const rows=[10,11,12,13,14].map((seconds,i)=>dateRecord(i,i===4?0:-1,seconds*1000));
+  const h=harness({now:REVIEW_NOW,importedRecords:rows});reviewRange(h,'today');
+  const picker=h.document.getElementById('reviewRecord');assert.equal(picker.children.length,1);
+  assert.match(picker.children[0].textContent,/#5.*14\.000.*Ao5 12\.000/);
+  chooseReviewRecord(h,'date-4');h.click('reviewInspect');assert.equal(h.text('recordAo5'),'12.000');h.click('recordAo5Detail');
+  assert.equal(h.text('averageResult'),'12.000');assert.match(h.text('averageGroup'),/第 1–5 次/);
+  assert.deepEqual(h.document.getElementById('averageRows').children.map(row=>row.getAttribute('data-record-uid')),['date-0','date-1','date-2','date-3','date-4']);
+});
+
+test('date charts cap at 100 points while summary covers the whole period and count modes remain compatible',()=>{
+  const rows=Array.from({length:150},(_,i)=>dateRecord(i,0,i<50?100000:10000));
+  const h=harness({now:REVIEW_NOW,records:rows});reviewRange(h,'today');
+  assert.equal(h.text('compareCountCurrent'),'150');assert.equal(h.text('compareAverageCurrent'),'40.000');
+  assert.equal(h.text('reviewAverage'),'40.000');assert.equal(h.document.getElementById('reviewRecord').children.length,100);
+  assert.match(h.document.getElementById('reviewRecord').children[0].textContent,/^#51 /);
+  assert.match(h.text('reviewSummary')+' '+h.text('reviewCompareNote'),/100/);
+  h.document.getElementById('reviewChart').dispatch('click',{clientX:74});assert.match(h.text('reviewSelected'),/^#51 /);
+  h.document.getElementById('reviewChart').dispatch('click',{clientX:746});assert.match(h.text('reviewSelected'),/^#150 /);
+  reviewRange(h,50);assert.equal(h.document.getElementById('reviewComparison').hidden,true);
+  assert.equal(h.text('reviewAverage'),'10.000');assert.equal(h.document.getElementById('reviewRecord').children.length,50);
+  assert.match(h.text('reviewSummary'),/第 101–150 次/);
+  reviewRange(h,100);assert.equal(h.document.getElementById('reviewComparison').hidden,true);
+  assert.equal(h.document.getElementById('reviewRecord').children.length,100);assert.match(h.text('reviewSummary'),/第 51–150 次/);
+});
+
+test('an open today review advances to the next local day on the minute refresh',()=>{
+  const tomorrow={...dateRecord(2,1,20000),at:new Date(2026,10,15,0,0,0).toISOString()};
+  const h=harness({now:new Date(2026,10,14,23,59,30),records:[dateRecord(0,-1,5000),dateRecord(1,0,10000),tomorrow]});reviewRange(h,'today');
+  assert.equal(h.text('compareAverageCurrent'),'10.000');assert.equal(h.text('compareAveragePrevious'),'5.000');
+  h.advance(60001);assert.equal(h.text('compareAverageCurrent'),'20.000');assert.equal(h.text('compareAveragePrevious'),'10.000');
+  assert.equal(h.text('compareCountCurrent'),'1');assert.match(h.text('reviewPeriod'),/15/);
+});
+
+test('returning to the foreground refreshes an elapsed date without requiring a timer callback or data edit',()=>{
+  const h=harness({now:REVIEW_NOW,records:[dateRecord(0,0,10000),dateRecord(1,1,20000)]});reviewRange(h,'today');
+  assert.equal(h.text('compareAverageCurrent'),'10.000');h.document.hidden=true;h.document.dispatch('visibilitychange');
+  h.setNow(new Date(2026,10,15,12,0,0));h.document.hidden=false;h.document.dispatch('visibilitychange');
+  assert.equal(h.text('compareAverageCurrent'),'20.000');assert.equal(h.text('compareAveragePrevious'),'10.000');
+  assert.equal(h.document.getElementById('reviewRange').value,'today');
+});
+
+function historyButtons(h) {
+  return h.descendants(h.document.getElementById('historyList')).filter(node=>node.tagName==='BUTTON'&&node.getAttribute('data-record-uid'));
+}
+function historyUids(h) { return historyButtons(h).map(node=>node.getAttribute('data-record-uid')); }
+function historyDateHeadings(h) {
+  return h.descendants(h.document.getElementById('historyList')).filter(node=>String(node.className).split(' ').includes('history-date'));
+}
+
+for(const [entry,continueButton] of [['coreAo5Detail','averageContinue'],['corePbDetail','recordContinue']]) {
+  test(entry+' offers an explicit continue action that returns to timing without changing a solve or scramble',()=>{
+    const h=harness({records:Array.from({length:7},(_,i)=>record(i))});
+    h.window.scrollTo(0,175);const before=JSON.stringify(h.readRecords()),scramble=h.text('scrambleText'),requests=h.requests().length;
+    h.click(entry);assert.equal(h.document.getElementById(continueButton).hidden,false);h.window.scrollTo(0,500);
+    h.click(continueButton);
+    assert.equal(h.document.getElementById('recordDialog').open,false);assert.equal(h.document.getElementById('averageDialog').open,false);
+    assert.equal(h.document.activeElement,h.document.getElementById('pad'));assert.equal(h.window.scrollY,175);
+    assert.equal(h.text('scrambleText'),scramble);assert.equal(h.requests().length,requests);assert.equal(JSON.stringify(h.readRecords()),before);
+    assert.notEqual(status(h),'计时中','Continuing returns to the pad but does not start a solve');
+    focusedSpace(h);assert.equal(status(h),'计时中','The next full Space press/release starts normally');
+  });
+}
+
+test('continue from a nested average/result clears the entire navigation trail and preserves the current group',()=>{
+  const h=harness({importedRecords:groupData()});select(h,'b');h.window.scrollTo(0,230);
+  const scramble=h.text('scrambleText');h.click('coreAo5Detail');openAverageRecord(h,'b99');
+  assert.equal(h.text('recordClose'),'返回明细');assert.equal(h.document.getElementById('recordContinue').hidden,false);
+  h.click('recordAo5Detail');assert.equal(h.text('averageClose'),'返回成绩');h.click('averageContinue');
+  assert.equal(h.document.getElementById('recordDialog').open,false);assert.equal(h.document.getElementById('averageDialog').open,false);
+  assert.equal(h.document.activeElement,h.document.getElementById('pad'));assert.equal(h.window.scrollY,230);
+  assert.equal(h.document.getElementById('groupSelect').value,'b');assert.equal(h.text('scrambleText'),scramble);
+  h.click('corePbDetail');assert.equal(h.text('recordClose'),'关闭');h.click('recordContinue');
+  assert.equal(h.document.getElementById('averageDialog').open,false,'No abandoned average reopens on a later close');
+});
+
+test('pointer root close returns to the timer while keyboard and nested close preserve their focus destinations',()=>{
+  const h=harness({records:Array.from({length:7},(_,i)=>record(i))});
+  pointerAction(h,'coreAo5Detail');pointerAction(h,'averageClose');
+  assert.equal(h.document.activeElement,h.document.getElementById('pad'));
+  h.click('coreAo5Detail');const row=openAverageRecord(h,h.readRecords()[4].uid);pointerAction(h,'recordClose');
+  assert.equal(h.document.getElementById('averageDialog').open,true);
+  assert.equal(h.document.activeElement.getAttribute('data-record-uid'),row.getAttribute('data-record-uid'));
+  const close=h.document.getElementById('averageClose');close.dispatch('click',{target:close,detail:0});
+  assert.equal(h.document.activeElement,h.document.getElementById('coreAo5Detail'));
+  h.click('corePbDetail');h.document.getElementById('recordDialog').dispatch('cancel');
+  assert.equal(h.document.activeElement,h.document.getElementById('corePbDetail'));
+});
+
+test('review-origin details never expose or execute continue-timing and retain the history focus fallback',()=>{
+  const h=harness({records:Array.from({length:7},(_,i)=>record(i))});h.click('navReview');
+  const uid=h.readRecords()[5].uid;openHistoryRecord(h,uid);
+  assert.equal(h.document.getElementById('recordContinue').hidden,true);h.click('recordContinue');
+  assert.equal(h.document.getElementById('recordDialog').open,true);h.click('recordAo5Detail');
+  assert.equal(h.document.getElementById('averageContinue').hidden,true);h.click('averageContinue');
+  assert.equal(h.document.getElementById('averageDialog').open,true);pointerAction(h,'averageClose');pointerAction(h,'recordClose');
+  assert.equal(h.document.activeElement,h.document.getElementById('historyToggle'),'A rebuilt history trigger falls back to its visible heading');
+  assert.equal(h.document.getElementById('app').dataset.view,'review');
+  h.click('navTimer');h.click('coreAo5Detail');assert.equal(h.document.getElementById('averageContinue').hidden,false);
+});
+
+test('date history uses the exact chart boundaries, original solve numbers and all-group restoration',()=>{
+  const midnight=new Date(2026,10,14,0,0,0).getTime();
+  const rows=[dateRecord(0,-7,10000),dateRecord(1,-6,11000),dateRecord(2,-1,12000),
+    {...dateRecord(3,0,13000),at:new Date(midnight).toISOString()},
+    {...dateRecord(4,0,14000),at:new Date(REVIEW_NOW).toISOString()},
+    {...dateRecord(5,0,15000),at:new Date(REVIEW_NOW+1).toISOString()}];
+  const h=harness({now:REVIEW_NOW,importedRecords:rows});reviewRange(h,'today');
+  assert.deepEqual(historyUids(h),['date-4','date-3']);assert.equal(h.text('historyCount'),'2');
+  assert.match(h.text('historyTitle'),/今天/);assert.match(historyButtons(h)[0].getAttribute('aria-label'),/第 5 次/);
+  assert.equal(h.document.getElementById('historyScopeBar').hidden,false);
+  assert.equal(historyDateHeadings(h).length,1);assert.match(historyDateHeadings(h)[0].textContent,/2026.*11.*14/);
+  reviewRange(h,'7days');assert.deepEqual(historyUids(h),['date-4','date-3','date-2','date-1']);
+  assert.equal(h.text('historyCount'),'4');assert.equal(historyDateHeadings(h).length,3);
+  reviewRange(h,100);assert.deepEqual(historyUids(h),['date-5','date-4','date-3','date-2','date-1','date-0']);
+  assert.equal(h.text('historyCount'),'6');assert.equal(h.text('historyTitle'),'本组历史');
+  assert.equal(h.document.getElementById('historyScopeBar').hidden,true);
+});
+
+test('date history paginates beyond the 100-point graph and range changes reset pagination and scroll',()=>{
+  const rows=[dateRecord(0,-1,20000),...Array.from({length:151},(_,i)=>dateRecord(i+1,0,10000+i))];
+  const h=harness({now:REVIEW_NOW,importedRecords:rows});reviewRange(h,'today');
+  const body=h.document.getElementById('historyBody');assert.equal(h.text('historyCount'),'151');
+  assert.equal(historyButtons(h).length,50);assert.equal(h.document.getElementById('reviewRecord').children.length,100);
+  h.click('historyMore');assert.equal(historyButtons(h).length,100);
+  h.click('historyMore');assert.equal(historyButtons(h).length,150);
+  h.click('historyMore');assert.equal(historyButtons(h).length,151);assert.equal(historyUids(h).at(-1),'date-1');
+  assert.equal(h.document.getElementById('historyMore').hidden,true);
+  body.scrollTop=700;reviewRange(h,'7days');assert.equal(historyButtons(h).length,50);assert.equal(body.scrollTop,0);
+  h.click('historyMore');body.scrollTop=500;h.click('historyAll');
+  assert.equal(h.document.getElementById('reviewRange').value,'50');assert.equal(historyButtons(h).length,50);
+  assert.equal(h.text('historyCount'),'152');assert.equal(body.scrollTop,0);
+  assert.equal(String(JSON.parse(h.storage.getItem('starcube.settings.v1')).reviewRange),'50');
+});
+
+test('date-linked history updates after penalty edits, deletion and undo while excluding the prior day',()=>{
+  const h=harness({now:REVIEW_NOW,importedRecords:[dateRecord(0,-1,20000),dateRecord(1,0,10000),dateRecord(2,0,12000)]});
+  reviewRange(h,'today');assert.deepEqual(historyUids(h),['date-2','date-1']);
+  openHistoryRecord(h,'date-1');h.click('recordPlus');assert.equal(h.text('compareAverageCurrent'),'12.000');
+  assert.match(historyButtons(h).find(node=>node.getAttribute('data-record-uid')==='date-1').textContent,/12\.000\+/);
+  h.click('recordDelete');assert.deepEqual(historyUids(h),['date-2']);assert.equal(h.text('historyCount'),'1');
+  h.click('undoDelete');assert.deepEqual(historyUids(h),['date-2','date-1']);assert.equal(h.text('historyCount'),'2');
+  assert.equal(h.text('compareCountCurrent'),'2');assert.equal(h.document.getElementById('reviewRange').value,'today');
+  assert.equal(h.readRecords().find(row=>row.uid==='date-1').penalty,'+2');
+});
+
+test('linked history follows group changes without reusing the previous group pagination or date headings',()=>{
+  const payload={format:'starcube',version:3,groups:[{id:'a',origin:'oa',name:'A'},{id:'b',origin:'ob',name:'B'}],
+    records:[...Array.from({length:60},(_,i)=>dateRecord(i,0,10000+i,'ok','a')),
+      dateRecord(60,-1,12000,'ok','b'),dateRecord(61,0,14000,'ok','b')]};
+  const h=harness({now:REVIEW_NOW,importedRecords:payload});select(h,'a');reviewRange(h,'today');h.click('historyMore');
+  assert.equal(historyButtons(h).length,60);h.document.getElementById('historyBody').scrollTop=300;select(h,'b');
+  assert.deepEqual(historyUids(h),['date-61']);assert.equal(h.text('historyCount'),'1');assert.equal(historyDateHeadings(h).length,1);
+  assert.equal(h.document.getElementById('historyBody').scrollTop,0);assert.equal(h.document.getElementById('reviewRange').value,'today');
+  select(h,'a');assert.equal(historyButtons(h).length,50);
+});
+
+test('midnight refresh updates date history even when the trend panel is collapsed',()=>{
+  const tomorrow={...dateRecord(2,1,20000),at:new Date(2026,10,15,0,0,0).toISOString()};
+  const h=harness({now:new Date(2026,10,14,23,59,30),importedRecords:[dateRecord(0,-1,5000),dateRecord(1,0,10000),tomorrow]});
+  reviewRange(h,'today');assert.deepEqual(historyUids(h),['date-1']);h.click('reviewToggle');
+  assert.equal(h.document.getElementById('reviewBody').hidden,true);h.advance(60001);
+  assert.deepEqual(historyUids(h),['date-2']);assert.equal(h.text('historyCount'),'1');
+  assert.equal(h.document.getElementById('reviewBody').hidden,true);assert.match(historyDateHeadings(h)[0].textContent,/15/);
+});
+
+test('an ordinary date-refresh minute preserves unchanged history DOM and the focused result button',()=>{
+  const h=harness({now:REVIEW_NOW,importedRecords:[dateRecord(0,-1,9000),dateRecord(1,0,10000),dateRecord(2,0,12000)]});
+  reviewRange(h,'today');const list=h.document.getElementById('historyList');
+  const focused=historyButtons(h).find(node=>node.getAttribute('data-record-uid')==='date-1');focused.focus();
+  const replacements=list.replacements;h.advance(60001);
+  assert.equal(list.replacements,replacements,'A minute boundary with the same records must not replace the history');
+  assert.equal(h.document.activeElement,focused);assert.equal(focused.isConnected,true);
+  assert.deepEqual(historyUids(h),['date-2','date-1']);
+});
+
+test('necessary history rebuilds restore focused solve identity and fall back to the heading if it disappears',()=>{
+  const h=harness({now:REVIEW_NOW,importedRecords:[dateRecord(0,0,9000),dateRecord(1,0,10000),dateRecord(2,0,12000)]});
+  reviewRange(h,'today');const list=h.document.getElementById('historyList'),api=h.window.StarCubeStore;
+  const focused=historyButtons(h).find(node=>node.getAttribute('data-record-uid')==='date-1');focused.focus();
+  const replacements=list.replacements,peer=api.create({storage:h.storage});
+  peer.put({...h.readRecords().find(row=>row.uid==='date-1'),penalty:'+2'});
+  h.window.dispatch('storage',{key:api.keys.itemPrefix+'date-1'});h.advance(40);
+  assert.ok(list.replacements>replacements,'Changed results require a rendered update');
+  assert.notEqual(h.document.activeElement,focused);assert.equal(h.document.activeElement.getAttribute('data-record-uid'),'date-1');
+  assert.equal(h.document.activeElement.isConnected,true);assert.match(h.document.activeElement.textContent,/12\.000\+/);
+  peer.remove('date-1');h.window.dispatch('storage',{key:api.keys.deletedPrefix+'date-1'});h.advance(40);
+  assert.deepEqual(historyUids(h),['date-2','date-0']);assert.equal(h.document.activeElement,h.document.getElementById('historyToggle'));
+});
+
+test('foreground refresh advances filtered history with a collapsed chart and preserves the chosen scope',()=>{
+  const h=harness({now:REVIEW_NOW,importedRecords:[dateRecord(0,0,10000),dateRecord(1,1,20000)]});
+  reviewRange(h,'today');h.click('reviewToggle');h.document.hidden=true;h.document.dispatch('visibilitychange');
+  h.setNow(new Date(2026,10,15,12,0,0));h.document.hidden=false;h.document.dispatch('visibilitychange');
+  assert.deepEqual(historyUids(h),['date-1']);assert.equal(h.document.getElementById('reviewRange').value,'today');
+  assert.equal(h.document.getElementById('reviewBody').hidden,true);
+});
+
+test('the date history shortcut opens a collapsed mobile history and does not change the selected range',()=>{
+  const h=harness({width:390,now:REVIEW_NOW,importedRecords:[dateRecord(0,0,10000)]});reviewRange(h,'today');
+  const history=h.document.getElementById('historyBody');assert.equal(history.hidden,true);
+  assert.equal(h.document.getElementById('reviewHistory').hidden,false);h.click('reviewHistory');
+  assert.equal(history.hidden,false);assert.equal(h.document.getElementById('historyToggle').getAttribute('aria-expanded'),'true');
+  assert.deepEqual(historyUids(h),['date-0']);assert.equal(h.document.getElementById('reviewRange').value,'today');
+  assert.ok(h.allNodes.some(node=>node.scrollIntoViewCalls.length),'The shortcut scrolls the history into view');
+  assert.ok(['historyToggle','historyBody','historyTitle'].includes(h.document.activeElement.id),'Focus follows the visible history destination');
+});
+
+test('an empty date history is distinct from an empty training and can return to all history',()=>{
+  const h=harness({now:REVIEW_NOW,importedRecords:[dateRecord(0,-1,10000)]});reviewRange(h,'today');
+  assert.equal(h.text('historyCount'),'0');assert.deepEqual(historyUids(h),[]);assert.equal(historyDateHeadings(h).length,0);
+  assert.equal(h.document.getElementById('historyEmpty').hidden,false);assert.match(h.text('historyEmpty'),/今天/);
+  assert.equal(h.document.getElementById('historyMore').hidden,true);assert.equal(h.document.getElementById('historyScopeBar').hidden,false);
+  h.click('historyAll');assert.deepEqual(historyUids(h),['date-0']);assert.equal(h.document.getElementById('historyEmpty').hidden,true);
+});
+
+test('every supported review scope persists across reload while retaining existing inspection and sound preferences',()=>{
+  for(const range of ['today','7days','100','50']) {
+    const settings={inspection:true,inspectionSound:true};
+    const h=harness({now:REVIEW_NOW,storageEntries:[['starcube.settings.v1',JSON.stringify(settings)]],importedRecords:[dateRecord(0,0,10000)]});
+    reviewRange(h,range);const saved=JSON.parse(h.storage.getItem('starcube.settings.v1'));
+    assert.equal(String(saved.reviewRange),range);assert.equal(saved.inspection,true);assert.equal(saved.inspectionSound,true);
+    const reloaded=harness({now:REVIEW_NOW,sharedEntries:h.entries});
+    assert.equal(reloaded.document.getElementById('reviewRange').value,range);assert.equal(reloaded.document.getElementById('app').dataset.view,'timer');
+    reloaded.click('navReview');assert.equal(reloaded.document.getElementById('reviewComparison').hidden,!['today','7days'].includes(range));
+    assert.equal(reloaded.document.getElementById('inspectionToggle').getAttribute('aria-checked'),'true');
+    assert.equal(reloaded.document.getElementById('soundToggle').getAttribute('aria-checked'),'true');
+  }
+});
+
+test('legacy, malformed and unsupported saved ranges safely default to the recent 50 mode',()=>{
+  for(const raw of [JSON.stringify({inspection:false}),'{broken',JSON.stringify({inspection:false,reviewRange:'forever'}),
+    JSON.stringify({inspection:false,reviewRange:{mode:'today'}})]) {
+    const h=harness({now:REVIEW_NOW,storageEntries:[['starcube.settings.v1',raw]]});
+    assert.equal(h.document.getElementById('reviewRange').value,'50');h.click('navReview');
+    assert.equal(h.document.getElementById('reviewComparison').hidden,true);assert.equal(h.text('historyTitle'),'本组历史');
+  }
+});
+
+test('a remembered today scope recalculates on the new local day instead of restoring stale dates',()=>{
+  const h=harness({now:REVIEW_NOW,importedRecords:[dateRecord(0,0,10000),dateRecord(1,1,20000)]});reviewRange(h,'today');
+  const reloaded=harness({now:new Date(2026,10,15,12,0,0),sharedEntries:h.entries});reloaded.click('navReview');
+  assert.equal(reloaded.document.getElementById('reviewRange').value,'today');assert.deepEqual(historyUids(reloaded),['date-1']);
+  assert.equal(reloaded.text('compareAverageCurrent'),'20.000');assert.equal(reloaded.text('compareAveragePrevious'),'10.000');
+});
+
+test('failed preference storage keeps date filtering usable in the current page and reports the failure',()=>{
+  const h=harness({now:REVIEW_NOW,importedRecords:[dateRecord(0,-1,12000),dateRecord(1,0,10000)]});
+  const stored=h.storage.getItem('starcube.settings.v1');h.failWrites(key=>key==='starcube.settings.v1');reviewRange(h,'today');
+  assert.deepEqual(historyUids(h),['date-1']);assert.equal(h.text('compareCountCurrent'),'1');
+  assert.equal(h.storage.getItem('starcube.settings.v1'),stored);assert.equal(h.document.getElementById('storageBanner').hidden,false);
+  assert.match(h.text('storageBanner'),/设置|保存|写入/);assert.equal(h.readRecords().length,2);
+});
+
+test('history CSV export follows current group, active date filter, reverse order and Excel UTF-8 BOM format',()=>{
+  const payload={format:'starcube',version:3,groups:[{id:'a',origin:'oa',name:'主训练/一'},{id:'b',origin:'ob',name:'另一组'}],
+    records:[
+      {...dateRecord(0,-8,9000,'ok','a'),scramble:'R U R'},
+      {...dateRecord(1,-2,10500,'+2','a'),scramble:"U2 F' D"},
+      {...dateRecord(2,0,12345,'ok','a'),scramble:"L B' R2"},
+      {...dateRecord(3,0,65432,'+2','a'),scramble:"F2 D' U"},
+      {...dateRecord(4,0,8888,'dnf','a'),scramble:'B2 L2 R2'},
+      {...dateRecord(5,0,7777,'ok','b'),scramble:'D2 U2'}
+    ]};
+  const h=harness({now:REVIEW_NOW,importedRecords:payload});
+  select(h,'a');reviewRange(h,'today');
+  assert.equal(h.document.getElementById('exportHistoryCsv').disabled,false);
+  h.click('exportHistoryCsv');
+  const todayFile=h.downloads.at(-1);
+  assert.ok(todayFile,'Today CSV download was triggered');
+  assert.match(todayFile.name,/\.csv$/);
+  assert.doesNotMatch(todayFile.name,/[\\/:*?"<>|]/);
+  assert.equal(todayFile.blob.type,'text/csv;charset=utf-8');
+  const todayText=todayFile.blob.parts.join('');
+  assert.equal(todayText.charCodeAt(0),0xFEFF);
+  const todayLines=todayText.slice(1).trim().split('\r\n');
+  assert.equal(todayLines.length,4);
+  assert.equal(todayLines[0],'记录时间,原始用时,状态,打乱公式');
+  assert.match(todayLines[1],/,8\.888,DNF,B2 L2 R2$/);
+  assert.match(todayLines[2],/,1:05\.432,\+2,F2 D' U$/);
+  assert.match(todayLines[3],/,12\.345,正常,L B' R2$/);
+  assert.equal(h.storage.getItem('starcube.backup.v1'),null,'CSV export must not mark full JSON backup as completed');
+
+  reviewRange(h,'7days');
+  h.click('exportHistoryCsv');
+  const weekLines=h.downloads.at(-1).blob.parts.join('').slice(1).trim().split('\r\n');
+  assert.equal(weekLines.length,5);
+  assert.match(weekLines[4],/,10\.500,\+2,U2 F' D$/);
+
+  reviewRange(h,50);
+  h.click('exportHistoryCsv');
+  const allLines=h.downloads.at(-1).blob.parts.join('').slice(1).trim().split('\r\n');
+  assert.equal(allLines.length,6);
+  assert.match(allLines[5],/,9\.000,正常,R U R$/);
+
+  select(h,'b');
+  h.click('exportHistoryCsv');
+  const groupBLines=h.downloads.at(-1).blob.parts.join('').slice(1).trim().split('\r\n');
+  assert.equal(groupBLines.length,2);
+  assert.match(groupBLines[1],/,7\.777,正常,D2 U2$/);
+});
+
+test('history CSV export includes all filtered rows beyond pagination and disables when empty or locked',()=>{
+  const rows=[dateRecord(0,-1,20000),...Array.from({length:120},(_,i)=>dateRecord(i+1,0,10000+i,i%3===0?'ok':i%3===1?'+2':'dnf'))];
+  const h=harness({now:REVIEW_NOW,importedRecords:rows});
+  reviewRange(h,'today');
+  assert.equal(historyButtons(h).length,50,'UI remains paginated at 50 rows');
+  h.click('exportHistoryCsv');
+  const lines=h.downloads.at(-1).blob.parts.join('').slice(1).trim().split('\r\n');
+  assert.equal(lines.length,121,'Header plus all 120 today solves');
+  assert.match(lines[1],/,10\.119,/,'Newest solve is first');
+  assert.match(lines[120],/,10\.000,正常,/,'Oldest today solve is last');
+
+  const empty=harness({now:REVIEW_NOW,importedRecords:[dateRecord(0,-1,10000)]});
+  reviewRange(empty,'today');
+  assert.equal(empty.document.getElementById('exportHistoryCsv').disabled,true);
+  const before=empty.downloads.length;
+  empty.click('exportHistoryCsv');
+  assert.equal(empty.downloads.length,before);
+  empty.click('historyAll');
+  assert.equal(empty.document.getElementById('exportHistoryCsv').disabled,false);
+  empty.click('groupNew');
+  assert.equal(empty.document.getElementById('exportHistoryCsv').disabled,true);
+  empty.click('groupCancel');
+  assert.equal(empty.document.getElementById('exportHistoryCsv').disabled,false);
 });
 
 console.log('\n'+passed+' passed, '+failures+' failed');

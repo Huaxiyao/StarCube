@@ -5,6 +5,7 @@
   var PREFIX = 'starcube.records.v2.';
   var ITEM_PREFIX = PREFIX + 'item.';
   var DELETED_PREFIX = PREFIX + 'deleted.';
+  var RESTORED_PREFIX = PREFIX + 'restored.';
   var BACKUP_PREFIX = PREFIX + 'backup.';
   var GROUP_PREFIX = 'starcube.groups.v1.item.';
   var DEFAULT_GROUP = 'default';
@@ -131,6 +132,19 @@
 
     function itemKey(uid) { return ITEM_PREFIX + encodeURIComponent(uid); }
     function deletedKey(uid) { return DELETED_PREFIX + encodeURIComponent(uid); }
+    function restoredKey(uid, token) { return RESTORED_PREFIX + encodeURIComponent(uid) + '/' + encodeURIComponent(token); }
+    function isDeleted(uid) {
+      var target = requireStorage();
+      var raw = target.getItem(deletedKey(uid));
+      if (raw === null) return false;
+      var deletion;
+      try { deletion = JSON.parse(raw); } catch (err) { return true; }
+      if (!deletion || deletion.uid !== uid || !validUid(deletion.token)) return true;
+      var restoredRaw = target.getItem(restoredKey(uid, deletion.token));
+      var restored;
+      try { restored = JSON.parse(restoredRaw); } catch (err) { return true; }
+      return !restored || restored.uid !== uid || restored.token !== deletion.token;
+    }
     function groupKey(id) { return GROUP_PREFIX + encodeURIComponent(id); }
     function putGroup(group) {
       var normalized = validateGroup(group);
@@ -212,7 +226,10 @@
         }
         if (key.indexOf(DELETED_PREFIX) === 0) {
           var uid = uidFromKey(key, DELETED_PREFIX);
-          if (uid) deleted.add(uid);
+          if (uid) {
+            try { if (isDeleted(uid)) deleted.add(uid); }
+            catch (err) { deleted.add(uid); readFailures++; }
+          }
         }
         if (key.indexOf(ITEM_PREFIX) === 0) {
           var itemUid = uidFromKey(key, ITEM_PREFIX);
@@ -266,7 +283,7 @@
           if (writable) {
             try {
               // Deterministic keys make concurrent first migration idempotent.
-              if (storage.getItem(deletedKey(normalized.uid)) === null && storage.getItem(itemKey(normalized.uid)) === null) {
+              if (!isDeleted(normalized.uid) && storage.getItem(itemKey(normalized.uid)) === null) {
                 storage.setItem(itemKey(normalized.uid), JSON.stringify(normalized));
                 migrated++;
               }
@@ -290,7 +307,7 @@
       var normalized = validateRecord(record);
       if (!normalized.uid) normalized.uid = newUid();
       var target = requireStorage();
-      if (target.getItem(deletedKey(normalized.uid)) !== null) throw error('该成绩已在其他页面删除，未恢复旧记录', 'RECORD_DELETED');
+      if (isDeleted(normalized.uid)) throw error('该成绩已在其他页面删除，未恢复旧记录', 'RECORD_DELETED');
       var oldRaw = target.getItem(itemKey(normalized.uid));
       if (oldRaw !== null) {
         try { if (JSON.parse(oldRaw).groupId === undefined) rememberBackup(itemKey(normalized.uid), oldRaw, '升级前成绩原文', true); }
@@ -302,9 +319,38 @@
 
     function remove(uid) {
       if (!validUid(uid)) throw error('成绩 uid 无效', 'INVALID_RECORD');
-      var tombstone = { uid: uid, deletedAt: new Date().toISOString() };
+      var tombstone = { uid: uid, deletedAt: new Date().toISOString(), token: newUid() };
       requireStorage().setItem(deletedKey(uid), JSON.stringify(tombstone));
       return tombstone;
+    }
+
+    function restore(uid, token) {
+      if (!validUid(uid) || !validUid(token)) throw error('撤销删除凭据无效', 'INVALID_RESTORE');
+      var target = requireStorage();
+      var deletion;
+      try { deletion = JSON.parse(target.getItem(deletedKey(uid))); }
+      catch (err) {
+        if (!(err instanceof SyntaxError)) throw err;
+      }
+      if (!deletion || deletion.uid !== uid || deletion.token !== token) {
+        throw error('该成绩的删除状态已变化，无法撤销这次删除', 'RESTORE_CONFLICT');
+      }
+      var record;
+      var recordRaw = target.getItem(itemKey(uid));
+      try {
+        record = validateRecord(JSON.parse(recordRaw), { allowMissingUid: false });
+        if (record.uid !== uid) throw error('成绩 uid 与存储键不一致');
+      } catch (err) {
+        throw error('原始成绩无法恢复，现有数据仍被保留', 'RECORD_UNAVAILABLE');
+      }
+      // Keep the deletion itself intact. A restore acknowledges one unique
+      // deletion, so a concurrent/newer delete always wins over an old undo.
+      // Never rewrite the retained record with a potentially stale UI copy.
+      if (isDeleted(uid)) {
+        target.setItem(restoredKey(uid, token), JSON.stringify({ uid: uid, token: token, restoredAt: new Date().toISOString() }));
+      }
+      if (isDeleted(uid)) throw error('该成绩已再次删除，未撤销较新的删除', 'RESTORE_CONFLICT');
+      return record;
     }
 
     function backups() {
@@ -403,7 +449,7 @@
           if (byContent.has(body)) { progress.skipped++; return; }
           var originalUid = record.uid;
           if (!record.uid) record.uid = 'import-' + hash(body);
-          if (storage.getItem(deletedKey(record.uid)) !== null) { progress.skipped++; return; }
+          if (isDeleted(record.uid)) { progress.skipped++; return; }
           var prior = byUid.get(record.uid);
           if (prior && content(prior, true) !== content(record, true)) {
             progress.conflicts++;
@@ -413,7 +459,7 @@
               index++;
               record.uid = 'import-' + hash(originalUid + '\n' + content(record, true) + '\n' + index);
             }
-            if (storage.getItem(deletedKey(record.uid)) !== null) { progress.skipped++; return; }
+            if (isDeleted(record.uid)) { progress.skipped++; return; }
           }
           if (byUid.has(record.uid)) { progress.skipped++; return; }
           var saved = put(record);
@@ -449,12 +495,12 @@
       return result;
     }
 
-    return { load: load, put: put, putGroup: putGroup, remove: remove, importRecords: importRecords, backups: backups, exportData: exportData, readRaw: readRaw };
+    return { load: load, put: put, putGroup: putGroup, remove: remove, restore: restore, importRecords: importRecords, backups: backups, exportData: exportData, readRaw: readRaw };
   }
 
   var api = { create: create, validateRecord: validateRecord, isValidRecord: isValidRecord,
     validateGroup: validateGroup, validateName: validateName, newUid: newUid, defaultGroup: defaultGroup, defaultGroupId: DEFAULT_GROUP,
-    compareRecords: compareRecords, keys: { legacy: LEGACY_KEY, itemPrefix: ITEM_PREFIX, deletedPrefix: DELETED_PREFIX, backupPrefix: BACKUP_PREFIX, groupPrefix: GROUP_PREFIX } };
+    compareRecords: compareRecords, keys: { legacy: LEGACY_KEY, itemPrefix: ITEM_PREFIX, deletedPrefix: DELETED_PREFIX, restoredPrefix: RESTORED_PREFIX, backupPrefix: BACKUP_PREFIX, groupPrefix: GROUP_PREFIX } };
   root.StarCubeStore = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -17,7 +17,7 @@ async function rects(selectors){return ev(`(()=>{const result={};for(const [key,
     for(const [width,height]of [[1440,900],[1280,800]]){
       await viewport(width,height);await redesignView('timer');await redesignTop();const r=await rects({rail:'.topbar',pad:'#pad',core:'.core-stats',ao5:'#coreAo5',ao12:'#coreAo12',pb:'#corePb',count:'#coreCount',recent:'#recentList'});await shot('desktop-'+width+'-redesign-timer');
       fs.writeFileSync(path.join(outDir,'desktop-timer-geometry.json'),JSON.stringify([...evidence,{width,height,r}],null,2));
-      assert.ok(r.rail.width<=128&&r.rail.height>=r.rail.width*3,'Desktop navigation is a vertical rail');assert.ok(r.rail.right<=r.pad.left+1,'Rail stays to the left of the instrument');
+      assert.ok(r.rail.width>r.rail.height*3,'Desktop navigation is a horizontal top bar');assert.ok(r.rail.bottom<=r.pad.top+1,'Top bar stays above the timing instrument');
       assert.ok(r.core.top>=r.pad.bottom-1,'Core statistics are below the timing surface');assert.ok(r.ao5.left<r.ao12.left&&r.ao12.left<r.pb.left&&r.pb.left<r.count.left,'Core statistics form a horizontal strip');assert.ok(Math.max(r.ao5.top,r.ao12.top,r.pb.top,r.count.top)-Math.min(r.ao5.top,r.ao12.top,r.pb.top,r.count.top)<=8);
       assert.ok(r.recent.left>=r.pad.right-1&&r.recent.width<r.pad.width,'Recent solves are a smaller right-hand column');evidence.push({width,height,r});
     }return{evidence};
@@ -26,9 +26,9 @@ async function rects(selectors){return ev(`(()=>{const result={};for(const [key,
     const evidence=[];
     for(const [width,height]of [[1440,900],[1280,800]]){
       await viewport(width,height);await redesignView('review');await redesignTop();if(await ev('document.querySelector("#historyBody").hidden'))await click('#historyToggle');
-      const r=await rects({stats:'.stats',chart:'#reviewChart',history:'.history-wrap'});await shot('desktop-'+width+'-redesign-review');
+      const r=await rects({stats:'.stats',chart:'#reviewChart',history:'.history-wrap',csv:'#exportHistoryCsv'});await shot('desktop-'+width+'-redesign-review');
       fs.writeFileSync(path.join(outDir,'desktop-review-geometry.json'),JSON.stringify([...evidence,{width,height,r}],null,2));
-      assert.ok(r.chart.right<=r.history.left+1,'Chart and history are separate columns');assert.ok(r.stats.bottom<=Math.min(r.chart.top,r.history.top)+1,'Full statistics are above both columns');assert.ok(r.stats.width>=r.chart.width+r.history.width-16,'The statistics strip spans the review workspace');assert.ok(r.chart.width>=480,'The trend retains useful desktop width');evidence.push({width,height,r});
+      assert.ok(r.chart.right<=r.history.left+1,'Chart and history are separate columns');assert.ok(r.stats.bottom<=Math.min(r.chart.top,r.history.top)+1,'Full statistics are above both columns');assert.ok(r.stats.width>=r.chart.width+r.history.width-16,'The statistics strip spans the review workspace');assert.ok(r.chart.width>=480,'The trend retains useful desktop width');assert.ok(r.csv.height>=44&&r.csv.right<=r.history.right+1,'CSV export button meets touch target inside history panel');evidence.push({width,height,r});
     }return{evidence};
   });
   await check('mobile-reflows-to-timing-first-and-bottom-navigation',async()=>{

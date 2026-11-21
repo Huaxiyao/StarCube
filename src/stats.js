@@ -27,10 +27,20 @@
     return sum / trimmed.length;
   }
 
-  function averageDetails(records, n) {
-    if (!Array.isArray(records) || !Number.isInteger(n) || n < 3 || records.length < n) return null;
-    var start = records.length - n;
-    var rows = records.slice(start).map(function (record, index) {
+  function averageDetails(records, n, endUid) {
+    if (!Array.isArray(records)) return null;
+    var endIndex = records.length - 1;
+    if (endUid !== undefined) {
+      if (typeof endUid !== 'string' || !endUid) return null;
+      endIndex = records.findIndex(function (record) { return record && record.uid === endUid; });
+    }
+    return averageDetailsAt(records, n, endIndex);
+  }
+
+  function averageDetailsAt(records, n, endIndex) {
+    if (!Number.isInteger(n) || n < 3 || endIndex < n - 1 || endIndex >= records.length) return null;
+    var start = endIndex - n + 1;
+    var rows = records.slice(start, endIndex + 1).map(function (record, index) {
       return {
         uid: record ? record.uid : undefined,
         number: start + index + 1,
@@ -62,6 +72,9 @@
     }
     return {
       n: n,
+      startIndex: start,
+      endIndex: endIndex,
+      endUid: records[endIndex] ? records[endIndex].uid : undefined,
       trimCount: trimCount,
       value: sum === null ? 'DNF' : sum / includedCount,
       sum: sum,
@@ -95,16 +108,23 @@
     return best;
   }
 
-  function bestAo5(records) {
+  function bestAo5Details(records) {
     if (!Array.isArray(records) || records.length < 5) return null;
     var best = null;
+    var bestEnd = -1;
     for (var end = 5; end <= records.length; end++) {
       var average = aoN(records.slice(end - 5, end), 5);
       if (average !== null && average !== 'DNF' && (best === null || average < best)) {
         best = average;
+        bestEnd = end - 1;
       }
     }
-    return best;
+    return bestEnd < 0 ? null : averageDetailsAt(records, 5, bestEnd);
+  }
+
+  function bestAo5(records) {
+    var details = bestAo5Details(records);
+    return details === null ? null : details.value;
   }
 
   function inspectionPenalty(elapsedMs, inspectionEnabled) {
@@ -137,6 +157,7 @@
     overallAverage: overallAverage,
     personalBest: personalBest,
     bestAo5: bestAo5,
+    bestAo5Details: bestAo5Details,
     inspectionPenalty: inspectionPenalty,
     formatMs: formatMs,
     formatResult: formatResult

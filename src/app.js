@@ -50,8 +50,13 @@
     soundToggle: $('soundToggle'), soundPreview: $('soundPreview'), soundFeedback: $('soundFeedback'),
     backupReminder: $('backupReminder'), backupMessage: $('backupMessage'), backupLater: $('backupLater'), backupExport: $('backupExport'), backupStatus: $('backupStatus'),
     coreAo5Detail: $('coreAo5Detail'), coreAo12Detail: $('coreAo12Detail'), ao5Detail: $('ao5Detail'), ao12Detail: $('ao12Detail'),
-    averageDialog: $('averageDialog'), averageClose: $('averageClose'), averageTitle: $('averageTitle'), averageGroup: $('averageGroup'),
+    averageDialog: $('averageDialog'), averageClose: $('averageClose'), averageContinue: $('averageContinue'), averageTitle: $('averageTitle'), averageGroup: $('averageGroup'),
     averageResult: $('averageResult'), averageFormula: $('averageFormula'), averageRows: $('averageRows'),
+    corePbDetail: $('corePbDetail'), pbDetail: $('pbDetail'), bestAo5Detail: $('bestAo5Detail'),
+    coreGlobalPbDetail: $('coreGlobalPbDetail'), globalPbDetail: $('globalPbDetail'),
+    undoNotice: $('undoNotice'), undoMessage: $('undoMessage'), undoDelete: $('undoDelete'),
+    recordUndoNotice: $('recordUndoNotice'), recordUndoMessage: $('recordUndoMessage'), recordUndo: $('recordUndo'),
+    averageUndoNotice: $('averageUndoNotice'), averageUndoMessage: $('averageUndoMessage'), averageUndo: $('averageUndo'),
     historyMore: $('historyMore'),
     net: $('net'),
     pad: $('pad'),
@@ -86,13 +91,22 @@
     historyList: $('historyList'),
     historyEmpty: $('historyEmpty'),
     historyCount: $('historyCount'),
+    historyTitle: $('historyTitle'), historyScope: $('historyScope'), historyScopeBar: $('historyScopeBar'),
+    historyAll: $('historyAll'), exportHistoryCsv: $('exportHistoryCsv'), reviewHistory: $('reviewHistory'),
     reviewToggle: $('reviewToggle'), reviewBody: $('reviewBody'), reviewRange: $('reviewRange'),
     reviewChart: $('reviewChart'), reviewSummary: $('reviewSummary'), reviewEmpty: $('reviewEmpty'),
     reviewContent: $('reviewContent'), reviewAverage: $('reviewAverage'), reviewBest: $('reviewBest'),
+    reviewMetrics: $('reviewMetrics'), reviewComparison: $('reviewComparison'), reviewPeriod: $('reviewPeriod'),
+    reviewCurrentLabel: $('reviewCurrentLabel'), reviewPreviousLabel: $('reviewPreviousLabel'), reviewCompareNote: $('reviewCompareNote'),
+    compareCountCurrent: $('compareCountCurrent'), compareCountPrevious: $('compareCountPrevious'), compareCountDelta: $('compareCountDelta'),
+    compareAverageCurrent: $('compareAverageCurrent'), compareAveragePrevious: $('compareAveragePrevious'), compareAverageDelta: $('compareAverageDelta'),
+    compareStddevCurrent: $('compareStddevCurrent'), compareStddevPrevious: $('compareStddevPrevious'), compareStddevDelta: $('compareStddevDelta'),
+    compareDnfCurrent: $('compareDnfCurrent'), compareDnfPrevious: $('compareDnfPrevious'), compareDnfDelta: $('compareDnfDelta'),
     reviewRecord: $('reviewRecord'), reviewInspect: $('reviewInspect'), reviewSelected: $('reviewSelected'),
-    recordDialog: $('recordDialog'), recordClose: $('recordClose'), recordTitle: $('recordTitle'),
+    recordDialog: $('recordDialog'), recordClose: $('recordClose'), recordContinue: $('recordContinue'), recordTitle: $('recordTitle'),
     recordResult: $('recordResult'), recordRaw: $('recordRaw'), recordDate: $('recordDate'),
     recordScramble: $('recordScramble'), recordGroup: $('recordGroup'), recordAo5: $('recordAo5'),
+    recordAo5Detail: $('recordAo5Detail'), recordDelete: $('recordDelete'),
     recordOk: $('recordOk'), recordPlus: $('recordPlus'), recordDnf: $('recordDnf'), recordFeedback: $('recordFeedback'),
     solverSrc: $('solver-src')
   };
@@ -105,7 +119,7 @@
   var currentGroupId = window.StarCubeStore.defaultGroupId;
   var editingGroup = null;
   var groupsVersion = -1;
-  var settings = { inspection: true, inspectionSound: false };
+  var settings = { inspection: true, inspectionSound: false, reviewRange: '50' };
   var backup = null;
   function showAudioStatus(status) {
     el.soundFeedback.textContent = status.message || '8 秒一声，12 秒两声';
@@ -120,6 +134,10 @@
   var dataVersion = 0;
   var statsVersion = -1;
   var historyVersion = -1;
+  var historyDataVersion = -1;
+  var historyScopeKey = null;
+  var historyDateKey = null;
+  var historyEntries = [];
   var historyDetailButtons = [];
   var recentVersion = -1;
   var recentDetailButtons = [];
@@ -131,13 +149,19 @@
   var reviewOpen = true;
   var reviewLimit = 50;
   var reviewVersion = -1;
+  var reviewTimeKey = null;
+  var reviewRefreshTimer = 0;
   var reviewData = null;
   var reviewSelectedUid = null;
   var selectedRecordUid = null;
-  var recordReturnFocus = null;
   var selectedAverage = null;
-  var averageReturnFocus = null;
   var averageVersion = -1;
+  var detailTrail = [];
+  var detailRootFocus = null;
+  var detailRootView = null;
+  var detailRootScroll = null;
+  var undoDeletions = [];
+  var undoMessage = '';
 
   var currentScramble = null;
   var scrambleUsed = false;
@@ -180,10 +204,13 @@
       var parsedSettings = settingsRaw ? JSON.parse(settingsRaw) : null;
       if (parsedSettings && typeof parsedSettings.inspection === 'boolean') settings.inspection = parsedSettings.inspection;
       if (parsedSettings && typeof parsedSettings.inspectionSound === 'boolean') settings.inspectionSound = parsedSettings.inspectionSound;
+      if (parsedSettings && ['50', '100', 'today', '7days'].includes(parsedSettings.reviewRange)) settings.reviewRange = parsedSettings.reviewRange;
     } catch (err) {
       console.warn('设置读取失败，使用默认设置', err);
     }
     store = window.StarCubeStore.create({ storage: storage });
+    reviewLimit = settings.reviewRange === '100' ? 100 : settings.reviewRange === '50' ? 50 : settings.reviewRange;
+    el.reviewRange.value = String(reviewLimit);
     backup = window.StarCubeBackup.create({ storage: storage, threshold: 100 });
     audio.setEnabled(settings.inspectionSound);
     showAudioStatus(audio.getStatus());
@@ -290,6 +317,7 @@
     renderRecordDialog();
     renderAverageDialog();
     renderBackup();
+    renderUndo();
     el.storageBanner.textContent = (memoryMode ? '成绩不会被保存：' : '') + dataNotice;
     el.storageBanner.hidden = !memoryMode && !dataNotice;
   }
@@ -306,6 +334,7 @@
     if (!canChangeGroup() || editingGroup !== null || (view !== 'timer' && view !== 'review')) return;
     if (currentView !== view) {
       currentView = view;
+      if (!undoDeletions.length) undoMessage = '';
       // Showing the panel precedes chart measurement. Hidden panels release their
       // expensive DOM through their normal render paths; model state stays live.
       render();
@@ -577,11 +606,44 @@
       pad(date.getHours()) + ':' + pad(date.getMinutes());
   }
 
+  function syncHistoryExportControl() {
+    var canExport = canChangeGroup() && editingGroup === null && historyEntries.length > 0;
+    el.exportHistoryCsv.disabled = !canExport;
+    el.exportHistoryCsv.title = historyEntries.length ?
+      '导出当前训练当前筛选范围内的全部成绩（CSV）' : '当前筛选范围内没有可导出的成绩';
+  }
+
   function renderHistory() {
-    el.historyCount.textContent = String(records.length);
-    el.historyEmpty.hidden = records.length > 0;
-    el.historyMore.hidden = !historyOpen || records.length <= historyLimit;
-    el.historyMore.textContent = '再显示 50 条 · 已显示 ' + Math.min(historyLimit, records.length) + ' / ' + records.length;
+    var now = Date.now();
+    var range = dateReview() ? Review.dateRange(reviewLimit, now) : null;
+    var scopeKey = range ? reviewLimit + ':' + Math.floor(now / 60000) + ':' + new Date(now).getTimezoneOffset() : 'all';
+    if (historyDataVersion !== dataVersion || historyScopeKey !== scopeKey) {
+      var filtered = Review.filterHistory(records, reviewLimit, now);
+      range = filtered.range;
+      var entries = filtered.entries;
+      var dateKey = range ? range.dayKey + ':' + new Date(now).getTimezoneOffset() : null;
+      if (historyDataVersion !== dataVersion || historyDateKey !== dateKey || entries.length !== historyEntries.length ||
+          entries.some(function (entry, index) { return entry.index !== historyEntries[index].index || entry.record.uid !== historyEntries[index].record.uid; })) {
+        historyVersion = -1;
+      }
+      historyEntries = entries;
+      historyDataVersion = dataVersion;
+      historyScopeKey = scopeKey;
+      historyDateKey = dateKey;
+    }
+    var total = historyEntries.length;
+    el.historyTitle.textContent = range ? range.currentLabel + '成绩' : '本组历史';
+    el.historyCount.textContent = String(total);
+    el.historyScopeBar.hidden = !range;
+    el.historyScope.textContent = range ? '当前训练 · ' + reviewDateSpan(range.periodStart, range.periodEnd) : '';
+    el.historyEmpty.hidden = total > 0;
+    el.historyEmpty.textContent = range ? range.currentLabel + '还没有成绩，可切换范围或查看全部历史。' : '还没有记录';
+    el.historyMore.hidden = !historyOpen || total <= historyLimit;
+    el.historyMore.textContent = '再显示 50 条 · 已显示 ' + Math.min(historyLimit, total) + ' / ' + total;
+    el.reviewHistory.hidden = !range;
+    el.reviewHistory.textContent = range ? '查看' + range.currentLabel + '的成绩 · ' + total + ' 次 →' : '';
+    el.historyAll.disabled = !canChangeGroup() || editingGroup !== null;
+    syncHistoryExportControl();
     if (currentView !== 'review' || !historyOpen) {
       if (historyVersion !== -1) { el.historyList.replaceChildren(); historyDetailButtons = []; historyVersion = -1; }
       return;
@@ -589,12 +651,24 @@
     if (historyVersion === dataVersion) return;
     historyVersion = dataVersion;
     var scrollTop = el.historyBody.scrollTop;
+    var focusUid = historyDetailButtons.includes(document.activeElement) ? document.activeElement.getAttribute('data-record-uid') : null;
     var fragment = document.createDocumentFragment();
     historyDetailButtons = [];
-    for (var i = records.length - 1; i >= Math.max(0, records.length - historyLimit); i--) {
-      var record = records[i];
+    var previousDate = null;
+    for (var j = total - 1; j >= Math.max(0, total - historyLimit); j--) {
+      var entry = historyEntries[j], record = entry.record, i = entry.index;
       var item = document.createElement('li');
       item.className = 'history-item';
+      if (range) {
+        var date = reviewDate(Date.parse(record.at));
+        if (date !== previousDate) {
+          var heading = document.createElement('h3');
+          heading.className = 'history-date';
+          heading.textContent = date;
+          item.appendChild(heading);
+          previousDate = date;
+        }
+      }
 
       var top = document.createElement('div');
       top.className = 'history-top';
@@ -623,7 +697,7 @@
 
       var at = document.createElement('span');
       at.className = 'history-at';
-      at.textContent = formatAt(record.at);
+      at.textContent = range ? formatAt(record.at).slice(6) : formatAt(record.at);
       top.appendChild(at);
 
       var scramble = document.createElement('div');
@@ -636,6 +710,10 @@
     }
     el.historyList.replaceChildren(fragment);
     el.historyBody.scrollTop = scrollTop;
+    if (focusUid) {
+      var focus = historyDetailButtons.find(function (button) { return button.getAttribute('data-record-uid') === focusUid; });
+      (focus || el.historyToggle).focus({ preventScroll: true });
+    }
   }
 
   function renderRecent() {
@@ -694,9 +772,13 @@
       pair[0].disabled = !canToggle || records.length < pair[1];
       pair[0].title = records.length < pair[1] ? '本组满 ' + pair[1] + ' 次后可查看明细' : '查看 Ao' + pair[1] + ' 计算明细';
     });
+    [el.corePbDetail, el.pbDetail].forEach(function (button) { button.disabled = !canToggle || el.pb.textContent === '—'; });
+    [el.coreGlobalPbDetail, el.globalPbDetail].forEach(function (button) { button.disabled = !canToggle || el.globalPb.textContent === '—'; });
+    el.bestAo5Detail.disabled = !canToggle || el.bestAo5.textContent === '—';
     el.switchBtn.title = canToggle ? '切换 15 秒观察' : '观察开关仅在就绪或停止后可切换';
     el.importBtn.disabled = !canToggle || memoryMode;
     el.exportBtn.disabled = state === 'RUNNING' || state === 'INSPECTING' || state === 'READY' || !!press || importing;
+    syncHistoryExportControl();
   }
 
   function canChangeGroup() {
@@ -718,39 +800,122 @@
     if (!status.metadataWritable) el.backupStatus.textContent += ' · 提醒状态仅保留在本页';
   }
 
-  function openAverage(n, trigger) {
-    if (!canChangeGroup() || editingGroup !== null) return;
-    if (!memoryMode) readStore();
-    if (!Stats.averageDetails(records, n)) { render(); return; }
-    audio.stop();
-    selectedAverage = n;
-    averageVersion = -1;
-    averageReturnFocus = trigger;
-    render();
-    el.averageDialog.showModal();
-    el.averageClose.focus();
+  function canEditRecords() {
+    return (state === 'IDLE' || state === 'STOPPED') && !press && !activeScramble && !importing && editingGroup === null;
   }
 
-  function closeAverage() {
-    selectedAverage = null;
-    if (el.averageDialog.open) el.averageDialog.close();
+  function groupRecords(id) { return allRecords.filter(function (record) { return record.groupId === id; }); }
+
+  function averageDetail(selection) {
+    return Stats.averageDetails(groupRecords(selection.groupId), selection.n, selection.endUid);
+  }
+
+  function validDetail(entry) {
+    return entry.kind === 'record' ? allRecords.some(function (record) { return record.uid === entry.uid; }) : !!averageDetail(entry.average);
+  }
+
+  function showDetail(entry, trigger, returning) {
+    if (!canEditRecords()) return;
+    if (!memoryMode && !returning) readStore();
+    if (!validDetail(entry)) { render(); return; }
+    if (!returning) {
+      if (detailsOpen()) {
+        var previous = selectedRecordUid ? { kind: 'record', uid: selectedRecordUid } : { kind: 'average', average: selectedAverage };
+        previous.scrollTop = (selectedRecordUid ? el.recordDialog : el.averageDialog).scrollTop;
+        previous.focusId = trigger && trigger.id;
+        previous.focusUid = trigger && trigger.getAttribute('data-record-uid');
+        detailTrail.push(previous);
+      } else {
+        detailTrail = [];
+        detailRootFocus = trigger || document.activeElement;
+        detailRootView = currentView;
+        detailRootScroll = { x: window.scrollX, y: window.scrollY };
+        if (!undoDeletions.length) undoMessage = '';
+      }
+    }
+    // Set selection before closing: native close events must not pop the new page.
+    selectedRecordUid = entry.kind === 'record' ? entry.uid : null;
+    selectedAverage = entry.kind === 'average' ? entry.average : null;
+    averageVersion = -1;
+    el.recordContinue.hidden = detailRootView !== 'timer';
+    el.averageContinue.hidden = detailRootView !== 'timer';
+    if (!selectedRecordUid && el.recordDialog.open) el.recordDialog.close();
+    if (!selectedAverage && el.averageDialog.open) el.averageDialog.close();
+    audio.stop();
+    el.recordFeedback.textContent = '';
     render();
-    var target = averageReturnFocus;
-    averageReturnFocus = null;
+    var dialog = selectedRecordUid ? el.recordDialog : el.averageDialog;
+    if (!dialog.open) dialog.showModal();
+    var focus = selectedRecordUid ? el.recordClose : el.averageClose;
+    if (returning && entry.focusId) focus = $(entry.focusId) || focus;
+    if (returning && entry.focusUid && selectedAverage) {
+      focus = Array.from(el.averageRows.querySelectorAll('button')).find(function (button) {
+        return button.getAttribute('data-record-uid') === entry.focusUid;
+      }) || focus;
+    }
+    if (focus.disabled) focus = selectedRecordUid ? el.recordClose : el.averageClose;
+    focus.focus({ preventScroll: true });
+    dialog.scrollTop = returning ? entry.scrollTop || 0 : 0;
+  }
+
+  function closeDetail(event, resumeTimer) {
+    selectedRecordUid = null;
+    selectedAverage = null;
+    if (el.recordDialog.open) el.recordDialog.close();
+    if (el.averageDialog.open) el.averageDialog.close();
+    if (resumeTimer) detailTrail = [];
+    while (detailTrail.length) {
+      var parent = detailTrail.pop();
+      if (validDetail(parent)) { showDetail(parent, null, true); return; }
+    }
+    render();
+    var returnToTimer = currentView === 'timer' && detailRootView === 'timer' &&
+      (resumeTimer || (event && event.detail > 0));
+    var target = returnToTimer ? el.pad : detailRootFocus;
+    var scroll = detailRootScroll;
+    detailRootFocus = null;
+    detailRootView = null;
+    detailRootScroll = null;
+    el.recordContinue.hidden = true;
+    el.averageContinue.hidden = true;
+    if (scroll) window.scrollTo(scroll.x, scroll.y);
     if (target && target.isConnected && !target.disabled) target.focus({ preventScroll: true });
     else if (currentView === 'timer') el.pad.focus({ preventScroll: true });
-    else el.historyToggle.focus();
+    else el.historyToggle.focus({ preventScroll: true });
   }
+
+  function continueTiming() {
+    if (detailRootView !== 'timer' || currentView !== 'timer' || !detailsOpen() || !canEditRecords()) return;
+    closeDetail(null, true);
+  }
+
+  function detailCloseLabel() {
+    if (!detailTrail.length) return '关闭';
+    return detailTrail[detailTrail.length - 1].kind === 'average' ? '返回明细' : '返回成绩';
+  }
+
+  function openAverage(n, trigger, endUid, groupId) {
+    if (!canEditRecords()) return;
+    if (!memoryMode) readStore();
+    var id = groupId || currentGroupId;
+    var list = groupRecords(id);
+    var detail = endUid === undefined ? Stats.averageDetails(list, n) : Stats.averageDetails(list, n, endUid);
+    if (!detail) { render(); return; }
+    showDetail({ kind: 'average', average: { n: n, endUid: detail.endUid, groupId: id } }, trigger);
+  }
+
+  function closeAverage(event) { closeDetail(event); }
 
   function renderAverageDialog() {
     if (selectedAverage === null || averageVersion === dataVersion) return;
     averageVersion = dataVersion;
-    var detail = Stats.averageDetails(records, selectedAverage);
+    var detail = averageDetail(selectedAverage);
     if (!detail) {
       el.feedback.textContent = '当前训练成绩数量已变化，平均值明细已关闭。';
       closeAverage(); return;
     }
-    var group = groups.find(function (item) { return item.id === currentGroupId; });
+    var group = groups.find(function (item) { return item.id === selectedAverage.groupId; });
+    el.averageClose.textContent = detailCloseLabel();
     el.averageTitle.textContent = 'Ao' + detail.n + ' 明细';
     el.averageGroup.textContent = (group ? group.name : '') + ' · 第 ' + detail.rows[0].number + '–' + detail.rows[detail.rows.length - 1].number + ' 次';
     el.averageResult.textContent = reviewValue(detail.value);
@@ -764,7 +929,9 @@
       item.setAttribute('data-record-uid', row.uid);
       item.setAttribute('data-excluded', row.excluded || '');
       var number = document.createElement('span'); number.className = 'average-number'; number.textContent = '#' + row.number;
-      var value = document.createElement('span'); value.className = 'average-value'; value.textContent = Stats.formatResult(row.record);
+      var value = document.createElement('button'); value.type = 'button'; value.className = 'average-value average-record'; value.textContent = Stats.formatResult(row.record);
+      value.setAttribute('data-record-uid', row.uid);
+      value.setAttribute('aria-label', '第 ' + row.number + ' 次，' + Stats.formatResult(row.record) + '，查看详情与罚时');
       var label = document.createElement('span'); label.className = 'average-disposition';
       label.textContent = row.excluded === 'best' ? '去掉 · 最好' : row.excluded === 'worst' ? '去掉 · 最差' : '计入平均';
       item.append(number, value, label);
@@ -858,23 +1025,104 @@
 
   function reviewValue(value) { return value === null ? '—' : value === 'DNF' ? 'DNF' : Stats.formatMs(value); }
 
+  function dateReview() { return reviewLimit === 'today' || reviewLimit === '7days'; }
+
+  function reviewDate(ms) {
+    var date = new Date(ms);
+    return date.getFullYear() + '/' + (date.getMonth() + 1) + '/' + date.getDate();
+  }
+
+  function reviewDateSpan(start, end) {
+    var first = reviewDate(start), last = reviewDate(end);
+    return first === last ? first : first + '–' + last;
+  }
+
+  function reviewPercent(value) { return value === null ? '—' : (value * 100).toFixed(1) + '%'; }
+
+  function renderComparison(data) {
+    var range = data.dateRange;
+    el.reviewComparison.hidden = !range;
+    el.reviewMetrics.hidden = !!range;
+    if (!range) return;
+    var previous = data.comparison.previous, delta = data.comparison.delta;
+    el.reviewCurrentLabel.textContent = range.currentLabel;
+    el.reviewPreviousLabel.textContent = range.priorLabel;
+    el.reviewPeriod.textContent = range.currentLabel + '：' + reviewDateSpan(range.periodStart, range.periodEnd) +
+      '；' + range.priorLabel + '：' + reviewDateSpan(range.priorStart, range.priorEnd - 1) + '。按设备本地日期。';
+    el.compareCountCurrent.textContent = String(data.shown);
+    el.compareCountPrevious.textContent = String(previous.count);
+    var countDelta = data.shown - previous.count;
+    el.compareCountDelta.textContent = countDelta ? (countDelta > 0 ? '多 ' : '少 ') + Math.abs(countDelta) + ' 次' : '持平';
+    el.compareAverageCurrent.textContent = reviewValue(data.average);
+    el.compareAveragePrevious.textContent = reviewValue(previous.average);
+    el.compareStddevCurrent.textContent = reviewValue(data.stddev);
+    el.compareStddevPrevious.textContent = reviewValue(previous.stddev);
+    el.compareDnfCurrent.textContent = reviewPercent(data.dnfRate);
+    el.compareDnfPrevious.textContent = reviewPercent(previous.dnfRate);
+    function difference(node, value, type) {
+      var rounded = value === null ? null : type === 'dnf' ? Math.round(value * 1000) / 10 : Math.round(value);
+      node.classList.toggle('is-better', rounded !== null && rounded < 0);
+      node.classList.toggle('is-worse', rounded !== null && rounded > 0);
+      if (rounded === null) { node.textContent = '—'; return; }
+      if (rounded === 0) { node.textContent = '持平'; return; }
+      if (type === 'dnf') {
+        var change = document.createElement('span');
+        change.textContent = (rounded < 0 ? '下降 ' : '上升 ') + Math.abs(rounded).toFixed(1) + ' ';
+        var unit = document.createElement('span'); unit.className = 'comparison-unit'; unit.textContent = '个百分点';
+        node.replaceChildren(change, unit);
+      }
+      else node.textContent = (type === 'average' ? (rounded < 0 ? '快 ' : '慢 ') : (rounded < 0 ? '减小 ' : '增大 ')) +
+        (Math.abs(rounded) / 1000).toFixed(3) + ' 秒';
+    }
+    difference(el.compareAverageDelta, delta.average, 'average');
+    difference(el.compareStddevDelta, delta.stddev, 'stddev');
+    difference(el.compareDnfDelta, delta.dnfRate, 'dnf');
+    var note = '当前时段含今天，尚未结束。有效成绩 ' + data.validCount + ' / ' + previous.validCount + ' 次';
+    note += data.smallSample || previous.smallSample ? '，样本较少，变化仅供参考。' : '。';
+    if (!data.shown) note += '当前时段没有成绩。';
+    if (!previous.count) note += '前一时段没有成绩，暂不能比较。';
+    note += '平均与波动排除 DNF，+2 计入；波动为标准差，越小越稳定，至少需 2 次有效成绩。';
+    el.reviewCompareNote.textContent = note;
+  }
+
+  function refreshReviewPanels() {
+    renderHistory();
+    renderReview();
+  }
+
   function renderReview() {
-    el.reviewInspect.disabled = !canChangeGroup() || editingGroup !== null || !records.length;
+    el.reviewInspect.disabled = !canChangeGroup() || editingGroup !== null || !reviewSelectedUid;
+    var now = Date.now();
+    // History remains date-aware even when the trend panel is collapsed.
+    var refreshDates = currentView === 'review' && dateReview() && (reviewOpen || historyOpen) && !document.hidden;
+    if (refreshDates && !reviewRefreshTimer) {
+      reviewRefreshTimer = setTimeout(function () { reviewRefreshTimer = 0; refreshReviewPanels(); }, 60000 - now % 60000);
+    } else if (!refreshDates && reviewRefreshTimer) {
+      clearTimeout(reviewRefreshTimer); reviewRefreshTimer = 0;
+    }
     if (currentView !== 'review' || !reviewOpen) {
       if (reviewVersion !== -1) { el.reviewChart.replaceChildren(); el.reviewRecord.replaceChildren(); reviewVersion = -1; }
       return;
     }
-    if (reviewVersion === dataVersion) return;
+    var timeKey = dateReview() ? Math.floor(now / 60000) + ':' + new Date(now).getTimezoneOffset() : null;
+    if (reviewVersion === dataVersion && reviewTimeKey === timeKey) return;
     reviewVersion = dataVersion;
-    reviewData = Review.build(records, reviewLimit);
+    reviewTimeKey = timeKey;
+    reviewData = Review.build(records, reviewLimit, now);
     var data = reviewData;
+    renderComparison(data);
     el.reviewContent.hidden = !data.shown;
     el.reviewEmpty.hidden = !!data.shown;
-    el.reviewSummary.textContent = data.shown ? '第 ' + (data.startIndex + 1) + '–' + data.total + ' 次 · 有效 ' + data.validCount + ' · DNF ' + data.dnfCount + ' · +2 ' + data.plus2Count : '本组还没有成绩';
+    el.reviewEmpty.textContent = data.dateRange ? data.dateRange.currentLabel + '还没有成绩，可换一个范围查看。' :
+      '先完成一把，成绩就会出现在这里。练习满 5 次后可查看 Ao5 趋势。';
+    var scope = data.dateRange ? data.dateRange.currentLabel + ' · 共 ' + data.shown + ' 次' : '第 ' + (data.startIndex + 1) + '–' + data.total + ' 次';
+    el.reviewSummary.textContent = data.shown ? scope + ' · 有效 ' + data.validCount + ' · DNF ' + data.dnfCount + ' · +2 ' + data.plus2Count :
+      data.dateRange ? data.dateRange.currentLabel + ' · 共 0 次' : '本组还没有成绩';
+    if (data.plotTruncated) el.reviewSummary.textContent += ' · 曲线仅显示最近 ' + data.points.length + ' 次，对比统计涵盖本期全部成绩';
     el.reviewAverage.textContent = reviewValue(data.average);
     el.reviewBest.textContent = reviewValue(data.best);
     if (!data.points.some(function (p) { return p.uid === reviewSelectedUid; })) {
-      reviewSelectedUid = data.shown ? data.points[data.shown - 1].uid : null;
+      reviewSelectedUid = data.points.length ? data.points[data.points.length - 1].uid : null;
     }
     var options = document.createDocumentFragment();
     data.points.forEach(function (p) {
@@ -885,6 +1133,7 @@
     });
     el.reviewRecord.replaceChildren(options);
     el.reviewRecord.value = reviewSelectedUid || '';
+    el.reviewInspect.disabled = !canChangeGroup() || editingGroup !== null || !reviewSelectedUid;
     drawReviewChart();
   }
 
@@ -944,39 +1193,22 @@
   }
 
   function openRecord(uid, trigger) {
-    if (!canChangeGroup() || editingGroup !== null) return;
-    if (!memoryMode) readStore();
-    if (!records.some(function (record) { return record.uid === uid; })) { render(); return; }
-    selectedRecordUid = uid;
-    recordReturnFocus = trigger || document.activeElement;
-    el.recordFeedback.textContent = '';
-    render();
-    el.recordDialog.showModal();
-    el.recordClose.focus();
+    showDetail({ kind: 'record', uid: uid }, trigger);
   }
 
-  function closeRecord() {
-    selectedRecordUid = null;
-    if (el.recordDialog.open) el.recordDialog.close();
-    render();
-    var target = recordReturnFocus;
-    recordReturnFocus = null;
-    // The timer view returns directly to the next solve. Review keeps its browsing
-    // position, or falls back to the history heading when an edited row was replaced.
-    if (currentView === 'timer') el.pad.focus({ preventScroll: true });
-    else if (target && target.isConnected && !target.disabled) target.focus();
-    else el.historyToggle.focus();
-  }
+  function closeRecord(event) { closeDetail(event); }
 
   function renderRecordDialog() {
     if (!selectedRecordUid) return;
-    var index = records.findIndex(function (record) { return record.uid === selectedRecordUid; });
-    if (index < 0) {
-      el.feedback.textContent = '该成绩已不在当前训练中，详情已关闭。';
+    var record = allRecords.find(function (item) { return item.uid === selectedRecordUid; });
+    if (!record) {
+      el.feedback.textContent = '该成绩已删除，详情已关闭。';
       closeRecord(); return;
     }
-    var record = records[index];
-    var group = groups.find(function (item) { return item.id === currentGroupId; });
+    var list = groupRecords(record.groupId);
+    var index = list.findIndex(function (item) { return item.uid === record.uid; });
+    var group = groups.find(function (item) { return item.id === record.groupId; });
+    el.recordClose.textContent = detailCloseLabel();
     el.recordTitle.textContent = '第 ' + (index + 1) + ' 次成绩';
     el.recordGroup.textContent = group ? group.name : '';
     el.recordResult.textContent = Stats.formatResult(record);
@@ -984,7 +1216,9 @@
     el.recordRaw.textContent = Stats.formatMs(record.ms);
     el.recordDate.textContent = new Date(record.at).toLocaleString('zh-CN', { hour12: false });
     el.recordScramble.textContent = record.scramble || '—';
-    el.recordAo5.textContent = reviewValue(Stats.aoN(records.slice(Math.max(0, index - 4), index + 1), 5));
+    el.recordAo5.textContent = reviewValue(Stats.aoN(list.slice(Math.max(0, index - 4), index + 1), 5));
+    el.recordAo5Detail.disabled = index < 4;
+    el.recordAo5Detail.title = index < 4 ? '截至该次不足 5 把' : '查看截至该次的 Ao5 明细';
     [el.recordOk, el.recordPlus, el.recordDnf].forEach(function (button, i) {
       var active = record.penalty === ['ok', '+2', 'dnf'][i];
       button.setAttribute('aria-pressed', String(active)); button.classList.toggle('is-active', active);
@@ -995,7 +1229,7 @@
     if (!selectedRecordUid || !['ok', '+2', 'dnf'].includes(penalty) || press || activeScramble || importing || (state !== 'IDLE' && state !== 'STOPPED')) return;
     var uid = selectedRecordUid;
     if (!memoryMode) readStore();
-    var record = records.find(function (item) { return item.uid === uid; });
+    var record = allRecords.find(function (item) { return item.uid === uid; });
     if (!record) { render(); return; }
     saveRecord(Object.assign({}, record, { penalty: penalty }));
     render();
@@ -1426,14 +1660,83 @@
   function deleteLatest() {
     if (currentView !== 'timer' || detailsOpen()) return;
     if ((state !== 'STOPPED' && state !== 'IDLE') || press || activeScramble || importing || !records.length) return;
-    var uid = latestRecord().uid;
+    deleteRecord(latestRecord().uid);
+  }
+
+  function renderUndo() {
+    var pending = undoDeletions.length;
+    [[el.undoNotice, el.undoMessage, el.undoDelete], [el.recordUndoNotice, el.recordUndoMessage, el.recordUndo],
+      [el.averageUndoNotice, el.averageUndoMessage, el.averageUndo]].forEach(function (parts) {
+      parts[0].hidden = !undoMessage;
+      parts[1].textContent = undoMessage;
+      parts[2].hidden = !pending;
+      parts[2].disabled = !canEditRecords();
+      parts[2].textContent = pending > 1 ? '撤销删除（' + pending + '）' : '撤销删除';
+    });
+  }
+
+  function focusUndo() {
+    var button = selectedRecordUid ? el.recordUndo : selectedAverage ? el.averageUndo : el.undoDelete;
+    // Long Ao12 dialogs must bring the recovery action into view after deletion.
+    if (!button.hidden && !button.disabled) button.focus();
+  }
+
+  function deleteRecord(uid) {
+    if (!canEditRecords()) return;
+    if (!memoryMode) readStore();
+    var record = allRecords.find(function (item) { return item.uid === uid; });
+    if (!record) { render(); return; }
+    var group = groups.find(function (item) { return item.id === record.groupId; });
+    var entry = { record: Object.assign({}, record), memoryOnly: memoryMode,
+      groupName: group ? group.name : '训练', number: groupRecords(record.groupId).findIndex(function (item) { return item.uid === uid; }) + 1 };
     if (!memoryMode) {
-      try { store.remove(uid); readStore(); render(); return; }
-      catch (err) { setMemoryMode('删除结果未能保存'); }
+      try { entry.token = store.remove(uid).token; }
+      catch (err) {
+        var message = '删除未完成，成绩仍保留：' + err.message;
+        if (selectedRecordUid) el.recordFeedback.textContent = message;
+        else { undoMessage = message; renderUndo(); }
+        return;
+      }
+      readStore();
+    } else {
+      allRecords = allRecords.filter(function (item) { return item.uid !== uid; });
+      dataChanged();
     }
-    allRecords = allRecords.filter(function (item) { return item.uid !== uid; });
-    dataChanged();
+    undoDeletions.push(entry);
+    undoMessage = (entry.memoryOnly ? '仅在本页删除「' : '已删除「') + entry.groupName + '」第 ' + entry.number + ' 次 · ' + Stats.formatResult(record) + '。本页可撤销。';
+    if (selectedRecordUid === uid) closeRecord(); else render();
+    focusUndo();
+  }
+
+  function undoDelete() {
+    if (!canEditRecords() || !undoDeletions.length) return;
+    var entry = undoDeletions[undoDeletions.length - 1];
+    try {
+      if (entry.memoryOnly) {
+        if (!allRecords.some(function (item) { return item.uid === entry.record.uid; })) allRecords.push(entry.record);
+        allRecords.sort(window.StarCubeStore.compareRecords);
+        dataChanged();
+      } else {
+        var restored = store.restore(entry.record.uid, entry.token);
+        if (memoryMode) {
+          if (!allRecords.some(function (item) { return item.uid === restored.uid; })) allRecords.push(restored);
+          allRecords.sort(window.StarCubeStore.compareRecords);
+          dataChanged();
+        } else readStore();
+      }
+      undoDeletions.pop();
+      undoMessage = '已恢复「' + entry.groupName + '」的 ' + Stats.formatResult(entry.record) + '，统计已更新。' +
+        (entry.memoryOnly ? '仅保留在本页，请导出备份。' : '');
+    } catch (err) {
+      if (err.code === 'RESTORE_CONFLICT' || err.code === 'RECORD_UNAVAILABLE') undoDeletions.pop();
+      undoMessage = '未能撤销：' + err.message;
+    }
     render();
+    if (undoDeletions.length) focusUndo();
+    else if (selectedRecordUid) el.recordClose.focus({ preventScroll: true });
+    else if (selectedAverage) el.averageClose.focus({ preventScroll: true });
+    else if (currentView === 'timer') el.pad.focus({ preventScroll: true });
+    else el.historyToggle.focus({ preventScroll: true });
   }
 
   function toggleInspection() {
@@ -1526,6 +1829,47 @@
     if (event.type === 'pointercancel') releaseTouchContact(event);
     if (pointerId !== event.pointerId) return;
     abandonPointerGesture();
+  }
+
+  function csvFilenamePart(text, fallback) {
+    var cleaned = String(text || '').trim().replace(/[\\/:*?"<>|\x00-\x1f]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+    return cleaned || fallback;
+  }
+
+  function localDayKey(ms) {
+    var date = new Date(ms);
+    return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+  }
+
+  function exportHistoryCsv() {
+    if (el.exportHistoryCsv.disabled || !canChangeGroup() || editingGroup !== null) return;
+    if (!memoryMode) readStore();
+    var now = Date.now();
+    var filtered = Review.filterHistory(records, reviewLimit, now);
+    if (!filtered.entries.length) {
+      el.feedback.textContent = '当前筛选范围内没有可导出的成绩。';
+      render();
+      return;
+    }
+    var group = groups.find(function (item) { return item.id === currentGroupId; });
+    var groupName = group ? group.name : '默认训练';
+    var scopeLabel = filtered.range ? filtered.range.currentLabel : '全部历史';
+    var scopeFile = filtered.range ? (filtered.range.mode === 'today' ? '今天' : '最近7天') : '全部';
+    var csv = Review.historyCsv(filtered.entries);
+    try {
+      var url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = 'starcube-' + csvFilenamePart(groupName, '训练') + '-' + scopeFile + '-' + localDayKey(now) + '.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      el.feedback.textContent = '已发起 CSV 导出：「' + groupName + '」' + scopeLabel + '，共 ' + filtered.entries.length + ' 条成绩。请确认文件已保存。';
+    } catch (err) {
+      el.feedback.textContent = 'CSV 导出失败：' + err.message;
+    }
+    render();
   }
 
   function exportData() {
@@ -1631,7 +1975,9 @@
     window.addEventListener('blur', function () { audio.stop(); abortInput(); });
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) { audio.stop(); abortInput(); }
+      refreshReviewPanels();
     });
+    window.addEventListener('focus', refreshReviewPanels);
 
     window.addEventListener('pointerdown', trackTouchStart, true);
     el.pad.addEventListener('pointerdown', getPointerPress);
@@ -1667,7 +2013,27 @@
     [[el.coreAo5Detail, 5], [el.ao5Detail, 5], [el.coreAo12Detail, 12], [el.ao12Detail, 12]].forEach(function (pair) {
       pair[0].addEventListener('click', function () { openAverage(pair[1], pair[0]); });
     });
+    [el.corePbDetail, el.pbDetail, el.coreGlobalPbDetail, el.globalPbDetail].forEach(function (button) {
+      button.addEventListener('click', function () {
+        if (!canChangeGroup() || editingGroup !== null) return;
+        if (!memoryMode) readStore();
+        var best = Stats.personalBest(button === el.coreGlobalPbDetail || button === el.globalPbDetail ? allRecords : records);
+        if (best) openRecord(best.record.uid, button); else render();
+      });
+    });
+    el.bestAo5Detail.addEventListener('click', function () {
+      if (!canChangeGroup() || editingGroup !== null) return;
+      if (!memoryMode) readStore();
+      var best = Stats.bestAo5Details(records);
+      if (best) openAverage(5, el.bestAo5Detail, best.endUid); else render();
+    });
+    el.averageRows.addEventListener('click', function (event) {
+      if (!selectedAverage) return;
+      var button = event.target.closest('[data-record-uid]');
+      if (button) openRecord(button.getAttribute('data-record-uid'), button);
+    });
     el.averageClose.addEventListener('click', closeAverage);
+    el.averageContinue.addEventListener('click', continueTiming);
     el.averageDialog.addEventListener('cancel', function (event) { event.preventDefault(); closeAverage(); });
     el.averageDialog.addEventListener('close', function () { if (!el.averageDialog.open && selectedAverage !== null) closeAverage(); });
     el.backupExport.addEventListener('click', function () { if (!el.backupExport.disabled) exportData(); });
@@ -1694,6 +2060,7 @@
     el.plusBtn.addEventListener('click', function (event) { togglePenalty('+2'); returnTimerFocus(event); });
     el.dnfBtn.addEventListener('click', function (event) { togglePenalty('dnf'); returnTimerFocus(event); });
     el.deleteBtn.addEventListener('click', function (event) { deleteLatest(); returnTimerFocus(event); });
+    [el.undoDelete, el.recordUndo, el.averageUndo].forEach(function (button) { button.addEventListener('click', undoDelete); });
     el.cancelBtn.addEventListener('pointerdown', function (event) { event.stopPropagation(); });
     el.cancelBtn.addEventListener('click', function (event) {
       event.stopPropagation();
@@ -1706,6 +2073,7 @@
     });
     el.newScrambleBtn.addEventListener('click', function (event) { newScramble(); returnTimerFocus(event); });
     el.exportBtn.addEventListener('click', exportData);
+    el.exportHistoryCsv.addEventListener('click', exportHistoryCsv);
     el.importBtn.addEventListener('click', function () { if (!el.importBtn.disabled) el.importFile.click(); });
     el.importFile.addEventListener('change', importData);
     el.historyToggle.addEventListener('click', function () {
@@ -1713,7 +2081,7 @@
       historyOpen = !historyOpen;
       el.historyBody.hidden = !historyOpen;
       el.historyToggle.setAttribute('aria-expanded', String(historyOpen));
-      renderHistory();
+      refreshReviewPanels();
     });
     el.historyMore.addEventListener('click', function () {
       if (currentView !== 'review' || !historyOpen) return;
@@ -1733,36 +2101,68 @@
       el.reviewToggle.setAttribute('aria-expanded', String(reviewOpen));
       renderReview();
     });
+    function changeReviewRange(value) {
+      reviewLimit = value === 'today' || value === '7days' ? value : value === '100' ? 100 : 50;
+      el.reviewRange.value = String(reviewLimit);
+      settings.reviewRange = String(reviewLimit);
+      persistSettings();
+      historyLimit = 50;
+      historyVersion = -1;
+      el.historyBody.scrollTop = 0;
+      reviewVersion = -1;
+      render();
+    }
     el.reviewRange.addEventListener('change', function () {
-      reviewLimit = el.reviewRange.value === '100' ? 100 : 50;
-      reviewVersion = -1; renderReview();
+      changeReviewRange(el.reviewRange.value);
+    });
+    el.historyAll.addEventListener('click', function () {
+      if (!canChangeGroup() || editingGroup !== null || currentView !== 'review') return;
+      changeReviewRange('50');
+      el.historyToggle.focus({ preventScroll: true });
+    });
+    el.reviewHistory.addEventListener('click', function () {
+      if (currentView !== 'review' || !dateReview() || !canChangeGroup() || editingGroup !== null) return;
+      historyOpen = true;
+      el.historyBody.hidden = false;
+      el.historyToggle.setAttribute('aria-expanded', 'true');
+      refreshReviewPanels();
+      el.historyToggle.scrollIntoView({ block: 'start', behavior: 'auto' });
+      el.historyToggle.focus({ preventScroll: true });
     });
     el.reviewRecord.addEventListener('change', function () {
       reviewSelectedUid = el.reviewRecord.value; drawReviewChart();
     });
     el.reviewInspect.addEventListener('click', function () { if (currentView === 'review' && reviewOpen) openRecord(reviewSelectedUid, el.reviewInspect); });
     el.reviewChart.addEventListener('click', function (event) {
-      if (!reviewData || !reviewData.shown) return;
+      if (!reviewData || !reviewData.points.length) return;
       var rect = el.reviewChart.getBoundingClientRect();
       var width = Math.max(280, el.reviewChart.clientWidth || 760);
       var horizontal = (event.clientX - rect.left) * width / rect.width;
-      var i = Math.round((horizontal - 74) / (width - 88) * (reviewData.shown - 1));
-      i = Math.max(0, Math.min(reviewData.shown - 1, i));
+      var i = Math.round((horizontal - 74) / (width - 88) * (reviewData.points.length - 1));
+      i = Math.max(0, Math.min(reviewData.points.length - 1, i));
       reviewSelectedUid = reviewData.points[i].uid;
       el.reviewRecord.value = reviewSelectedUid; drawReviewChart();
     });
     window.addEventListener('resize', function () { if (currentView === 'review' && reviewOpen) drawReviewChart(); });
     el.recordClose.addEventListener('click', closeRecord);
+    el.recordContinue.addEventListener('click', continueTiming);
     el.recordDialog.addEventListener('cancel', function (event) { event.preventDefault(); closeRecord(); });
     el.recordDialog.addEventListener('close', function () { if (!el.recordDialog.open && selectedRecordUid) closeRecord(); });
     el.recordOk.addEventListener('click', function () { setRecordPenalty('ok'); });
     el.recordPlus.addEventListener('click', function () { setRecordPenalty('+2'); });
     el.recordDnf.addEventListener('click', function () { setRecordPenalty('dnf'); });
+    el.recordDelete.addEventListener('click', function () { if (selectedRecordUid) deleteRecord(selectedRecordUid); });
+    el.recordAo5Detail.addEventListener('click', function () {
+      if (!selectedRecordUid) return;
+      var record = allRecords.find(function (item) { return item.uid === selectedRecordUid; });
+      if (record) openAverage(5, el.recordAo5Detail, record.uid, record.groupId);
+    });
     window.addEventListener('storage', function (event) {
       var key = event.key;
       if (key === 'starcube.backup.v1') { backup.refresh(); renderBackup(); return; }
       if (key && key !== RECORDS_KEY && key.indexOf('starcube.records.v2.item.') !== 0 &&
-          key.indexOf('starcube.records.v2.deleted.') !== 0 && key.indexOf(window.StarCubeStore.keys.groupPrefix) !== 0) return;
+          key.indexOf('starcube.records.v2.deleted.') !== 0 && key.indexOf(window.StarCubeStore.keys.restoredPrefix) !== 0 &&
+          key.indexOf(window.StarCubeStore.keys.groupPrefix) !== 0) return;
       pendingStorageRefresh = true;
       clearTimeout(storageRefreshTimer);
       storageRefreshTimer = setTimeout(function () { render(); }, 40);

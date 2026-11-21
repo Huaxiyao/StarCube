@@ -76,6 +76,41 @@ approx(bestValue, 1000, '最佳 Ao5 取最小窗口');
 assert.strictEqual(S.bestAo5([rec(1000), rec(2000), rec(3000), rec(4000)]), null);
 console.log('PASS 最佳 Ao5 不足 5 条 = null');
 
+// 最佳平均保留可追溯的窗口，同分取最早，后续更慢成绩不改变该入口。
+const traceable = best.map((record, index) => ({ ...record, uid: 'solve-' + (index + 1) }));
+traceable.push({ ...rec(30000), uid: 'solve-11' });
+const bestDetails = S.bestAo5Details(traceable);
+assert.strictEqual(bestDetails.value, 1000);
+assert.strictEqual(bestDetails.endUid, 'solve-9');
+assert.strictEqual(bestDetails.startIndex, 4);
+assert.strictEqual(bestDetails.endIndex, 8);
+assert.deepStrictEqual(bestDetails.rows.map(row => row.number), [5, 6, 7, 8, 9]);
+assert.deepStrictEqual(bestDetails, S.averageDetails(traceable, 5, bestDetails.endUid));
+assert.strictEqual(S.bestAo5(traceable), bestDetails.value);
+console.log('PASS 最佳 Ao5 可追溯到最早同分窗口，保留全组位置和截止 UID');
+
+const allDnf = Array.from({ length: 8 }, (_, index) => ({ ...rec(10000, 'dnf'), uid: 'dnf-' + index }));
+assert.strictEqual(S.bestAo5Details(allDnf), null);
+assert.strictEqual(S.bestAo5(allDnf), null);
+assert.strictEqual(S.bestAo5Details(traceable.slice(0, 4)), null);
+assert.strictEqual(S.bestAo5Details(null), null);
+assert.strictEqual(S.bestAo5Details({ length: 5 }), null);
+allDnf.slice(3, 7).forEach(record => { record.penalty = 'ok'; });
+const firstValid = S.bestAo5Details(allDnf);
+assert.strictEqual(firstValid.value, 10000);
+assert.strictEqual(firstValid.endUid, 'dnf-6');
+assert.strictEqual(firstValid.rows[0].excluded, 'worst');
+console.log('PASS 无有效最佳 Ao5 返回 null，首次有效窗口允许去尾一个 DNF');
+
+const frozenBest = Object.freeze(traceable.map(record => Object.freeze({ ...record })));
+const preserved = JSON.stringify(frozenBest);
+const frozenDetails = S.bestAo5Details(frozenBest);
+assert.strictEqual(JSON.stringify(frozenBest), preserved);
+assert.strictEqual(frozenDetails.rows[0].record, frozenBest[4]);
+assert.strictEqual(S.bestAo5Details(best).endIndex, 8, '无 UID 的旧数据也保持最早窗口位置');
+assert.strictEqual(S.bestAo5Details(best).value, S.bestAo5(best));
+console.log('PASS 最佳平均不修改冻结输入，并兼容无 UID 的统计调用');
+
 // 观察判定边界
 assert.strictEqual(S.inspectionPenalty(14999, true), 'ok');
 assert.strictEqual(S.inspectionPenalty(15000, true), '+2');

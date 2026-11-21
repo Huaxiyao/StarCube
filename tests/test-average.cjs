@@ -63,6 +63,58 @@ test('只使用最近 N 条，保留完整列表序号、UID、原记录引用�
   assert.equal(details.value, 7000);
 });
 
+test('历史 Ao5 以指定 UID 截止，不混入后续成绩且保留全组序号', () => {
+  const records = series(12);
+  records[5].penalty = '+2';
+  records[7].penalty = 'dnf';
+  records[9].ms = 1;
+  const details = S.averageDetails(records, 5, 'solve-8');
+  assert.equal(details.value, 20000 / 3);
+  assert.equal(details.sum, 20000);
+  assert.equal(details.startIndex, 3);
+  assert.equal(details.endIndex, 7);
+  assert.equal(details.endUid, 'solve-8');
+  assert.deepEqual(details.rows.map(row => row.number), [4, 5, 6, 7, 8]);
+  assert.deepEqual(details.rows.map(row => row.excluded), ['best', null, null, null, 'worst']);
+  details.rows.forEach((row, index) => assert.equal(row.record, records[index + 3]));
+  assert.notEqual(details.value, S.averageDetails(records, 5).value);
+});
+
+test('历史 Ao12 使用完整窗口并正确处理第一组十二把', () => {
+  const records = series(20);
+  const first = S.averageDetails(records, 12, 'solve-12');
+  assert.equal(first.value, 6500);
+  assert.deepEqual(first.rows.map(row => row.number), Array.from({ length: 12 }, (_, i) => i + 1));
+  const later = S.averageDetails(records, 12, 'solve-16');
+  assert.equal(later.value, 10500);
+  assert.deepEqual(later.rows.map(row => row.number), Array.from({ length: 12 }, (_, i) => i + 5));
+});
+
+test('历史截止成绩不存在、已删除、数量不足或 UID 非法时不回退到最新平均', () => {
+  const records = series(15);
+  for (const uid of ['missing', 'solve-4', '', null, 5, {}, false]) {
+    assert.equal(S.averageDetails(records, 5, uid), null);
+  }
+  assert.equal(S.averageDetails(records, 12, 'solve-11'), null);
+  const afterDelete = records.filter(item => item.uid !== 'solve-10');
+  assert.equal(S.averageDetails(afterDelete, 5, 'solve-10'), null);
+  assert.deepEqual(S.averageDetails(records, 5, undefined), S.averageDetails(records, 5));
+});
+
+test('删除前序记录或修改罚时后，历史窗口按稳定 UID 重新计算', () => {
+  const records = series(10);
+  const before = S.averageDetails(records, 5, 'solve-8');
+  assert.deepEqual(before.rows.map(row => row.uid), ['solve-4', 'solve-5', 'solve-6', 'solve-7', 'solve-8']);
+  const afterDelete = records.filter(item => item.uid !== 'solve-5');
+  const after = S.averageDetails(afterDelete, 5, 'solve-8');
+  assert.deepEqual(after.rows.map(row => row.uid), ['solve-3', 'solve-4', 'solve-6', 'solve-7', 'solve-8']);
+  assert.deepEqual(after.rows.map(row => row.number), [3, 4, 5, 6, 7]);
+  assert.equal(after.value, 17000 / 3);
+  records[5].penalty = 'dnf';
+  records[6].penalty = 'dnf';
+  assert.equal(S.averageDetails(records, 5, 'solve-8').value, 'DNF');
+});
+
 for (const n of [5, 50, 100]) {
   test('Ao' + n + ' 同分按原序稳定去尾，恰好排除指定数量', () => {
     const records = series(n).map(item => ({ ...item, ms: 10000 }));

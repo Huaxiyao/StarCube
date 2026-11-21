@@ -35,7 +35,7 @@ function compileSuite(suite) {
       + read('polish-browser-cases.js');
   }
 
-  // Preserve the final theme suite's dark-surface and held-feedback coverage.
+  // Preserve the final theme suite's surface-tone and held-feedback coverage.
   if (suite === 'theme') {
     source = replaceOnce(source,
       "assert.deepEqual(result.failures,[],label+' text contrast failures');return result;",

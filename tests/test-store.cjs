@@ -203,6 +203,147 @@ test('import respects tombstones instead of reviving known deleted UIDs', () => 
   assert.strictEqual(api.load().records.length, 0);
 });
 
+test('explicit undo restores retained identity, group and penalty without duplicating imports', () => {
+  const st = storage(), a = Store.create({ storage: st }), b = Store.create({ storage: st });
+  a.putGroup({ id: 'practice', origin: 'origin-practice', name: '专项练习' });
+  const saved = a.put(record(7, { uid: 'restore-me', penalty: '+2', groupId: 'practice' }));
+  const exported = a.exportData();
+  const originalRaw = st.getItem(K.itemPrefix + saved.uid);
+  const deletion = a.remove(saved.uid);
+  assert.strictEqual(b.load().records.length, 0);
+  assert.strictEqual(b.importRecords(exported).added, 0);
+  assert.deepStrictEqual(a.restore(saved.uid, deletion.token), saved);
+  assert.deepStrictEqual(b.load().records, [saved]);
+  assert.strictEqual(st.getItem(K.itemPrefix + saved.uid), originalRaw, 'Undo must not rewrite the retained original');
+  assert.strictEqual(b.importRecords(exported).added, 0, 'A restored UID remains a single record');
+  assert.deepStrictEqual(a.exportData().records, [saved]);
+  const writes = st.writes;
+  assert.deepStrictEqual(a.restore(saved.uid, deletion.token), saved);
+  assert.strictEqual(st.writes, writes, 'Repeat undo of the same deletion is read-only');
+  b.put({ ...saved, penalty: 'dnf' });
+  assert.strictEqual(a.restore(saved.uid, deletion.token).penalty, 'dnf', 'Repeat undo cannot replace a subsequent edit');
+});
+
+test('undo keeps legacy migration identity and subsequent edits persist', () => {
+  const source = JSON.stringify([record()]);
+  const st = storage({ [K.legacy]: source }), api = Store.create({ storage: st });
+  const migrated = api.load().records[0];
+  const deletion = api.remove(migrated.uid);
+  assert.deepStrictEqual(api.restore(migrated.uid, deletion.token), migrated);
+  api.put({ ...migrated, penalty: '+2' });
+  assert.deepStrictEqual(api.load().records, [{ ...migrated, penalty: '+2' }]);
+  assert.strictEqual(st.getItem(K.legacy), source);
+});
+
+test('different deletions in the same millisecond have separate undo tokens', () => {
+  const st = storage(), a = Store.create({ storage: st }), b = Store.create({ storage: st });
+  const saved = a.put(record(1, { uid: 'same-clock' }));
+  const OriginalDate = global.Date;
+  global.Date = class extends OriginalDate {
+    constructor(...args) { super(...(args.length ? args : ['2026-11-14T12:00:00.000Z'])); }
+    static now() { return new OriginalDate('2026-11-14T12:00:00.000Z').getTime(); }
+  };
+  let first, second;
+  try { first = a.remove(saved.uid); second = b.remove(saved.uid); }
+  finally { global.Date = OriginalDate; }
+  assert.strictEqual(first.deletedAt, second.deletedAt);
+  assert.notStrictEqual(first.token, second.token);
+  const before = new Map(st.values);
+  assert.throws(() => a.restore(saved.uid, first.token), err => err.code === 'RESTORE_CONFLICT');
+  assert.deepStrictEqual(st.values, before);
+  assert.strictEqual(a.load().records.length, 0);
+  assert.deepStrictEqual(b.restore(saved.uid, second.token), saved);
+  const third = a.remove(saved.uid);
+  assert.throws(() => b.restore(saved.uid, second.token), err => err.code === 'RESTORE_CONFLICT');
+  assert.strictEqual(a.load().records.length, 0);
+  a.restore(saved.uid, third.token);
+  assert.deepStrictEqual(b.load().records, [saved]);
+});
+
+test('a newer deletion during undo is never removed by the older undo', () => {
+  const st = storage(), a = Store.create({ storage: st }), b = Store.create({ storage: st });
+  const saved = a.put(record(1, { uid: 'racing-delete' }));
+  const first = a.remove(saved.uid), setItem = st.setItem;
+  let newest;
+  st.setItem = function (key, value) {
+    if (key.startsWith(K.restoredPrefix)) {
+      st.setItem = setItem;
+      newest = b.remove(saved.uid);
+    }
+    return setItem.call(this, key, value);
+  };
+  assert.throws(() => a.restore(saved.uid, first.token), err => err.code === 'RESTORE_CONFLICT');
+  assert.strictEqual(a.load().records.length, 0);
+  assert.strictEqual(JSON.parse(st.getItem(K.deletedPrefix + saved.uid)).token, newest.token);
+  b.restore(saved.uid, newest.token);
+  assert.deepStrictEqual(a.load().records, [saved]);
+});
+
+test('an overlapping old undo cannot overwrite the acknowledgement of a newer undo', () => {
+  const st = storage(), a = Store.create({ storage: st }), b = Store.create({ storage: st });
+  const saved = a.put(record(1, { uid: 'racing-undo' }));
+  const first = a.remove(saved.uid), setItem = st.setItem;
+  st.setItem = function (key, value) {
+    if (key.startsWith(K.restoredPrefix)) {
+      st.setItem = setItem;
+      const next = b.remove(saved.uid);
+      b.restore(saved.uid, next.token);
+    }
+    return setItem.call(this, key, value);
+  };
+  a.restore(saved.uid, first.token);
+  assert.deepStrictEqual(b.load().records, [saved]);
+  const finalDelete = b.remove(saved.uid);
+  assert.strictEqual(a.load().records.length, 0);
+  assert.throws(() => a.restore(saved.uid, first.token), err => err.code === 'RESTORE_CONFLICT');
+  b.restore(saved.uid, finalDelete.token);
+});
+
+test('invalid, obsolete or unavailable undo records preserve all stored bytes', () => {
+  const st = storage(), api = Store.create({ storage: st });
+  const saved = api.put(record(1, { uid: 'undo-inputs' })), deletion = api.remove(saved.uid);
+  for (const [uid, token] of [['bad uid', deletion.token], [saved.uid, null], [saved.uid, 'different-token']]) {
+    const before = new Map(st.values);
+    assert.throws(() => api.restore(uid, token), err => ['INVALID_RESTORE', 'RESTORE_CONFLICT'].includes(err.code));
+    assert.deepStrictEqual(st.values, before);
+  }
+  for (const raw of [null, '{broken', JSON.stringify(record(1, { uid: 'other' }))]) {
+    if (raw === null) st.values.delete(K.itemPrefix + saved.uid); else st.values.set(K.itemPrefix + saved.uid, raw);
+    const before = new Map(st.values);
+    assert.throws(() => api.restore(saved.uid, deletion.token), err => err.code === 'RECORD_UNAVAILABLE');
+    assert.deepStrictEqual(st.values, before);
+  }
+});
+
+test('failed undo writes and unavailable storage leave deletion and raw record intact', () => {
+  const st = storage(), api = Store.create({ storage: st });
+  const saved = api.put(record(1, { uid: 'undo-failure' })), deletion = api.remove(saved.uid);
+  const before = new Map(st.values);
+  st.options.readOnly = true;
+  assert.throws(() => api.restore(saved.uid, deletion.token), /QuotaExceededError/);
+  assert.deepStrictEqual(st.values, before);
+  assert.strictEqual(api.load().records.length, 0);
+  st.options.readOnly = false;
+  st.options.failAfter = st.writes;
+  assert.throws(() => api.restore(saved.uid, deletion.token), /QuotaExceededError/);
+  assert.deepStrictEqual(st.values, before);
+  delete st.options.failAfter;
+  assert.deepStrictEqual(api.restore(saved.uid, deletion.token), saved);
+  assert.throws(() => Store.create({ storage: null }).restore(saved.uid, deletion.token), err => err.code === 'STORAGE_UNAVAILABLE');
+});
+
+test('legacy or malformed deletion markers cannot be revived by guessed undo markers', () => {
+  const saved = record(1, { uid: 'legacy-delete', groupId: 'default' });
+  for (const raw of ['{broken', '{}', JSON.stringify({ uid: saved.uid, deletedAt: '2026-10-25T00:00:00.000Z' })]) {
+    const st = storage({ [K.itemPrefix + saved.uid]: JSON.stringify(saved), [K.deletedPrefix + saved.uid]: raw });
+    const api = Store.create({ storage: st });
+    assert.strictEqual(api.load().records.length, 0);
+    assert.throws(() => api.restore(saved.uid, 'guess'), err => err.code === 'RESTORE_CONFLICT');
+    assert.throws(() => api.put(saved), err => err.code === 'RECORD_DELETED');
+    assert.strictEqual(api.importRecords([saved]).added, 0);
+  }
+});
+
 test('export and import round-trip live records and original raw backups', () => {
   const original = '[bad-json';
   const a = Store.create({ storage: storage({ [K.legacy]: original }) });
