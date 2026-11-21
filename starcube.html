@@ -214,6 +214,7 @@ main { min-width:0; }
 .status[data-tone="warn"] { background:var(--yellow-soft); color:var(--yellow); }
 
 .switch { display:inline-flex; align-items:center; gap:8px; padding:0 10px; border-radius:var(--radius-control); color:var(--text); font-size:0.8125rem; font-weight:500; }
+.switch-icon { display:none; width:19px; height:19px; flex:none; }
 .switch-track { width:34px; height:20px; border-radius:var(--radius-pill); background:var(--switch-track); position:relative; transition:background-color 150ms ease; flex:none; }
 .switch-dot { position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--switch-dot); box-shadow:0 1px 2px rgb(15 23 42 / .2); transition:transform 150ms ease,background-color 150ms ease; }
 .switch[aria-checked="true"] .switch-track { background:var(--accent-fill); }
@@ -554,46 +555,52 @@ button:active:not(:disabled) { background:var(--control-active); }
   to { opacity:1; transform:translateY(0); }
 }
 
-/* 响应式：手机原生一屏沉浸体验 */
+/* 响应式：手机原生极简设计（CubeTime × Twisty Timer 黄金结构） */
 @media (max-width:720px) {
   html { scrollbar-gutter:auto; }
-  #app { padding:6px 14px calc(72px + env(safe-area-inset-bottom)); }
-  #app[data-view="timer"] { height:100dvh; max-height:100dvh; display:flex; flex-direction:column; overflow:hidden; padding:6px 14px calc(66px + env(safe-area-inset-bottom)); }
+  #app { padding:6px 18px calc(86px + env(safe-area-inset-bottom)); }
+  #app[data-view="timer"] { height:100dvh; max-height:100dvh; display:flex; flex-direction:column; overflow:hidden; padding:6px 18px calc(76px + env(safe-area-inset-bottom)); }
   #app[data-view="timer"] main { flex:1; min-height:0; display:flex; flex-direction:column; }
   #app[data-view="timer"] #timerView { flex:1; min-height:0; display:flex; flex-direction:column; }
   #app[data-view="timer"] .timer-layout { flex:1; min-height:0; display:flex; flex-direction:column; gap:0; }
-  #app[data-view="timer"] .timer-stage { flex:1; min-height:0; width:100%; display:flex; flex-direction:column; gap:8px; }
+  #app[data-view="timer"] .timer-stage { flex:1; min-height:0; width:100%; display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:auto minmax(0,1fr) auto; column-gap:12px; row-gap:4px; }
 
-  /* 极简顶栏：去卡片化、去冗余状态胶囊，左侧放训练分组切换，右侧放观察/主题/设置 */
-  .topbar { position:static; min-height:46px; flex-wrap:nowrap; gap:6px; padding:2px 0; margin-bottom:6px; border:0; border-radius:0; background:transparent; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; transition:opacity 160ms ease; }
+  /* 1. 极简无框顶栏：纯画布呼吸感，无白底胶囊与厚重描边 */
+  .topbar { position:static; min-height:44px; flex-wrap:nowrap; gap:6px; padding:2px 0 4px; margin-bottom:2px; border:0; border-radius:0; background:transparent; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; transition:opacity 160ms ease; }
   .brand { display:none; }
   .status { display:none; }
-  .mobile-group-btn { display:inline-flex; align-items:center; gap:7px; min-height:40px; max-width:46vw; padding:0 12px 0 8px; border-radius:var(--radius-pill); background:var(--panel); border:1px solid var(--line-soft); color:var(--text); font-size:0.875rem; font-weight:600; box-shadow:0 1px 2px rgb(15 23 42 / .04); min-width:0; }
-  .mobile-group-btn .brand-symbol { width:20px; height:20px; flex:none; }
+  .mobile-group-btn { display:inline-flex; align-items:center; gap:8px; min-height:40px; max-width:54vw; padding:0 6px 0 2px; border-radius:10px; background:transparent; border:0; color:var(--text); font-size:1.0625rem; font-weight:700; letter-spacing:-.02em; box-shadow:none; min-width:0; }
+  .mobile-group-btn:active { opacity:.6; }
+  .mobile-group-btn .brand-symbol { width:22px; height:22px; flex:none; }
   .mobile-group-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
-  .mobile-group-chevron { width:14px; height:14px; color:var(--muted); flex:none; }
-  .topbar-right { margin:0 0 0 auto; gap:4px; flex-wrap:nowrap; align-items:center; flex:none; }
-  .switch { min-height:38px; padding:0 6px; gap:6px; font-size:0.75rem; color:var(--muted); }
-  .theme-btn { width:38px; min-width:38px; min-height:38px; padding:0; border:1px solid var(--line-soft); border-radius:var(--radius-pill); background:var(--panel); box-shadow:0 1px 2px rgb(15 23 42 / .04); }
+  .mobile-group-chevron { width:16px; height:16px; color:var(--muted); flex:none; opacity:.8; }
+  .topbar-right { margin:0 0 0 auto; gap:2px; flex-wrap:nowrap; align-items:center; flex:none; }
+  .topbar-right .switch { width:38px; min-width:38px; min-height:38px; padding:0; justify-content:center; border-radius:999px; color:var(--muted); background:transparent; }
+  .topbar-right .switch .switch-label,.topbar-right .switch .switch-track { display:none; }
+  .topbar-right .switch .switch-icon { display:block; }
+  .topbar-right .switch[aria-checked="true"] { color:var(--accent); background:var(--accent-soft); }
+  .theme-btn { width:38px; min-width:38px; min-height:38px; padding:0; border:0; border-radius:999px; background:transparent; color:var(--muted); box-shadow:none; }
+  .theme-btn:active,.mobile-icon-btn:active,.topbar-right .switch:active { transform:scale(.92); }
+  .theme-icon { width:19px; height:19px; }
   .theme-label { display:none; }
-  .mobile-icon-btn { position:relative; display:inline-flex; align-items:center; justify-content:center; width:38px; min-width:38px; min-height:38px; padding:0; border:1px solid var(--line-soft); border-radius:var(--radius-pill); background:var(--panel); color:var(--text); box-shadow:0 1px 2px rgb(15 23 42 / .04); flex:none; }
-  .mobile-icon-btn svg { width:17px; height:17px; }
-  .mobile-icon-btn[data-badge="true"]::after { content:""; position:absolute; top:7px; right:7px; width:7px; height:7px; border-radius:50%; background:var(--red-text); box-shadow:0 0 0 2px var(--panel); }
+  .mobile-icon-btn { position:relative; display:inline-flex; align-items:center; justify-content:center; width:38px; min-width:38px; min-height:38px; padding:0; border:0; border-radius:999px; background:transparent; color:var(--muted); box-shadow:none; flex:none; }
+  .mobile-icon-btn svg { width:19px; height:19px; }
+  .mobile-icon-btn[data-badge="true"]::after { content:""; position:absolute; top:7px; right:7px; width:7px; height:7px; border-radius:50%; background:var(--red-text); box-shadow:0 0 0 2px var(--bg); }
 
-  /* 原生风格贴底 Tab Bar：去黑砖感，改用图标+小字+主题强调色 */
-  .view-nav { position:fixed; left:0; right:0; bottom:0; z-index:12; width:auto; border-radius:0; gap:8px; margin:0; padding:6px 20px calc(6px + env(safe-area-inset-bottom)); background:var(--mobile-nav-bg); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-top:1px solid var(--line-soft); box-shadow:0 -2px 12px rgb(15 23 42 / .04); transition:opacity 160ms ease; }
-  .nav-button { flex:1; flex-direction:column; min-height:48px; gap:3px; padding:4px 10px; border-radius:12px; font-size:0.72rem; font-weight:600; color:var(--muted); background:transparent; box-shadow:none; }
-  .nav-button svg { width:20px; height:20px; }
-  .nav-button[aria-pressed="true"] { background:var(--accent-soft); color:var(--accent); box-shadow:none; }
+  /* 2. CubeTime 同款底部悬浮毛玻璃药丸导航栏 */
+  .view-nav { position:fixed; left:50%; right:auto; bottom:calc(12px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:12; width:auto; min-width:212px; border-radius:999px; gap:4px; margin:0; padding:4px; background:var(--mobile-nav-bg); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border:1px solid var(--line-soft); box-shadow:0 8px 28px rgb(15 23 42 / .12), 0 1px 3px rgb(15 23 42 / .06); transition:opacity 160ms ease,transform 160ms ease; }
+  .nav-button { flex:1; flex-direction:row; min-height:40px; gap:6px; padding:0 18px; border-radius:999px; font-size:0.8125rem; font-weight:600; color:var(--muted); background:transparent; box-shadow:none; }
+  .nav-button svg { width:16px; height:16px; }
+  .nav-button[aria-pressed="true"] { background:var(--accent-fill); color:var(--on-accent); box-shadow:0 2px 8px rgb(15 23 42 / .16); }
 
-  /* 手机端训练分组与设置页脚收进底部抽屉，平时完全不占主屏空间 */
-  .mobile-sheet-backdrop:not([hidden]) { display:block; position:fixed; inset:0; z-index:35; background:rgb(15 23 42 / .42); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); }
+  /* 3. 底部抽屉（训练分组 & 设置/备份/关于） */
+  .mobile-sheet-backdrop:not([hidden]) { display:block; position:fixed; inset:0; z-index:35; background:rgb(15 23 42 / .42); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
   .training,.footer-dock { display:none; }
-  .training.is-sheet-open,.footer-dock.is-sheet-open { display:block; position:fixed; left:0; right:0; bottom:0; z-index:40; max-height:82dvh; overflow-y:auto; margin:0; padding:10px 18px calc(22px + env(safe-area-inset-bottom)); background:var(--panel); border:0; border-top:1px solid var(--line-soft); border-radius:22px 22px 0 0; box-shadow:0 -12px 36px rgb(15 23 42 / .24); animation:sheet-up 180ms cubic-bezier(.2,.8,.2,1) both; }
+  .training.is-sheet-open,.footer-dock.is-sheet-open { display:block; position:fixed; left:0; right:0; bottom:0; z-index:40; max-height:84dvh; overflow-y:auto; margin:0; padding:10px 18px calc(24px + env(safe-area-inset-bottom)); background:var(--panel); border:0; border-top:1px solid var(--line-soft); border-radius:24px 24px 0 0; box-shadow:0 -14px 40px rgb(15 23 42 / .24); animation:sheet-up 180ms cubic-bezier(.2,.8,.2,1) both; }
   .training.is-sheet-open::before,.footer-dock.is-sheet-open::before { content:""; display:block; width:36px; height:4px; margin:0 auto 12px; border-radius:999px; background:var(--line); }
   .sheet-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
-  .sheet-head h3 { margin:0; font-size:1rem; font-weight:700; color:var(--text); }
-  .sheet-head .small-btn { min-height:36px; padding:0 14px; border-radius:var(--radius-pill); }
+  .sheet-head h3 { margin:0; font-size:1.0625rem; font-weight:700; color:var(--text); }
+  .sheet-head .small-btn { min-height:34px; padding:0 14px; border-radius:var(--radius-pill); background:var(--control); border:0; box-shadow:none; }
   .training.is-sheet-open .training-bar { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
   .training.is-sheet-open .training-bar label { display:none; }
   .training.is-sheet-open .training-bar select { grid-column:1/-1; width:100%; min-width:0; }
@@ -601,135 +608,150 @@ button:active:not(:disabled) { background:var(--control-active); }
   .training.is-sheet-open .training-bar .group-delete { color:var(--red-text); border-color:var(--danger-border); background:var(--danger-soft); }
   .training.is-sheet-open .training-bar .group-delete:disabled { opacity:.45; }
   .training.is-sheet-open .training-form { max-width:none; margin-top:12px; padding:14px; background:var(--panel-subtle); box-shadow:none; }
-  .footer-dock.is-sheet-open { display:flex; flex-direction:column; gap:14px; }
-  .footer-dock.is-sheet-open .practice-tools { padding:12px 14px; border-radius:14px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
-  .footer-dock.is-sheet-open .workspace-tools { justify-content:flex-start; padding:12px 14px; border-radius:14px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
+  .footer-dock.is-sheet-open { display:flex; flex-direction:column; gap:12px; }
+  .footer-dock.is-sheet-open .practice-tools { padding:12px 14px; border-radius:16px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
+  .footer-dock.is-sheet-open .workspace-tools { justify-content:flex-start; padding:12px 14px; border-radius:16px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
   .footer-dock.is-sheet-open .storage-caption { width:100%; margin-bottom:4px; }
   .footer-dock.is-sheet-open .data-tools { width:100%; justify-content:flex-start; }
   .footer-dock.is-sheet-open .data-tools .small-btn { flex:1; }
   .footer-dock.is-sheet-open .data-feedback { text-align:left; }
 
-  /* 撤销删除改为底部悬浮 Snackbar，绝不顶动计时区 */
-  .undo-notice { position:fixed; left:14px; right:14px; bottom:calc(68px + env(safe-area-inset-bottom)); z-index:25; margin:0; padding:10px 10px 10px 14px; border:0; border-radius:14px; background:var(--toast-bg); color:var(--toast-text); box-shadow:0 10px 26px rgb(15 23 42 / .26); gap:8px; flex-wrap:nowrap; }
+  /* 4. 撤销删除悬浮 Snackbar */
+  .undo-notice { position:fixed; left:16px; right:16px; bottom:calc(72px + env(safe-area-inset-bottom)); z-index:25; margin:0; padding:10px 10px 10px 14px; border:0; border-radius:16px; background:var(--toast-bg); color:var(--toast-text); box-shadow:0 10px 26px rgb(15 23 42 / .24); gap:8px; flex-wrap:nowrap; }
   .undo-notice p { font-size:0.8125rem; line-height:1.4; color:var(--toast-text); }
-  .undo-notice .small-btn { min-height:34px; padding:0 12px; border:0; border-radius:var(--radius-pill); background:var(--accent-fill); color:var(--on-accent); font-size:0.75rem; font-weight:600; flex:none; }
+  .undo-notice .small-btn { min-height:32px; padding:0 12px; border:0; border-radius:var(--radius-pill); background:var(--accent-fill); color:var(--on-accent); font-size:0.75rem; font-weight:600; flex:none; }
   .undo-dismiss { display:inline-flex; align-items:center; justify-content:center; width:30px; min-width:30px; min-height:30px; padding:0; border-radius:999px; color:var(--toast-text); opacity:.72; font-size:1.1rem; line-height:1; flex:none; }
 
-  /* 紧凑高辨识度打乱区 */
-  .scramble { flex:none; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 10px; padding:12px 14px 10px; border-radius:16px; background:var(--panel); border:1px solid var(--line-soft); box-shadow:none; align-items:center; transition:opacity 160ms ease; }
-  .scramble-main,.scramble-top { display:contents; }
+  /* 5. 无卡片纯画布打乱区（通过 display:contents 让展开图落位右下角） */
+  .scramble { display:contents; }
+  .scramble-main { grid-column:1/-1; grid-row:1; display:flex; flex-direction:column; align-items:center; padding:6px 2px 0; transition:opacity 160ms ease; }
+  .scramble-top { order:2; display:flex; align-items:center; justify-content:center; margin:4px 0 0; }
   .scramble-top .label { display:none; }
-  .scramble-text { grid-column:1/-1; grid-row:1; font-size:1.0625rem; line-height:1.5; min-height:3.1rem; text-align:center; letter-spacing:.01em; word-spacing:.12em; }
+  .scramble-text { order:1; width:100%; font-size:1.125rem; font-weight:500; line-height:1.52; min-height:3.2rem; text-align:center; letter-spacing:.015em; word-spacing:.14em; color:var(--text); }
   .scramble-text.is-message { font-size:0.875rem; min-height:2.4rem; }
-  .scramble-hint { grid-column:1/-1; grid-row:2; margin:0; min-height:0; justify-content:center; font-size:0.75rem; }
+  .scramble-hint { order:3; margin:2px 0 0; min-height:0; justify-content:center; font-size:0.75rem; }
   .scramble-hint:not([data-important="true"]) { display:none; }
-  .net-wrap { grid-column:1; grid-row:3; width:66px; padding:4px 5px; border-radius:9px; justify-self:start; background:var(--panel-subtle); }
-  .scramble-actions { grid-column:2; grid-row:3; display:flex; align-items:center; justify-content:flex-end; gap:8px; }
-  .scramble-actions .small-btn { min-height:38px; min-width:38px; width:38px; padding:0; border-radius:11px; flex:none; box-shadow:none; background:var(--panel-subtle); }
-  .scramble-actions #newScramble { background:var(--accent-soft); border-color:var(--accent-border); color:var(--accent); }
-  .scramble-actions .btn-icon { display:block; width:17px; height:17px; }
+  .scramble-actions { display:flex; align-items:center; justify-content:center; gap:6px; }
+  .scramble-actions .small-btn { min-height:34px; min-width:34px; width:34px; padding:0; border:0; border-radius:999px; flex:none; box-shadow:none; background:transparent; color:var(--muted); opacity:.72; }
+  .scramble-actions .small-btn:active { opacity:1; transform:scale(.9); }
+  .scramble-actions #newScramble { background:transparent; border:0; color:var(--muted); }
+  .scramble-actions .btn-icon { display:block; width:16px; height:16px; }
   .scramble-actions .btn-text { display:none; }
 
-  /* 计时舞台：去框化、撑满屏幕中央剩余全部空间 */
-  .timer-console { flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center; background:transparent; border:0; border-radius:0; box-shadow:none; }
-  .pad { flex:1; min-height:176px; width:100%; padding:14px 8px 10px; border-radius:24px; touch-action:none; }
+  /* 6. 中央超大纯净触控舞台（占满屏幕核心区域） */
+  .timer-console { grid-column:1/-1; grid-row:2; min-height:0; display:flex; flex-direction:column; justify-content:center; background:transparent; border:0; border-radius:0; box-shadow:none; }
+  .pad { flex:1; min-height:176px; width:100%; padding:10px 4px; border-radius:24px; touch-action:none; }
   .pad-caption { top:6px; left:0; right:0; justify-content:center; }
   .pad-caption > span:first-child { display:none; }
-  .timer { font-size:clamp(3.9rem,19.5vw,6.25rem); font-weight:700; letter-spacing:-.045em; }
-  .timer.is-empty { font-size:3.4rem; }
-  .sub-status { min-height:22px; margin-top:12px; font-size:0.8125rem; }
+  .timer { font-size:clamp(4.25rem,21vw,6.6rem); font-weight:700; letter-spacing:-.05em; }
+  .timer.is-empty { font-size:3.5rem; }
+  .sub-status { min-height:22px; margin-top:10px; font-size:0.8125rem; opacity:.8; }
   .pad::after { margin-top:12px; }
-  .cancel { position:static; margin-top:14px; min-height:38px; padding:0 18px; border-radius:var(--radius-pill); background:var(--panel); border:1px solid var(--line-soft); color:var(--text); }
-  .timer-controls { flex:none; min-height:0; padding:0 0 6px; border:0; border-radius:0; background:transparent; justify-content:center; transition:opacity 160ms ease; }
+  .cancel { position:static; margin-top:16px; min-height:38px; padding:0 20px; border-radius:var(--radius-pill); background:var(--control); border:0; color:var(--text); }
+  .timer-controls { flex:none; min-height:0; padding:0 0 8px; border:0; border-radius:0; background:transparent; justify-content:center; transition:opacity 160ms ease; }
   .actions { width:auto; gap:8px; justify-content:center; }
   .actions[hidden] { display:none !important; }
-  .action-btn { flex:none; min-height:38px; min-width:74px; padding:0 14px; border-radius:var(--radius-pill); font-size:0.8125rem; box-shadow:none; background:var(--panel); }
-  .action-btn.danger { border-color:var(--line-soft); background:var(--panel); color:var(--muted); }
+  .action-btn { flex:none; min-height:36px; min-width:68px; padding:0 14px; border:0; border-radius:var(--radius-pill); font-size:0.8125rem; font-weight:600; box-shadow:none; background:var(--control); color:var(--text); }
+  .action-btn.danger { background:var(--control); color:var(--muted); }
   .timer-help,.keyboard-help,kbd { display:none; }
 
-  /* 首屏底部紧凑 4 列实时统计条 */
-  .timer-metrics { flex:none; gap:0; transition:opacity 160ms ease; }
-  .core-stats { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
-  .core-stat { padding:8px 6px; border-radius:13px; text-align:center; box-shadow:none; }
-  .core-stat dt { justify-content:center; font-size:0.6875rem; }
+  /* 7. Twisty Timer 黄金底角：左下纯字实时统计 + 右下清晰大魔方展开图 */
+  .timer-metrics { grid-column:1; grid-row:3; align-self:end; padding:0 0 4px; gap:0; transition:opacity 160ms ease; }
+  .core-stats { display:flex; flex-direction:column; gap:2px; }
+  .core-stat { display:flex; align-items:center; justify-content:flex-start; gap:8px; padding:0; background:transparent; border:0; border-radius:0; box-shadow:none; min-height:22px; }
+  .core-stat dt { width:56px; flex:none; justify-content:flex-start; white-space:nowrap; font-size:0.75rem; font-weight:500; color:var(--muted); }
   .core-stat .average-hint { display:none; }
-  .core-stat dd { font-size:1.0625rem; margin-top:3px; text-align:center; }
-  .core-stat .average-trigger { justify-content:center; min-height:28px; }
+  .core-stat dd { margin:0; font-size:0.875rem; font-weight:600; color:var(--text); line-height:1.3; }
+  .core-stat .average-trigger { min-height:24px; min-width:0; padding:0 4px 0 0; justify-content:flex-start; font-weight:600; }
+  .net-wrap { grid-column:2; grid-row:3; align-self:end; justify-self:end; width:118px; padding:6px 7px; border-radius:12px; border:0; background:transparent; transition:opacity 160ms ease,transform 140ms ease; }
   .global-best,.timer-sidebar { display:none; }
 
-  /* 专注模式：观察 / 准备 / 计时中自动淡出全部非计时元素 */
+  /* 8. 专注模式：观察 / 蓄力 / 计时中自动淡出全部非计时元素 */
   #app[data-focus="true"] .topbar,
-  #app[data-focus="true"] .scramble,
+  #app[data-focus="true"] .scramble-main,
+  #app[data-focus="true"] .net-wrap,
   #app[data-focus="true"] .timer-controls,
   #app[data-focus="true"] .timer-metrics,
   #app[data-focus="true"] .view-nav,
   #app[data-focus="true"] .undo-notice { opacity:0; pointer-events:none; }
 
-  /* 复盘页移动端优化 */
-  .view-heading { margin:4px 0 10px; flex-wrap:wrap; gap:2px; }
-  .view-heading h2 { font-size:1.1875rem; }
-  .view-heading p { width:100%; font-size:0.75rem; }
+  /* 9. 复盘页：CubeTime 风格极简大字统计 + 3 列圆角成绩方块网格 */
+  .view-heading { margin:4px 0 12px; flex-wrap:wrap; gap:2px; }
+  .view-heading h2 { font-size:1.25rem; font-weight:700; letter-spacing:-.02em; }
+  .view-heading p { display:none; }
   .review-layout { display:flex; flex-direction:column; gap:12px; }
-  .stats { display:grid; grid-template-columns:minmax(0,1fr); width:100%; gap:12px; padding:14px 14px 6px; box-shadow:none; }
+  .stats { display:grid; grid-template-columns:minmax(0,1fr); width:100%; gap:12px; padding:14px 14px 8px; border-radius:18px; box-shadow:none; }
   .stats-scope,.stats-help { grid-column:auto; }
   .stats-row { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
   .stats-row + .stats-row { margin:0; padding:10px 0 0; border:0; border-top:1px solid var(--line-soft); }
-  .stat-label { font-size:0.72rem; }
+  .stat-label { font-size:0.7rem; }
   .stat-value { font-size:1.0625rem; }
-  .review,.history-wrap { width:100%; min-width:0; box-shadow:none; }
+  .review,.history-wrap { width:100%; min-width:0; border-radius:18px; box-shadow:none; }
   .review-body { padding:0 14px 14px; }
-  .history-wrap { padding:4px 14px 12px; }
-  .history-head { padding:8px 14px; gap:8px; }
+  .history-wrap { padding:4px 12px 12px; }
+  .history-head { padding:8px 12px; gap:8px; }
   .history-bar { gap:10px; }
-  .history-export { padding:0 14px; font-size:0.8125rem; }
+  .history-export { padding:0 12px; font-size:0.78rem; min-height:34px; border-radius:999px; }
   .review-toolbar { gap:8px; }
   .review-legend { gap:8px; }
   .review-metrics { gap:12px 24px; }
   .review-metrics strong { font-size:1.0625rem; }
-  .review-chart { height:220px; }
+  .review-chart { height:216px; }
   .review-picker { flex-wrap:wrap; }
   .review-picker label { flex-basis:100%; }
   .review-selected { font-size:0.75rem; }
-  .history-body { max-height:460px; padding:4px 0 8px; }
-  .history-top { gap:4px; }
-  .history-result { font-size:1.125rem; }
-  .history-id { min-width:28px; }
-  .record-dialog { padding:18px; border-radius:20px; }
+  .history-body { max-height:520px; padding:6px 0 8px; }
+  .history-list { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  .history-item { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px 6px 9px; margin:0; border:1px solid var(--line-soft); border-radius:14px; background:var(--panel-subtle); min-width:0; }
+  .history-item + .history-item { border-top:1px solid var(--line-soft); }
+  .history-top { display:contents; }
+  .history-id { order:1; min-width:0; font-size:0.6875rem; color:var(--muted); opacity:.85; }
+  .history-result { order:2; width:100%; min-height:30px; padding:2px 0; font-size:1.125rem; font-weight:700; text-align:center; justify-content:center; }
+  .history-at { order:3; margin:0; font-size:0.65rem; color:var(--muted); opacity:.78; }
+  .history-latest,.history-scramble { display:none; }
+  /* 日期筛选模式含日分组标题时自动切换为清爽单列行 */
+  .history-list:has(.history-date) { display:flex; flex-direction:column; gap:6px; }
+  .history-list:has(.history-date) .history-item { align-items:stretch; padding:8px 12px; }
+  .history-list:has(.history-date) .history-top { display:flex; align-items:center; gap:8px; }
+  .history-list:has(.history-date) .history-id { order:0; min-width:30px; }
+  .history-list:has(.history-date) .history-result { order:0; width:auto; text-align:left; justify-content:flex-start; }
+  .history-list:has(.history-date) .history-at { order:0; margin-left:auto; }
+
+  .record-dialog { padding:18px; border-radius:22px; }
   .record-result { font-size:clamp(2.25rem,14vw,3.5rem); }
   .record-scramble-actions .small-btn { flex:1 1 110px; }
   .group-delete-actions { justify-content:stretch; }
   .group-delete-actions .small-btn,.group-delete-actions .action-btn { flex:1 1 110px; }
-  .toast { top:auto; bottom:calc(70px + env(safe-area-inset-bottom)); left:50%; right:auto; transform:translateX(-50%); width:max-content; max-width:calc(100vw - 28px); text-align:center; animation:toast-in-mobile 160ms ease-out both; }
+  .toast { top:auto; bottom:calc(74px + env(safe-area-inset-bottom)); left:50%; right:auto; transform:translateX(-50%); width:max-content; max-width:calc(100vw - 28px); text-align:center; animation:toast-in-mobile 160ms ease-out both; }
   .toast.is-leaving { animation:toast-out-mobile 160ms ease-in both; }
 }
 
 @media (max-width:720px) and (max-height:660px) {
-  .scramble { padding:9px 12px 8px; gap:6px 8px; }
-  .scramble-text { font-size:0.9375rem; min-height:2.6rem; }
-  .pad { min-height:140px; padding:8px; }
-  .timer { font-size:clamp(3.25rem,17vw,5rem); }
-  .core-stat { padding:6px 4px; }
-  .toast { top:calc(54px + env(safe-area-inset-top)); bottom:auto; }
+  .scramble-text { font-size:1rem; min-height:2.6rem; }
+  .pad { min-height:136px; padding:6px; }
+  .timer { font-size:clamp(3.4rem,18vw,5.2rem); }
+  .net-wrap { width:98px; }
+  .toast { top:calc(52px + env(safe-area-inset-top)); bottom:auto; }
 }
 
 @media (max-width:360px) {
-  #app,#app[data-view="timer"] { padding-left:10px; padding-right:10px; }
-  .mobile-group-btn { max-width:42vw; padding:0 10px 0 7px; font-size:0.8125rem; }
-  .scramble-text { font-size:0.9375rem; }
-  .core-stat dd { font-size:0.95rem; }
+  #app,#app[data-view="timer"] { padding-left:12px; padding-right:12px; }
+  .mobile-group-btn { max-width:48vw; font-size:0.95rem; }
+  .scramble-text { font-size:0.95rem; }
+  .net-wrap { width:100px; }
+  .core-stat dt { width:50px; font-size:0.7rem; }
+  .core-stat dd { font-size:0.8125rem; }
+  .history-list { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .stats-row { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-  .history-head .history-count { font-size:0.72rem; }
-  .history-bar { gap:8px; }
-  .history-export { padding:0 12px; font-size:0.78rem; }
 }
 
 @media (max-height:500px) {
   #app,#app[data-view="timer"] { height:auto; max-height:none; overflow:visible; padding-left:20px; padding-right:20px; padding-bottom:max(24px,env(safe-area-inset-bottom)); }
-  .topbar { position:static; flex-wrap:wrap; min-height:48px; padding:4px 0; gap:8px 12px; }
-  .view-nav { position:static; width:auto; border-radius:10px; padding:3px; border:0; box-shadow:none; background:var(--control); }
-  .nav-button { flex-direction:row; min-height:40px; padding:0 14px; font-size:0.8125rem; }
+  .topbar { position:static; flex-wrap:wrap; min-height:44px; padding:4px 0; gap:8px 12px; }
+  .view-nav { position:static; left:auto; transform:none; min-width:0; width:auto; border-radius:10px; padding:3px; border:0; box-shadow:none; background:var(--control); }
+  .nav-button { flex-direction:row; min-height:38px; padding:0 14px; font-size:0.8125rem; }
   .nav-button svg { display:none; }
-  .pad { min-height:180px; }
+  .pad { min-height:170px; }
 }
 
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none !important; animation:none !important; scroll-behavior:auto !important; } }
@@ -745,7 +767,7 @@ button:active:not(:disabled) { background:var(--control-active); }
       <button id="navTimer" class="nav-button" type="button" aria-pressed="true" aria-controls="timerView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="14" r="8"/><path d="M9 2h6M12 2v4M12 10v5l3 2"/></svg>计时</button>
       <button id="navReview" class="nav-button" type="button" aria-pressed="false" aria-controls="reviewView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 3v17h17M7 15l4-5 4 2 6-7"/></svg>复盘</button>
     </nav>
-    <div class="topbar-right"><button id="inspectionToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="15 秒观察"><span class="switch-label">观察</span><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button><button id="themeToggle" class="theme-btn" type="button" data-theme="light" aria-label="切换主题，当前：纯净纸白，点击切换为复古暖纸" title="当前主题：纯净纸白（点击切换为复古暖纸）"><svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg><svg class="theme-icon theme-icon-warm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v18H7.5A2.5 2.5 0 0 0 5 22V4.5Z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19"/><path d="M9.5 7h5.5M9.5 11h4"/></svg><svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a6.7 6.7 0 0 0 11 11Z"/></svg><span id="themeLabel" class="theme-label">纸白</span></button><button id="mobileSettingsBtn" class="mobile-icon-btn" type="button" aria-label="练习设置与数据备份"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></button><span id="status" class="status" role="status">初始化中…</span></div>
+    <div class="topbar-right"><button id="inspectionToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="15 秒观察" title="15 秒观察"><svg class="switch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6M19 5l1.5 1.5"/></svg><span class="switch-label">观察</span><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button><button id="themeToggle" class="theme-btn" type="button" data-theme="light" aria-label="切换主题，当前：纯净纸白，点击切换为复古暖纸" title="当前主题：纯净纸白（点击切换为复古暖纸）"><svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg><svg class="theme-icon theme-icon-warm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v18H7.5A2.5 2.5 0 0 0 5 22V4.5Z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19"/><path d="M9.5 7h5.5M9.5 11h4"/></svg><svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a6.7 6.7 0 0 0 11 11Z"/></svg><span id="themeLabel" class="theme-label">纸白</span></button><button id="mobileSettingsBtn" class="mobile-icon-btn" type="button" aria-label="练习设置与数据备份"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></button><span id="status" class="status" role="status">初始化中…</span></div>
   </header>
   <div id="storageBanner" class="banner" hidden>成绩不会被保存：浏览器存储不可用</div>
   <main>
