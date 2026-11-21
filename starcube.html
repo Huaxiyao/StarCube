@@ -300,7 +300,7 @@ kbd { display:inline-block; padding:1px 5px; margin-left:6px; border:1px solid v
 
 /* 核心指标卡片网格 */
 .timer-metrics { display:flex; flex-direction:column; gap:12px; }
-.core-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:0; }
+.core-stats { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; margin:0; }
 .core-stat { padding:14px 16px; background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); box-shadow:var(--shadow-sm); min-width:0; }
 .core-stat dt { color:var(--muted); font-size:0.75rem; font-weight:500; display:flex; align-items:center; justify-content:space-between; gap:4px; }
 .core-stat dd { margin:4px 0 0; font:600 1.625rem/1.2 var(--digits); font-variant-numeric:tabular-nums; letter-spacing:-.025em; overflow-wrap:anywhere; }
@@ -430,7 +430,31 @@ kbd { display:inline-block; padding:1px 5px; margin-left:6px; border:1px solid v
 .backup-reminder { grid-column:1/-1; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; padding:12px 16px; border:1px solid var(--yellow-border); border-radius:var(--radius-control); background:var(--yellow-soft); }
 .backup-reminder p { flex:1 1 220px; margin:0; font-size:.8125rem; line-height:1.6; }
 .backup-status { grid-column:1/-1; margin:0; padding-top:10px; border-top:1px solid var(--line-soft); color:var(--muted); font-size:.75rem; line-height:1.6; }
-.about-card { grid-column:1/-1; display:flex; flex-direction:column; gap:10px; padding:12px 14px; border-radius:14px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
+.puzzle-bar { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:10px; }
+.puzzle-bar-label { font-size:0.75rem; font-weight:600; color:var(--muted); margin-right:2px; }
+.puzzle-chip { min-height:32px; min-width:0; padding:0 11px; border-radius:var(--radius-pill); border:1px solid var(--control-border); background:var(--panel); color:var(--muted); font-size:0.78rem; font-weight:600; }
+.puzzle-chip[aria-pressed="true"] { background:var(--accent-fill); border-color:var(--accent-fill); color:var(--on-accent); }
+.mobile-puzzle-badge { display:inline-flex; align-items:center; padding:1px 7px; border-radius:var(--radius-pill); background:var(--accent-soft); color:var(--accent); font-size:0.7rem; font-weight:700; line-height:1.4; flex:none; }
+.review-scope-pills { display:none; }
+.settings-group { grid-column:1/-1; display:flex; flex-direction:column; gap:10px; padding:12px 14px; border-radius:16px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
+.settings-group-title { margin:0; font-size:0.72rem; font-weight:700; letter-spacing:.04em; color:var(--muted); text-transform:uppercase; }
+.setting-row { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:38px; }
+.setting-row + .setting-row { padding-top:8px; border-top:1px solid var(--line-soft); }
+.setting-info { min-width:0; flex:1; }
+.setting-name { font-size:0.84rem; font-weight:600; color:var(--text); line-height:1.3; }
+.setting-desc { font-size:0.72rem; color:var(--muted); margin-top:2px; line-height:1.35; }
+.seg-group { display:inline-flex; align-items:center; gap:3px; padding:3px; border-radius:11px; background:var(--control); flex:none; }
+.seg-btn { min-height:30px; min-width:0; padding:0 10px; border-radius:8px; font-size:0.75rem; font-weight:600; color:var(--muted); background:transparent; }
+.seg-btn[aria-pressed="true"] { background:var(--panel); color:var(--text); box-shadow:0 1px 2px rgb(15 23 42 / .12); }
+.theme-cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.theme-card { display:flex; flex-direction:column; align-items:center; gap:6px; min-height:60px; padding:9px 6px; border-radius:12px; border:1.5px solid var(--line-soft); background:var(--panel); color:var(--text); font-size:0.75rem; font-weight:600; }
+.theme-card[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+.theme-swatch { width:22px; height:22px; border-radius:999px; border:1px solid rgb(15 23 42 / .16); }
+.theme-swatch-light { background:#f3f4f6; }
+.theme-swatch-warm { background:#efe6d5; }
+.theme-swatch-dark { background:#0c0f14; border-color:rgb(255 255 255 / .24); }
+.desktop-hide-settings { display:none; }
+.about-card { grid-column:1/-1; display:flex; flex-direction:column; gap:10px; padding:12px 14px; border-radius:16px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
 .about-head { display:flex; align-items:center; gap:10px; }
 .about-head .brand-symbol { width:28px; height:28px; flex:none; }
 .about-meta { min-width:0; flex:1; }
@@ -604,6 +628,9 @@ button:active:not(:disabled) { background:var(--control-active); }
   .sheet-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
   .sheet-head h3 { margin:0; font-size:1.0625rem; font-weight:700; color:var(--text); }
   .sheet-head .small-btn { min-height:34px; padding:0 14px; border-radius:var(--radius-pill); background:var(--control); border:0; box-shadow:none; }
+  .training.is-sheet-open .puzzle-bar { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin-bottom:14px; }
+  .training.is-sheet-open .puzzle-bar-label { grid-column:1/-1; margin:0 0 2px; font-size:0.72rem; }
+  .training.is-sheet-open .puzzle-chip { min-height:36px; padding:0 6px; text-align:center; justify-content:center; border-radius:10px; }
   .training.is-sheet-open .training-bar { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
   .training.is-sheet-open .training-bar label { display:none; }
   .training.is-sheet-open .training-bar select { grid-column:1/-1; width:100%; min-width:0; }
@@ -612,6 +639,7 @@ button:active:not(:disabled) { background:var(--control-active); }
   .training.is-sheet-open .training-bar .group-delete:disabled { opacity:.45; }
   .training.is-sheet-open .training-form { max-width:none; margin-top:12px; padding:14px; background:var(--panel-subtle); box-shadow:none; }
   .footer-dock.is-sheet-open { display:flex; flex-direction:column; gap:12px; }
+  .footer-dock.is-sheet-open .desktop-hide-settings { display:flex; }
   .footer-dock.is-sheet-open .practice-tools { padding:12px 14px; border-radius:16px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
   .footer-dock.is-sheet-open .workspace-tools { justify-content:flex-start; padding:12px 14px; border-radius:16px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
   .footer-dock.is-sheet-open .storage-caption { width:100%; margin-bottom:4px; }
@@ -658,15 +686,16 @@ button:active:not(:disabled) { background:var(--control-active); }
   .action-btn.danger { background:var(--control); color:var(--muted); }
   .timer-help,.keyboard-help,kbd { display:none; }
 
-  /* 7. Twisty Timer 黄金底角：左下纯字实时统计 + 右下清晰大魔方展开图 */
-  .timer-metrics { grid-column:1; grid-row:3; align-self:end; padding:0 0 4px; gap:0; transition:opacity 160ms ease; }
-  .core-stats { display:flex; flex-direction:column; gap:2px; }
-  .core-stat { display:flex; align-items:center; justify-content:flex-start; gap:8px; padding:0; background:transparent; border:0; border-radius:0; box-shadow:none; min-height:22px; }
-  .core-stat dt { width:56px; flex:none; justify-content:flex-start; white-space:nowrap; font-size:0.75rem; font-weight:500; color:var(--muted); }
+  /* 7. Twisty Timer 黄金底角：左下 6 行完整实时统计 + 右下 160px 大魔方展开图 */
+  .timer-metrics { grid-column:1; grid-row:3; align-self:end; padding:0 0 2px; gap:0; transition:opacity 160ms ease; }
+  .core-stats { display:flex; flex-direction:column; gap:1px; }
+  .core-stat { display:flex; align-items:center; justify-content:flex-start; gap:8px; padding:0; background:transparent; border:0; border-radius:0; box-shadow:none; min-height:21px; }
+  .core-stat dt { width:46px; flex:none; justify-content:flex-start; white-space:nowrap; font-size:0.75rem; font-weight:500; color:var(--muted); }
   .core-stat .average-hint { display:none; }
-  .core-stat dd { margin:0; font-size:0.875rem; font-weight:600; color:var(--text); line-height:1.3; }
-  .core-stat .average-trigger { min-height:24px; min-width:0; padding:0 4px 0 0; justify-content:flex-start; font-weight:600; }
-  .net-wrap { grid-column:2; grid-row:3; align-self:end; justify-self:end; width:118px; padding:6px 7px; border-radius:12px; border:0; background:transparent; transition:opacity 160ms ease,transform 140ms ease; }
+  .core-stat dd { margin:0; font-size:0.875rem; font-weight:600; color:var(--text); line-height:1.25; }
+  .core-stat .average-trigger { min-height:22px; min-width:0; padding:0 4px 0 0; justify-content:flex-start; font-weight:600; }
+  .net-wrap { grid-column:2; grid-row:3; align-self:end; justify-self:end; width:160px; padding:6px; border-radius:14px; border:0; background:transparent; transition:opacity 160ms ease,transform 140ms ease; }
+  .net-wrap[hidden] { display:none !important; }
   .global-best,.timer-sidebar { display:none; }
 
   /* 8. 专注模式：观察 / 蓄力 / 计时中自动淡出全部非计时元素 */
@@ -678,31 +707,44 @@ button:active:not(:disabled) { background:var(--control-active); }
   #app[data-focus="true"] .view-nav,
   #app[data-focus="true"] .undo-notice { opacity:0; pointer-events:none; }
 
-  /* 9. 复盘页：CubeTime 风格极简大字统计 + 3 列圆角成绩方块网格 */
-  .view-heading { margin:4px 0 12px; flex-wrap:wrap; gap:2px; }
-  .view-heading h2 { font-size:1.25rem; font-weight:700; letter-spacing:-.02em; }
+  /* 9. 复盘页：彻底重做手机排版（清爽大字 2 列统计网格 + 分段范围胶囊 + 3 列成绩方块） */
+  .view-heading { margin:2px 0 10px; display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  .view-heading h2 { font-size:1.35rem; font-weight:700; letter-spacing:-.025em; }
   .view-heading p { display:none; }
-  .review-layout { display:flex; flex-direction:column; gap:12px; }
-  .stats { display:grid; grid-template-columns:minmax(0,1fr); width:100%; gap:12px; padding:14px 14px 8px; border-radius:18px; box-shadow:none; }
-  .stats-scope,.stats-help { grid-column:auto; }
-  .stats-row { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
-  .stats-row + .stats-row { margin:0; padding:10px 0 0; border:0; border-top:1px solid var(--line-soft); }
-  .stat-label { font-size:0.7rem; }
-  .stat-value { font-size:1.0625rem; }
+  .review-layout { display:flex; flex-direction:column; gap:14px; }
+  .stats { display:grid; grid-template-columns:minmax(0,1fr); width:100%; gap:10px; padding:12px; border-radius:18px; box-shadow:none; }
+  .stats-scope,.stats-help { display:none; }
+  .stats-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .stats-row + .stats-row { margin:0; padding:0; border:0; }
+  .stat { display:flex; flex-direction:column; gap:4px; padding:11px 12px; border-radius:13px; background:var(--panel-subtle); border:1px solid var(--line-soft); min-width:0; }
+  .stat-label { font-size:0.72rem; font-weight:500; color:var(--muted); white-space:nowrap; }
+  .stat-value { font-size:1.25rem; font-weight:700; line-height:1.2; letter-spacing:-.02em; }
+  .stat .average-trigger,.stat .metric-link { min-height:28px; justify-content:flex-start; padding:0; }
   .review,.history-wrap { width:100%; min-width:0; border-radius:18px; box-shadow:none; }
-  .review-body { padding:0 14px 14px; }
+  .review-body { padding:0 14px 16px; }
   .history-wrap { padding:4px 12px 12px; }
-  .history-head { padding:8px 12px; gap:8px; }
+  .history-head { padding:10px 14px; gap:8px; font-size:0.9375rem; font-weight:700; }
   .history-bar { gap:10px; }
   .history-export { padding:0 12px; font-size:0.78rem; min-height:34px; border-radius:999px; }
-  .review-toolbar { gap:8px; }
-  .review-legend { gap:8px; }
-  .review-metrics { gap:12px 24px; }
-  .review-metrics strong { font-size:1.0625rem; }
-  .review-chart { height:216px; }
-  .review-picker { flex-wrap:wrap; }
-  .review-picker label { flex-basis:100%; }
-  .review-selected { font-size:0.75rem; }
+  .review-toolbar { flex-direction:column; align-items:stretch; gap:10px; margin-bottom:10px; }
+  .review-toolbar > label { display:none; }
+  .review-scope-pills { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; padding:3px; border-radius:12px; background:var(--control); }
+  .review-scope-pill { min-height:34px; min-width:0; padding:0 4px; border-radius:9px; font-size:0.75rem; font-weight:600; color:var(--muted); background:transparent; }
+  .review-scope-pill[aria-pressed="true"] { background:var(--panel); color:var(--text); box-shadow:0 1px 3px rgb(15 23 42 / .12); }
+  .review-legend { justify-content:flex-end; gap:12px; font-size:0.72rem; }
+  .review-summary { font-size:0.78rem; line-height:1.5; color:var(--muted); margin:0 0 8px; }
+  .review-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:10px; }
+  .review-metrics > span { display:flex; flex-direction:column; gap:2px; padding:10px 12px; border-radius:12px; background:var(--panel-subtle); border:1px solid var(--line-soft); font-size:0.72rem; color:var(--muted); }
+  .review-metrics strong { font-size:1.125rem; color:var(--text); margin:0; }
+  .review-comparison { padding:12px; border-radius:14px; background:var(--panel-subtle); border:1px solid var(--line-soft); margin:10px 0; }
+  .review-comparison h3 { font-size:0.875rem; margin:0 0 4px; }
+  .review-period,.review-compare-note { font-size:0.72rem; line-height:1.45; }
+  .comparison-table { font-size:0.78rem; }
+  .comparison-table th,.comparison-table td { padding:7px 4px; }
+  .review-chart { height:210px; }
+  .review-picker { flex-wrap:wrap; margin-top:8px; }
+  .review-picker label { flex-basis:100%; font-size:0.75rem; }
+  .review-selected { font-size:0.75rem; line-height:1.45; }
   .history-body { max-height:520px; padding:6px 0 8px; }
   .history-list { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
   .history-item { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px 6px 9px; margin:0; border:1px solid var(--line-soft); border-radius:14px; background:var(--panel-subtle); min-width:0; }
@@ -730,22 +772,21 @@ button:active:not(:disabled) { background:var(--control-active); }
 }
 
 @media (max-width:720px) and (max-height:660px) {
-  .scramble-text { font-size:1rem; min-height:2.6rem; }
-  .pad { min-height:136px; padding:6px; }
-  .timer { font-size:clamp(3.4rem,18vw,5.2rem); }
-  .net-wrap { width:98px; }
+  .scramble-text { font-size:1rem; min-height:2.5rem; }
+  .pad { min-height:126px; padding:4px; }
+  .timer { font-size:clamp(3.35rem,17.5vw,5rem); }
+  .net-wrap { width:126px; }
   .toast { top:calc(52px + env(safe-area-inset-top)); bottom:auto; }
 }
 
 @media (max-width:360px) {
   #app,#app[data-view="timer"] { padding-left:12px; padding-right:12px; }
-  .mobile-group-btn { max-width:48vw; font-size:0.95rem; }
-  .scramble-text { font-size:0.95rem; }
-  .net-wrap { width:100px; }
-  .core-stat dt { width:50px; font-size:0.7rem; }
+  .mobile-group-btn { max-width:52vw; font-size:0.95rem; }
+  .scramble-text { font-size:0.9375rem; }
+  .net-wrap { width:132px; }
+  .core-stat dt { width:42px; font-size:0.7rem; }
   .core-stat dd { font-size:0.8125rem; }
   .history-list { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .stats-row { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 }
 
 @media (max-height:500px) {
@@ -765,7 +806,7 @@ button:active:not(:disabled) { background:var(--control-active); }
 <div id="app" data-view="timer">
   <header class="topbar">
     <h1 class="brand"><svg class="brand-symbol" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round" aria-hidden="true"><path class="cube-top" stroke="none" d="M16 2.4 28 9.2 16 16 4 9.2Z"/><path class="cube-left" stroke="none" d="M4 9.2 16 16v13.6L4 22.8Z"/><path class="cube-right" stroke="none" d="M16 16 28 9.2v13.6L16 29.6Z"/><path class="cube-grid" stroke-width=".65" stroke-linecap="round" d="M12 4.67 24 11.47M8 6.93 20 13.73M20 4.67 8 11.47M24 6.93 12 13.73M8 11.47v13.6M12 13.73v13.6M4 13.73 16 20.53M4 18.27 16 25.07M20 13.73v13.6M24 11.47v13.6M16 20.53 28 13.73M16 25.07 28 18.27"/><path d="M16 2.4 28 9.2v13.6L16 29.6 4 22.8V9.2ZM16 16 4 9.2M16 16l12-6.8M16 16v13.6"/><path class="cube-star-bg" stroke="none" d="M16 11.2Q16.3 15 20.6 16 16.3 17 16 20.8 15.7 17 11.4 16 15.7 15 16 11.2Z"/><path class="cube-star" stroke="none" d="M16 12.2Q16.25 15.25 19.6 16 16.25 16.75 16 19.8 15.75 16.75 12.4 16 15.75 15.25 16 12.2Z"/></svg><span class="brand-wordmark">Star<span>Cube</span></span><span class="brand-sub">三阶魔方计时</span></h1>
-    <button id="mobileGroupBtn" class="mobile-group-btn" type="button" aria-label="切换或管理训练分组"><svg class="brand-symbol" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round" aria-hidden="true"><path class="cube-top" stroke="none" d="M16 2.4 28 9.2 16 16 4 9.2Z"/><path class="cube-left" stroke="none" d="M4 9.2 16 16v13.6L4 22.8Z"/><path class="cube-right" stroke="none" d="M16 16 28 9.2v13.6L16 29.6Z"/><path class="cube-grid" stroke-width=".65" stroke-linecap="round" d="M12 4.67 24 11.47M8 6.93 20 13.73M20 4.67 8 11.47M24 6.93 12 13.73M8 11.47v13.6M12 13.73v13.6M4 13.73 16 20.53M4 18.27 16 25.07M20 13.73v13.6M24 11.47v13.6M16 20.53 28 13.73M16 25.07 28 18.27"/><path d="M16 2.4 28 9.2v13.6L16 29.6 4 22.8V9.2ZM16 16 4 9.2M16 16l12-6.8M16 16v13.6"/><path class="cube-star-bg" stroke="none" d="M16 11.2Q16.3 15 20.6 16 16.3 17 16 20.8 15.7 17 11.4 16 15.7 15 16 11.2Z"/><path class="cube-star" stroke="none" d="M16 12.2Q16.25 15.25 19.6 16 16.25 16.75 16 19.8 15.75 16.75 12.4 16 15.75 15.25 16 12.2Z"/></svg><span id="mobileGroupName" class="mobile-group-name">默认训练</span><svg class="mobile-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    <button id="mobileGroupBtn" class="mobile-group-btn" type="button" aria-label="切换项目或管理训练分组"><svg class="brand-symbol" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round" aria-hidden="true"><path class="cube-top" stroke="none" d="M16 2.4 28 9.2 16 16 4 9.2Z"/><path class="cube-left" stroke="none" d="M4 9.2 16 16v13.6L4 22.8Z"/><path class="cube-right" stroke="none" d="M16 16 28 9.2v13.6L16 29.6Z"/><path class="cube-grid" stroke-width=".65" stroke-linecap="round" d="M12 4.67 24 11.47M8 6.93 20 13.73M20 4.67 8 11.47M24 6.93 12 13.73M8 11.47v13.6M12 13.73v13.6M4 13.73 16 20.53M4 18.27 16 25.07M20 13.73v13.6M24 11.47v13.6M16 20.53 28 13.73M16 25.07 28 18.27"/><path d="M16 2.4 28 9.2v13.6L16 29.6 4 22.8V9.2ZM16 16 4 9.2M16 16l12-6.8M16 16v13.6"/><path class="cube-star-bg" stroke="none" d="M16 11.2Q16.3 15 20.6 16 16.3 17 16 20.8 15.7 17 11.4 16 15.7 15 16 11.2Z"/><path class="cube-star" stroke="none" d="M16 12.2Q16.25 15.25 19.6 16 16.25 16.75 16 19.8 15.75 16.75 12.4 16 15.75 15.25 16 12.2Z"/></svg><span id="mobileGroupName" class="mobile-group-name">默认训练</span><span id="mobilePuzzleBadge" class="mobile-puzzle-badge">3×3</span><svg class="mobile-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
     <nav class="view-nav" aria-label="主视图">
       <button id="navTimer" class="nav-button" type="button" aria-pressed="true" aria-controls="timerView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="14" r="8"/><path d="M9 2h6M12 2v4M12 10v5l3 2"/></svg>计时</button>
       <button id="navReview" class="nav-button" type="button" aria-pressed="false" aria-controls="reviewView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 3v17h17M7 15l4-5 4 2 6-7"/></svg>复盘</button>
@@ -775,7 +816,17 @@ button:active:not(:disabled) { background:var(--control-active); }
   <div id="storageBanner" class="banner" hidden>成绩不会被保存：浏览器存储不可用</div>
   <main>
     <section id="trainingPanel" class="training" aria-label="训练分组">
-      <div class="sheet-head"><h3>训练分组</h3><button id="groupSheetClose" class="small-btn" type="button">完成</button></div>
+      <div class="sheet-head"><h3>项目与训练分组</h3><button id="groupSheetClose" class="small-btn" type="button">完成</button></div>
+      <div id="puzzleBar" class="puzzle-bar" role="group" aria-label="魔方项目">
+        <span class="puzzle-bar-label">魔方项目</span>
+        <button class="puzzle-chip" type="button" data-puzzle="333" aria-pressed="true">3×3</button>
+        <button class="puzzle-chip" type="button" data-puzzle="222" aria-pressed="false">2×2</button>
+        <button class="puzzle-chip" type="button" data-puzzle="444" aria-pressed="false">4×4</button>
+        <button class="puzzle-chip" type="button" data-puzzle="555" aria-pressed="false">5×5</button>
+        <button class="puzzle-chip" type="button" data-puzzle="333oh" aria-pressed="false">3×3单手</button>
+        <button class="puzzle-chip" type="button" data-puzzle="pyram" aria-pressed="false">金字塔</button>
+        <button class="puzzle-chip" type="button" data-puzzle="skewb" aria-pressed="false">斜转</button>
+      </div>
       <div class="training-bar">
         <label for="groupSelect">训练</label>
         <select id="groupSelect" aria-label="当前训练"></select>
@@ -797,7 +848,7 @@ button:active:not(:disabled) { background:var(--control-active); }
       <div class="timer-layout"><div class="timer-stage">
     <section class="scramble" aria-label="打乱">
       <div class="scramble-main">
-        <div class="scramble-top"><div class="label">3 × 3 <span class="label-divider" aria-hidden="true">/</span> 随机打乱</div><div class="scramble-actions"><button id="copyScramble" class="small-btn" type="button" title="复制当前打乱公式" aria-label="复制打乱"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="btn-text">复制打乱</span></button><button id="newScramble" class="small-btn" type="button" title="换一条打乱（N）" aria-label="换一条打乱"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg><span class="btn-text">换打乱</span><kbd>N</kbd></button></div></div>
+        <div class="scramble-top"><div class="label"><span id="scramblePuzzleLabel">3 × 3</span> <span class="label-divider" aria-hidden="true">/</span> 随机打乱</div><div class="scramble-actions"><button id="copyScramble" class="small-btn" type="button" title="复制当前打乱公式" aria-label="复制打乱"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="btn-text">复制打乱</span></button><button id="newScramble" class="small-btn" type="button" title="换一条打乱（N）" aria-label="换一条打乱"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg><span class="btn-text">换打乱</span><kbd>N</kbd></button></div></div>
         <div id="scrambleText" class="scramble-text is-message">打乱引擎初始化中…</div>
         <div id="scrambleHintWrap" class="scramble-hint">
           <span id="scrambleHint"></span>
@@ -829,8 +880,12 @@ button:active:not(:disabled) { background:var(--control-active); }
     </div></div>
     <section class="timer-metrics" aria-label="本组核心统计">
         <dl class="core-stats">
-          <div class="core-stat"><dt>Ao5 <span class="average-hint">明细</span></dt><dd><button id="coreAo5Detail" class="average-trigger" type="button" aria-label="查看 Ao5 明细" aria-haspopup="dialog" disabled><span id="coreAo5">—</span></button></dd></div><div class="core-stat"><dt>Ao12 <span class="average-hint">明细</span></dt><dd><button id="coreAo12Detail" class="average-trigger" type="button" aria-label="查看 Ao12 明细" aria-haspopup="dialog" disabled><span id="coreAo12">—</span></button></dd></div>
-          <div class="core-stat"><dt>本组 PB</dt><dd><button id="corePbDetail" class="average-trigger" type="button" aria-label="查看本组最佳成绩" aria-haspopup="dialog" disabled><span id="corePb">—</span></button></dd></div><div class="core-stat"><dt>本组次数</dt><dd id="coreCount">0</dd></div>
+          <div class="core-stat"><dt>Ao5 <span class="average-hint">明细</span></dt><dd><button id="coreAo5Detail" class="average-trigger" type="button" aria-label="查看 Ao5 明细" aria-haspopup="dialog" disabled><span id="coreAo5">—</span></button></dd></div>
+          <div class="core-stat"><dt>Ao12 <span class="average-hint">明细</span></dt><dd><button id="coreAo12Detail" class="average-trigger" type="button" aria-label="查看 Ao12 明细" aria-haspopup="dialog" disabled><span id="coreAo12">—</span></button></dd></div>
+          <div class="core-stat"><dt>Ao100</dt><dd id="coreAo100">—</dd></div>
+          <div class="core-stat"><dt>Mean</dt><dd id="coreMean">—</dd></div>
+          <div class="core-stat"><dt>PB</dt><dd><button id="corePbDetail" class="average-trigger" type="button" aria-label="查看本组最佳成绩" aria-haspopup="dialog" disabled><span id="corePb">—</span></button></dd></div>
+          <div class="core-stat"><dt>次数</dt><dd id="coreCount">0</dd></div>
         </dl>
         <div class="global-best"><span>全局 PB · 全部训练</span><button id="coreGlobalPbDetail" class="metric-link" type="button" aria-label="查看全局最佳成绩" aria-haspopup="dialog" disabled><strong id="coreGlobalPb">—</strong></button></div>
     </section>
@@ -852,6 +907,12 @@ button:active:not(:disabled) { background:var(--control-active); }
       <div id="reviewBody" class="review-body" hidden>
         <div class="review-toolbar">
           <label>范围 <select id="reviewRange" aria-label="复盘范围"><option value="50">最近 50 次</option><option value="100">最近 100 次</option><option value="today">今天</option><option value="7days">最近 7 天</option></select></label>
+          <div id="reviewScopePills" class="review-scope-pills" role="group" aria-label="复盘范围快捷切换">
+            <button class="review-scope-pill" type="button" data-range="50" aria-pressed="true">近 50 次</button>
+            <button class="review-scope-pill" type="button" data-range="100" aria-pressed="false">近 100 次</button>
+            <button class="review-scope-pill" type="button" data-range="today" aria-pressed="false">今天</button>
+            <button class="review-scope-pill" type="button" data-range="7days" aria-pressed="false">近 7 天</button>
+          </div>
           <div class="review-legend" aria-hidden="true"><span><i></i>单次</span><span><i class="ao5-key"></i>Ao5</span></div>
         </div>
         <p id="reviewSummary" class="review-summary"></p>
@@ -920,7 +981,50 @@ button:active:not(:disabled) { background:var(--control-active); }
       </div>
     </section>
     <div id="settingsPanel" class="footer-dock">
-      <div class="sheet-head"><h3>练习设置与备份</h3><button id="settingsSheetClose" class="small-btn" type="button">完成</button></div>
+      <div class="sheet-head"><h3>练习设置</h3><button id="settingsSheetClose" class="small-btn" type="button">完成</button></div>
+      <section class="settings-group desktop-hide-settings" aria-label="计时与触控设置">
+        <h4 class="settings-group-title">计时与触控</h4>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">起表按住延迟</div><div class="setting-desc">按住计时区达到指定时间后松开起表</div></div>
+          <div id="holdDelayGroup" class="seg-group" role="group" aria-label="起表按住延迟">
+            <button class="seg-btn" type="button" data-hold-ms="0" aria-pressed="false">0s</button>
+            <button class="seg-btn" type="button" data-hold-ms="200" aria-pressed="false">0.2s</button>
+            <button class="seg-btn" type="button" data-hold-ms="300" aria-pressed="true">0.3s</button>
+            <button class="seg-btn" type="button" data-hold-ms="500" aria-pressed="false">0.5s</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">显示小数位数</div><div class="setting-desc">底层始终精确记录毫秒，仅切换显示位数</div></div>
+          <div id="precisionGroup" class="seg-group" role="group" aria-label="计时显示精度">
+            <button class="seg-btn" type="button" data-precision="2" aria-pressed="false">0.01s</button>
+            <button class="seg-btn" type="button" data-precision="3" aria-pressed="true">0.001s</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">计时中隐藏数字</div><div class="setting-desc">复原期间隐藏实时读数防分心，停表揭晓</div></div>
+          <button id="hideTimerToggle" class="switch" type="button" role="switch" aria-checked="false" aria-label="计时中隐藏数字"><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">触觉轻震动</div><div class="setting-desc">蓄力就绪与停表瞬间提供清脆震动反馈</div></div>
+          <button id="hapticsToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="触觉轻震动"><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">练习时屏幕常亮</div><div class="setting-desc">避免观察与思考期间手机自动息屏</div></div>
+          <button id="keepScreenToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="练习时屏幕常亮"><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button>
+        </div>
+      </section>
+      <section class="settings-group desktop-hide-settings" aria-label="外观与显示设置">
+        <h4 class="settings-group-title">外观与显示</h4>
+        <div id="themePickerGroup" class="theme-cards" role="group" aria-label="选择主题">
+          <button class="theme-card" type="button" data-theme-pick="light" aria-pressed="true"><span class="theme-swatch theme-swatch-light" aria-hidden="true"></span><span>纯净纸白</span></button>
+          <button class="theme-card" type="button" data-theme-pick="warm" aria-pressed="false"><span class="theme-swatch theme-swatch-warm" aria-hidden="true"></span><span>复古暖纸</span></button>
+          <button class="theme-card" type="button" data-theme-pick="dark" aria-pressed="false"><span class="theme-swatch theme-swatch-dark" aria-hidden="true"></span><span>极简曜黑</span></button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">主屏魔方展开图</div><div class="setting-desc">在首页右下角显示实时打乱状态展开图</div></div>
+          <button id="showNetToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="主屏显示魔方展开图"><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button>
+        </div>
+      </section>
       <section class="practice-tools" aria-label="观察提示音设置">
         <button id="soundToggle" class="switch" type="button" role="switch" aria-checked="false" aria-describedby="soundFeedback"><span class="switch-label">观察提示音</span><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button>
         <button id="soundPreview" class="small-btn" type="button" aria-describedby="soundFeedback">试听</button>
@@ -1548,6 +1652,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     return typeof value === 'number' && isFinite(value) && Math.floor(value) === value && value >= min && value <= max;
   }
 
+  var VALID_PUZZLES = ['333', '222', '444', '555', '333oh', 'pyram', 'skewb'];
   function defaultGroup() { return { id: DEFAULT_GROUP, origin: 'builtin-default', name: '默认训练' }; }
   function validateName(name) {
     if (typeof name !== 'string' || !name.trim() || name.trim().length > 40 || /[\u0000-\u001f\u007f]/.test(name)) {
@@ -1558,7 +1663,11 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   function validateGroup(group) {
     if (!group || !validUid(group.id) || !validUid(group.origin)) throw error('训练分组身份无效', 'INVALID_GROUP');
     if ((group.id === DEFAULT_GROUP) !== (group.origin === 'builtin-default')) throw error('默认训练身份无效', 'INVALID_GROUP');
-    return { id: group.id, origin: group.origin, name: validateName(group.name) };
+    var out = { id: group.id, origin: group.origin, name: validateName(group.name) };
+    if (typeof group.puzzle === 'string' && VALID_PUZZLES.indexOf(group.puzzle) !== -1 && group.puzzle !== '333') {
+      out.puzzle = group.puzzle;
+    }
+    return out;
   }
   function recoveredGroup(id) { return { id: id, origin: 'recovered-' + hash(id), name: '恢复的训练 · ' + id.slice(0, 12) }; }
 
@@ -2448,6 +2557,542 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   root.StarCubeBackup = api;
 })(typeof self !== 'undefined' ? self : globalThis);
 
+(function (root) {
+  'use strict';
+
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+
+  var PUZZLES = [
+    { id: '333', name: '3×3', fullName: '3×3 三阶', usesWorker: true, netType: 'nxn', size: 3 },
+    { id: '222', name: '2×2', fullName: '2×2 二阶', usesWorker: false, netType: 'nxn', size: 2 },
+    { id: '444', name: '4×4', fullName: '4×4 四阶', usesWorker: false, netType: 'nxn', size: 4 },
+    { id: '555', name: '5×5', fullName: '5×5 五阶', usesWorker: false, netType: 'nxn', size: 5 },
+    { id: '333oh', name: '3×3 单手', fullName: '3×3 单手', usesWorker: true, netType: 'nxn', size: 3 },
+    { id: 'pyram', name: '金字塔', fullName: '金字塔 Pyraminx', usesWorker: false, netType: 'pyram', size: 3 },
+    { id: 'skewb', name: '斜转', fullName: '斜转 Skewb', usesWorker: false, netType: 'skewb', size: 3 }
+  ];
+
+  var PUZZLE_MAP = Object.create(null);
+  PUZZLES.forEach(function (p) { PUZZLE_MAP[p.id] = p; });
+
+  var COLORS = {
+    U: '#ffffff',
+    R: '#dc2626',
+    F: '#16a34a',
+    D: '#facc15',
+    L: '#f97316',
+    B: '#2563eb'
+  };
+
+  var FACE_LIST = ['U', 'R', 'F', 'D', 'L', 'B'];
+  var NET_POS = { U: [1, 0], L: [0, 1], F: [1, 1], R: [2, 1], B: [3, 1], D: [1, 2] };
+
+  function normalizePuzzle(id) {
+    return typeof id === 'string' && Object.prototype.hasOwnProperty.call(PUZZLE_MAP, id) ? id : '333';
+  }
+
+  function getPuzzle(id) {
+    return PUZZLE_MAP[normalizePuzzle(id)];
+  }
+
+  function randomInt(max) {
+    if (typeof crypto !== 'undefined' && crypto && typeof crypto.getRandomValues === 'function') {
+      var arr = new Uint32Array(1);
+      var limit = Math.floor(0x100000000 / max) * max;
+      var value;
+      do {
+        crypto.getRandomValues(arr);
+        value = arr[0];
+      } while (value >= limit);
+      return value % max;
+    }
+    return Math.floor(Math.random() * max);
+  }
+
+  /* ======================== N×N 正阶魔方状态机 ======================== */
+  function createNxN(n) {
+    var state = {};
+    FACE_LIST.forEach(function (f) {
+      var grid = [];
+      for (var r = 0; r < n; r++) {
+        var row = [];
+        for (var c = 0; c < n; c++) row.push(f);
+        grid.push(row);
+      }
+      state[f] = grid;
+    });
+    return state;
+  }
+
+  function rotateFaceCW(grid) {
+    var n = grid.length;
+    var next = [];
+    for (var r = 0; r < n; r++) {
+      var row = [];
+      for (var c = 0; c < n; c++) row.push(grid[n - 1 - c][r]);
+      next.push(row);
+    }
+    return next;
+  }
+
+  function rotateNxNLayerCW(state, n, face, layer) {
+    var i, tmp;
+    if (layer === 0) state[face] = rotateFaceCW(state[face]);
+    if (face === 'U') {
+      for (i = 0; i < n; i++) {
+        tmp = state.F[layer][i];
+        state.F[layer][i] = state.R[layer][i];
+        state.R[layer][i] = state.B[layer][i];
+        state.B[layer][i] = state.L[layer][i];
+        state.L[layer][i] = tmp;
+      }
+    } else if (face === 'D') {
+      var r = n - 1 - layer;
+      for (i = 0; i < n; i++) {
+        tmp = state.F[r][i];
+        state.F[r][i] = state.L[r][i];
+        state.L[r][i] = state.B[r][i];
+        state.B[r][i] = state.R[r][i];
+        state.R[r][i] = tmp;
+      }
+    } else if (face === 'R') {
+      var c = n - 1 - layer;
+      var bc = layer;
+      for (i = 0; i < n; i++) {
+        tmp = state.F[i][c];
+        state.F[i][c] = state.D[i][c];
+        state.D[i][c] = state.B[n - 1 - i][bc];
+        state.B[n - 1 - i][bc] = state.U[i][c];
+        state.U[i][c] = tmp;
+      }
+    } else if (face === 'L') {
+      var lc = layer;
+      var lbc = n - 1 - layer;
+      for (i = 0; i < n; i++) {
+        tmp = state.F[i][lc];
+        state.F[i][lc] = state.U[i][lc];
+        state.U[i][lc] = state.B[n - 1 - i][lbc];
+        state.B[n - 1 - i][lbc] = state.D[i][lc];
+        state.D[i][lc] = tmp;
+      }
+    } else if (face === 'F') {
+      var ur = n - 1 - layer;
+      var dr = layer;
+      var rc = layer;
+      var lcol = n - 1 - layer;
+      for (i = 0; i < n; i++) {
+        tmp = state.U[ur][i];
+        state.U[ur][i] = state.L[n - 1 - i][lcol];
+        state.L[n - 1 - i][lcol] = state.D[dr][n - 1 - i];
+        state.D[dr][n - 1 - i] = state.R[i][rc];
+        state.R[i][rc] = tmp;
+      }
+    } else if (face === 'B') {
+      var bur = layer;
+      var bdr = n - 1 - layer;
+      var brc = n - 1 - layer;
+      var blc = layer;
+      for (i = 0; i < n; i++) {
+        tmp = state.U[bur][i];
+        state.U[bur][i] = state.R[i][brc];
+        state.R[i][brc] = state.D[bdr][n - 1 - i];
+        state.D[bdr][n - 1 - i] = state.L[n - 1 - i][blc];
+        state.L[n - 1 - i][blc] = tmp;
+      }
+    }
+  }
+
+  function applyNxNMove(state, n, token) {
+    var m = /^([URFDLB])(w)?([2'])?$/.exec(token);
+    if (!m) return;
+    var face = m[1];
+    var wide = !!m[2];
+    var mod = m[3] || '';
+    var turns = mod === '2' ? 2 : mod === "'" ? 3 : 1;
+    var depth = wide ? 2 : 1;
+    for (var t = 0; t < turns; t++) {
+      for (var d = 0; d < depth; d++) rotateNxNLayerCW(state, n, face, d);
+    }
+  }
+
+  function nxnToFacelets(state, n) {
+    var out = '';
+    FACE_LIST.forEach(function (f) {
+      for (var r = 0; r < n; r++) {
+        for (var c = 0; c < n; c++) out += state[f][r][c];
+      }
+    });
+    return out;
+  }
+
+  function generateNxNScramble(size) {
+    var mods = ['', "'", '2'];
+    var moves = [];
+    if (size === 2) {
+      var faces2 = ['R', 'U', 'F'];
+      var len2 = 9 + randomInt(3);
+      var last2 = '';
+      for (var i = 0; i < len2; i++) {
+        var f2;
+        do { f2 = faces2[randomInt(faces2.length)]; } while (f2 === last2);
+        last2 = f2;
+        moves.push(f2 + mods[randomInt(3)]);
+      }
+    } else {
+      // 4x4 (44 moves) / 5x5 (60 moves) 符合 WCA 轴向防冗余规则
+      var len = size === 4 ? 44 : 60;
+      var axes = [
+        size === 4 ? ['U', 'D', 'Uw'] : ['U', 'D', 'Uw', 'Dw'],
+        size === 4 ? ['R', 'L', 'Rw'] : ['R', 'L', 'Rw', 'Lw'],
+        size === 4 ? ['F', 'B', 'Fw'] : ['F', 'B', 'Fw', 'Bw']
+      ];
+      var lastAxis = -1;
+      var usedInAxis = {};
+      for (var k = 0; k < len; k++) {
+        var axis, pool, moveBase;
+        var tries = 0;
+        do {
+          axis = randomInt(3);
+          pool = axes[axis];
+          moveBase = pool[randomInt(pool.length)];
+          tries++;
+        } while (
+          tries < 30 &&
+          ((axis === lastAxis && usedInAxis[moveBase]) || (axis === lastAxis && Object.keys(usedInAxis).length >= 2))
+        );
+        if (axis !== lastAxis) {
+          lastAxis = axis;
+          usedInAxis = {};
+        }
+        usedInAxis[moveBase] = true;
+        moves.push(moveBase + mods[randomInt(3)]);
+      }
+    }
+    var state = createNxN(size);
+    moves.forEach(function (mv) { applyNxNMove(state, size, mv); });
+    return {
+      algorithm: moves.join(' '),
+      facelets: nxnToFacelets(state, size),
+      puzzle: size === 2 ? '222' : size === 4 ? '444' : '555'
+    };
+  }
+
+  /* ======================== 金字塔 Pyraminx 状态机 ======================== */
+  // 4 面（F=绿, L=橙, R=红, D=黄），每面 9 个三角块（0 顶角，1-3 中层，4-8 底层）
+  function createPyraminx() {
+    return {
+      F: ['F','F','F','F','F','F','F','F','F'],
+      L: ['L','L','L','L','L','L','L','L','L'],
+      R: ['R','R','R','R','R','R','R','R','R'],
+      D: ['D','D','D','D','D','D','D','D','D']
+    };
+  }
+
+  function cycle3(a, ia, b, ib, c, ic) {
+    var t = a[ia];
+    a[ia] = b[ib];
+    b[ib] = c[ic];
+    c[ic] = t;
+  }
+
+  function rotatePyramTipCW(s, tip) {
+    if (tip === 'u') cycle3(s.F, 0, s.R, 0, s.L, 0);
+    else if (tip === 'l') cycle3(s.F, 4, s.L, 8, s.D, 4);
+    else if (tip === 'r') cycle3(s.F, 8, s.D, 8, s.R, 4);
+    else if (tip === 'b') cycle3(s.L, 4, s.R, 8, s.D, 0);
+  }
+
+  function rotatePyramLayerCW(s, face) {
+    rotatePyramTipCW(s, face.toLowerCase());
+    if (face === 'U') {
+      cycle3(s.F, 1, s.R, 1, s.L, 1);
+      cycle3(s.F, 2, s.R, 2, s.L, 2);
+      cycle3(s.F, 3, s.R, 3, s.L, 3);
+    } else if (face === 'L') {
+      cycle3(s.F, 1, s.L, 6, s.D, 5);
+      cycle3(s.F, 5, s.L, 7, s.D, 1);
+      cycle3(s.F, 6, s.L, 3, s.D, 2);
+    } else if (face === 'R') {
+      cycle3(s.F, 3, s.D, 6, s.R, 5);
+      cycle3(s.F, 7, s.D, 7, s.R, 1);
+      cycle3(s.F, 6, s.D, 3, s.R, 2);
+    } else if (face === 'B') {
+      cycle3(s.L, 1, s.R, 7, s.D, 1);
+      cycle3(s.L, 5, s.R, 6, s.D, 2);
+      cycle3(s.L, 6, s.R, 3, s.D, 3);
+    }
+  }
+
+  function applyPyramMove(s, token) {
+    var prime = token.endsWith("'");
+    var base = prime ? token.slice(0, -1) : token;
+    var turns = prime ? 2 : 1;
+    for (var t = 0; t < turns; t++) {
+      if (base === base.toLowerCase()) rotatePyramTipCW(s, base);
+      else rotatePyramLayerCW(s, base);
+    }
+  }
+
+  function generatePyraminxScramble() {
+    var axes = ['U', 'L', 'R', 'B'];
+    var tips = ['u', 'l', 'r', 'b'];
+    var moves = [];
+    var last = '';
+    for (var i = 0; i < 11; i++) {
+      var a;
+      do { a = axes[randomInt(4)]; } while (a === last);
+      last = a;
+      moves.push(a + (randomInt(2) ? "'" : ''));
+    }
+    for (var j = 0; j < tips.length; j++) {
+      var r = randomInt(3);
+      if (r === 1) moves.push(tips[j]);
+      else if (r === 2) moves.push(tips[j] + "'");
+    }
+    var state = createPyraminx();
+    moves.forEach(function (mv) { applyPyramMove(state, mv); });
+    return {
+      algorithm: moves.join(' '),
+      facelets: 'PYRAM:' + state.F.join('') + state.L.join('') + state.R.join('') + state.D.join(''),
+      puzzle: 'pyram'
+    };
+  }
+
+  /* ======================== 斜转 Skewb 状态机 ======================== */
+  // 6 面（U,L,F,R,B,D），每面 5 贴片：0=中心菱形，1=左上角，2=右上角，3=右下角，4=左下角
+  function createSkewb() {
+    return {
+      U: ['U','U','U','U','U'],
+      L: ['L','L','L','L','L'],
+      F: ['F','F','F','F','F'],
+      R: ['R','R','R','R','R'],
+      B: ['B','B','B','B','B'],
+      D: ['D','D','D','D','D']
+    };
+  }
+
+  function rotateSkewbCW(s, axis) {
+    if (axis === 'R') {
+      cycle3(s.R, 0, s.B, 0, s.D, 0);
+      cycle3(s.R, 3, s.B, 4, s.D, 3);
+      cycle3(s.R, 2, s.B, 3, s.D, 2);
+      cycle3(s.R, 4, s.B, 1, s.D, 4);
+      cycle3(s.F, 3, s.U, 2, s.L, 4);
+    } else if (axis === 'L') {
+      cycle3(s.L, 0, s.D, 0, s.F, 0);
+      cycle3(s.L, 3, s.D, 4, s.F, 4);
+      cycle3(s.L, 2, s.D, 1, s.F, 1);
+      cycle3(s.L, 4, s.D, 3, s.F, 3);
+      cycle3(s.U, 4, s.R, 4, s.B, 3);
+    } else if (axis === 'U') {
+      cycle3(s.U, 0, s.B, 0, s.L, 0);
+      cycle3(s.U, 1, s.B, 2, s.L, 1);
+      cycle3(s.U, 2, s.B, 1, s.L, 4);
+      cycle3(s.U, 4, s.B, 3, s.L, 2);
+      cycle3(s.F, 1, s.R, 2, s.D, 4);
+    } else if (axis === 'B') {
+      cycle3(s.B, 0, s.L, 0, s.D, 0);
+      cycle3(s.B, 3, s.L, 4, s.D, 4);
+      cycle3(s.B, 2, s.L, 1, s.D, 3);
+      cycle3(s.B, 4, s.L, 3, s.D, 1);
+      cycle3(s.U, 1, s.F, 4, s.R, 3);
+    }
+  }
+
+  function applySkewbMove(s, token) {
+    var prime = token.endsWith("'");
+    var base = prime ? token.slice(0, -1) : token;
+    var turns = prime ? 2 : 1;
+    for (var t = 0; t < turns; t++) rotateSkewbCW(s, base);
+  }
+
+  function generateSkewbScramble() {
+    var axes = ['U', 'L', 'R', 'B'];
+    var moves = [];
+    var last = '';
+    for (var i = 0; i < 11; i++) {
+      var a;
+      do { a = axes[randomInt(4)]; } while (a === last);
+      last = a;
+      moves.push(a + (randomInt(2) ? "'" : ''));
+    }
+    var state = createSkewb();
+    moves.forEach(function (mv) { applySkewbMove(state, mv); });
+    return {
+      algorithm: moves.join(' '),
+      facelets: 'SKEWB:' + state.U.join('') + state.L.join('') + state.F.join('') + state.R.join('') + state.B.join('') + state.D.join(''),
+      puzzle: 'skewb'
+    };
+  }
+
+  function generateScramble(puzzleId) {
+    var id = normalizePuzzle(puzzleId);
+    if (id === '222') return generateNxNScramble(2);
+    if (id === '444') return generateNxNScramble(4);
+    if (id === '555') return generateNxNScramble(5);
+    if (id === 'pyram') return generatePyraminxScramble();
+    if (id === 'skewb') return generateSkewbScramble();
+    return null;
+  }
+
+  /* ======================== 通用高清 SVG 展开图渲染 ======================== */
+  function buildNxNNetSvg(doc, facelets, n) {
+    var cell = n >= 5 ? 7 : n === 4 ? 8.5 : n === 2 ? 15 : 11;
+    var gap = n >= 5 ? 1 : 1.5;
+    var faceGap = 4;
+    var faceSpan = n * cell + (n - 1) * gap;
+    var w = 4 * faceSpan + 3 * faceGap;
+    var h = 3 * faceSpan + 2 * faceGap;
+    var svg = doc.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.setAttribute('focusable', 'false');
+
+    var expectedLen = 6 * n * n;
+    var valid = typeof facelets === 'string' && facelets.length === expectedLen && /^[URFDLB]+$/.test(facelets);
+    var perFace = n * n;
+    for (var f = 0; f < FACE_LIST.length; f++) {
+      var face = FACE_LIST[f];
+      var pos = NET_POS[face];
+      var ox = pos[0] * (faceSpan + faceGap);
+      var oy = pos[1] * (faceSpan + faceGap);
+      var seg = valid ? facelets.slice(f * perFace, (f + 1) * perFace) : null;
+      for (var i = 0; i < perFace; i++) {
+        var col = i % n;
+        var row = Math.floor(i / n);
+        var rect = doc.createElementNS(SVG_NS, 'rect');
+        rect.setAttribute('x', String(ox + col * (cell + gap)));
+        rect.setAttribute('y', String(oy + row * (cell + gap)));
+        rect.setAttribute('width', String(cell));
+        rect.setAttribute('height', String(cell));
+        rect.setAttribute('rx', n >= 4 ? '1' : '1.4');
+        rect.setAttribute('ry', n >= 4 ? '1' : '1.4');
+        rect.setAttribute('fill', valid ? COLORS[seg.charAt(i)] : 'var(--line-soft)');
+        svg.appendChild(rect);
+      }
+    }
+    return svg;
+  }
+
+  function addTri(doc, svg, x1, y1, x2, y2, x3, y3, fill) {
+    var poly = doc.createElementNS(SVG_NS, 'polygon');
+    poly.setAttribute('points', x1.toFixed(1) + ',' + y1.toFixed(1) + ' ' + x2.toFixed(1) + ',' + y2.toFixed(1) + ' ' + x3.toFixed(1) + ',' + y3.toFixed(1));
+    poly.setAttribute('fill', fill);
+    poly.setAttribute('stroke', 'var(--net-stroke)');
+    poly.setAttribute('stroke-width', '0.9');
+    poly.setAttribute('stroke-linejoin', 'round');
+    svg.appendChild(poly);
+  }
+
+  function drawPyramFace(doc, svg, cx, topY, side, colors, inverted) {
+    var h = side * Math.sqrt(3) / 2;
+    var step = side / 3;
+    var rowH = h / 3;
+    // 9 个三角的坐标按 0(顶), 1,2,3(中层左中右), 4,5,6,7,8(底层左到右) 绘制
+    var tris = [
+      // 0: 顶三角
+      [[0, 0], [-step / 2, rowH], [step / 2, rowH]],
+      // 1: 中左正三角
+      [[-step / 2, rowH], [-step, 2 * rowH], [0, 2 * rowH]],
+      // 2: 中倒三角
+      [[-step / 2, rowH], [step / 2, rowH], [0, 2 * rowH]],
+      // 3: 中右正三角
+      [[step / 2, rowH], [0, 2 * rowH], [step, 2 * rowH]],
+      // 4: 底左正
+      [[-step, 2 * rowH], [-1.5 * step, 3 * rowH], [-0.5 * step, 3 * rowH]],
+      // 5: 底中左倒
+      [[-step, 2 * rowH], [0, 2 * rowH], [-0.5 * step, 3 * rowH]],
+      // 6: 底中正
+      [[0, 2 * rowH], [-0.5 * step, 3 * rowH], [0.5 * step, 3 * rowH]],
+      // 7: 底中右倒
+      [[0, 2 * rowH], [step, 2 * rowH], [0.5 * step, 3 * rowH]],
+      // 8: 底右正
+      [[step, 2 * rowH], [0.5 * step, 3 * rowH], [1.5 * step, 3 * rowH]]
+    ];
+    for (var i = 0; i < 9; i++) {
+      var pts = tris[i].map(function (pt) {
+        return inverted ? [cx + pt[0], topY + h - pt[1]] : [cx + pt[0], topY + pt[1]];
+      });
+      var code = colors ? colors.charAt(i) : '';
+      addTri(doc, svg, pts[0][0], pts[0][1], pts[1][0], pts[1][1], pts[2][0], pts[2][1], COLORS[code] || 'var(--line-soft)');
+    }
+  }
+
+  function buildPyramNetSvg(doc, facelets) {
+    var svg = doc.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 180 124');
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.setAttribute('focusable', 'false');
+    var raw = typeof facelets === 'string' && facelets.indexOf('PYRAM:') === 0 ? facelets.slice(6) : '';
+    var valid = raw.length === 36;
+    var side = 58;
+    var h = side * Math.sqrt(3) / 2;
+    // 上排左 L、中 F、右 R；下排倒置 D
+    drawPyramFace(doc, svg, 32, 6, side, valid ? raw.slice(9, 18) : '', false);
+    drawPyramFace(doc, svg, 90, 6, side, valid ? raw.slice(0, 9) : '', false);
+    drawPyramFace(doc, svg, 148, 6, side, valid ? raw.slice(18, 27) : '', false);
+    drawPyramFace(doc, svg, 90, 12 + h, side, valid ? raw.slice(27, 36) : '', true);
+    return svg;
+  }
+
+  function buildSkewbNetSvg(doc, facelets) {
+    var size = 34;
+    var gap = 4;
+    var w = 4 * size + 3 * gap;
+    var h = 3 * size + 2 * gap;
+    var svg = doc.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.setAttribute('focusable', 'false');
+
+    var raw = typeof facelets === 'string' && facelets.indexOf('SKEWB:') === 0 ? facelets.slice(6) : '';
+    var valid = raw.length === 30;
+    var order = ['U', 'L', 'F', 'R', 'B', 'D'];
+    for (var f = 0; f < order.length; f++) {
+      var face = order[f];
+      var pos = NET_POS[face];
+      var ox = pos[0] * (size + gap);
+      var oy = pos[1] * (size + gap);
+      var seg = valid ? raw.slice(f * 5, f * 5 + 5) : '';
+      var mid = size / 2;
+      // 4 个角三角：1 左上, 2 右上, 3 右下, 4 左下
+      addTri(doc, svg, ox, oy, ox + mid, oy, ox, oy + mid, valid ? COLORS[seg.charAt(1)] : 'var(--line-soft)');
+      addTri(doc, svg, ox + size, oy, ox + mid, oy, ox + size, oy + mid, valid ? COLORS[seg.charAt(2)] : 'var(--line-soft)');
+      addTri(doc, svg, ox + size, oy + size, ox + size, oy + mid, ox + mid, oy + size, valid ? COLORS[seg.charAt(3)] : 'var(--line-soft)');
+      addTri(doc, svg, ox, oy + size, ox, oy + mid, ox + mid, oy + size, valid ? COLORS[seg.charAt(4)] : 'var(--line-soft)');
+      // 中心菱形：0
+      var diamond = doc.createElementNS(SVG_NS, 'polygon');
+      diamond.setAttribute('points',
+        (ox + mid) + ',' + oy + ' ' + (ox + size) + ',' + (oy + mid) + ' ' + (ox + mid) + ',' + (oy + size) + ' ' + ox + ',' + (oy + mid)
+      );
+      diamond.setAttribute('fill', valid ? COLORS[seg.charAt(0)] : 'var(--line-soft)');
+      diamond.setAttribute('stroke', 'var(--net-stroke)');
+      diamond.setAttribute('stroke-width', '0.9');
+      diamond.setAttribute('stroke-linejoin', 'round');
+      svg.appendChild(diamond);
+    }
+    return svg;
+  }
+
+  function buildNetSvg(doc, facelets, puzzleId) {
+    var puzzle = getPuzzle(puzzleId);
+    if (puzzle.netType === 'pyram') return buildPyramNetSvg(doc, facelets);
+    if (puzzle.netType === 'skewb') return buildSkewbNetSvg(doc, facelets);
+    return buildNxNNetSvg(doc, facelets, puzzle.size);
+  }
+
+  var api = {
+    list: PUZZLES,
+    normalize: normalizePuzzle,
+    get: getPuzzle,
+    generateScramble: generateScramble,
+    buildNetSvg: buildNetSvg
+  };
+
+  root.StarCubePuzzles = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
 (function () {
   'use strict';
 
@@ -2501,10 +3146,14 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     app: $('app'), navTimer: $('navTimer'), navReview: $('navReview'),
     timerView: $('timerView'), reviewView: $('reviewView'), recentReview: $('recentReview'),
     timerGroupName: $('timerGroupName'), coreAo5: $('coreAo5'), coreAo12: $('coreAo12'),
+    coreAo100: $('coreAo100'), coreMean: $('coreMean'),
     corePb: $('corePb'), coreCount: $('coreCount'), coreGlobalPb: $('coreGlobalPb'),
     recentList: $('recentList'), recentEmpty: $('recentEmpty'),
     themeToggle: $('themeToggle'), themeLabel: $('themeLabel'),
-    mobileGroupBtn: $('mobileGroupBtn'), mobileGroupName: $('mobileGroupName'), mobileSettingsBtn: $('mobileSettingsBtn'),
+    mobileGroupBtn: $('mobileGroupBtn'), mobileGroupName: $('mobileGroupName'), mobilePuzzleBadge: $('mobilePuzzleBadge'), mobileSettingsBtn: $('mobileSettingsBtn'),
+    puzzleBar: $('puzzleBar'), scramblePuzzleLabel: $('scramblePuzzleLabel'), reviewScopePills: $('reviewScopePills'),
+    holdDelayGroup: $('holdDelayGroup'), precisionGroup: $('precisionGroup'), hideTimerToggle: $('hideTimerToggle'),
+    hapticsToggle: $('hapticsToggle'), keepScreenToggle: $('keepScreenToggle'), themePickerGroup: $('themePickerGroup'), showNetToggle: $('showNetToggle'),
     trainingPanel: $('trainingPanel'), settingsPanel: $('settingsPanel'),
     groupSheetClose: $('groupSheetClose'), settingsSheetClose: $('settingsSheetClose'), mobileSheetBackdrop: $('mobileSheetBackdrop'),
     metaColorScheme: $('metaColorScheme'), metaThemeColor: $('metaThemeColor'),
@@ -2622,7 +3271,19 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   var pendingUpdateLabel = '';
   var currentAppVersion = '';
   var groupsVersion = -1;
-  var settings = { inspection: true, inspectionSound: false, reviewRange: '50', theme: 'light' };
+  var settings = {
+    inspection: true,
+    inspectionSound: false,
+    reviewRange: '50',
+    theme: 'light',
+    holdMs: 300,
+    precision: 3,
+    hideTimer: false,
+    haptics: true,
+    keepScreenOn: true,
+    showNet: true
+  };
+  var VALID_HOLD_MS = [0, 200, 300, 500];
   var toastLeaveTimer = 0;
   var toastHideTimer = 0;
   var backup = null;
@@ -2770,12 +3431,22 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       if (parsedSettings && typeof parsedSettings.inspection === 'boolean') settings.inspection = parsedSettings.inspection;
       if (parsedSettings && typeof parsedSettings.inspectionSound === 'boolean') settings.inspectionSound = parsedSettings.inspectionSound;
       if (parsedSettings && ['50', '100', 'today', '7days'].includes(parsedSettings.reviewRange)) settings.reviewRange = parsedSettings.reviewRange;
+      if (parsedSettings && VALID_HOLD_MS.includes(parsedSettings.holdMs)) settings.holdMs = parsedSettings.holdMs;
+      if (parsedSettings && (parsedSettings.precision === 2 || parsedSettings.precision === 3)) settings.precision = parsedSettings.precision;
+      if (parsedSettings && typeof parsedSettings.hideTimer === 'boolean') settings.hideTimer = parsedSettings.hideTimer;
+      if (parsedSettings && typeof parsedSettings.haptics === 'boolean') settings.haptics = parsedSettings.haptics;
+      if (parsedSettings && typeof parsedSettings.keepScreenOn === 'boolean') settings.keepScreenOn = parsedSettings.keepScreenOn;
+      if (parsedSettings && typeof parsedSettings.showNet === 'boolean') settings.showNet = parsedSettings.showNet;
       settings.theme = normalizeTheme(parsedSettings && parsedSettings.theme);
     } catch (err) {
       settings.theme = 'light';
       console.warn('设置读取失败，使用默认设置', err);
     }
     applyTheme(settings.theme);
+    var initBridge = getNativeBridge();
+    if (initBridge && typeof initBridge.setKeepScreenOn === 'function') {
+      try { initBridge.setKeepScreenOn(settings.keepScreenOn); } catch (err) {}
+    }
     store = window.StarCubeStore.create({ storage: storage });
     reviewLimit = settings.reviewRange === '100' ? 100 : settings.reviewRange === '50' ? 50 : settings.reviewRange;
     el.reviewRange.value = String(reviewLimit);
@@ -3076,16 +3747,50 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     else onFailure();
   }
 
+  var Puzzles = window.StarCubePuzzles || null;
+
+  function currentPuzzleId() {
+    var selected = groups.find(function (group) { return group.id === currentGroupId; });
+    var raw = selected && selected.puzzle ? selected.puzzle : '333';
+    return Puzzles ? Puzzles.normalize(raw) : '333';
+  }
+
+  function currentPuzzle() {
+    return Puzzles ? Puzzles.get(currentPuzzleId()) : { id: '333', name: '3×3', fullName: '3×3 三阶', usesWorker: true, netType: 'nxn', size: 3 };
+  }
+
+  function formatDisplayMs(ms) {
+    var text = Stats.formatMs(ms);
+    if (settings.precision === 2 && /\.\d{3}$/.test(text)) {
+      return text.slice(0, -1);
+    }
+    return text;
+  }
+
+  function formatDisplayResult(record) {
+    if (!record) return settings.precision === 2 ? '0.00' : '0.000';
+    if (record.penalty === 'dnf') return 'DNF';
+    return formatDisplayMs(Stats.effectiveMs(record)) + (record.penalty === '+2' ? '+' : '');
+  }
+
+  function holdDelayLabel() {
+    if (settings.holdMs <= 0) return '松开即起表';
+    return '按住 ' + (settings.holdMs / 1000) + ' 秒起表';
+  }
+
   function renderScramblePanel() {
+    var puzzle = currentPuzzle();
     var text = '—';
     var message = false;
     var hint = '';
     var showRetry = false;
     var facelets = null;
+    var puzzleForNet = puzzle.id;
 
     if (activeScramble) {
       text = activeScramble.algorithm;
       facelets = activeScramble.facelets;
+      puzzleForNet = activeScramble.puzzle || puzzle.id;
       hint = '本次打乱 · 已固定';
     } else if (generating) {
       text = '生成中…';
@@ -3094,39 +3799,47 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     } else if (genFailed) {
       text = '生成失败';
       message = true;
-      hint = '打乱未就绪，按 N 或点击重试';
+      hint = isTouchOnlyUi() ? '打乱未就绪，点击重试' : '打乱未就绪，按 N 或点击重试';
       showRetry = true;
     } else if (currentScramble) {
       text = currentScramble.algorithm;
       facelets = currentScramble.facelets;
-      hint = (currentScramble.replayed ? '重测历史打乱 · ' : '随机状态 · ') + currentScramble.algorithm.split(' ').length + ' 步';
-    } else if (engineDead) {
+      puzzleForNet = currentScramble.puzzle || puzzle.id;
+      hint = (currentScramble.replayed ? '重测历史打乱 · ' : (puzzle.usesWorker ? '随机状态 · ' : puzzle.name + ' · ')) + currentScramble.algorithm.split(' ').length + ' 步';
+    } else if (engineDead && puzzle.usesWorker) {
       text = '打乱不可用';
       message = true;
       hint = '仍可计时，记录中打乱显示 —';
-    } else if (!engineReady || state === 'BOOT') {
+    } else if ((!engineReady || state === 'BOOT') && puzzle.usesWorker) {
       text = '打乱引擎初始化中…';
       message = true;
       hint = engineFallback ? '主线程初始化，可能卡顿数秒' : '首次初始化约需数秒';
     }
 
+    if (el.scramblePuzzleLabel) el.scramblePuzzleLabel.textContent = puzzle.name.replace('×', ' × ');
     el.scrambleText.textContent = text;
     el.scrambleText.classList.toggle('is-message', message);
     el.scrambleHint.textContent = hint;
     if (el.scrambleHintWrap) {
-      el.scrambleHintWrap.dataset.important = String(showRetry || !!(currentScramble && currentScramble.replayed) || engineDead);
+      el.scrambleHintWrap.dataset.important = String(showRetry || !!(currentScramble && currentScramble.replayed) || (engineDead && puzzle.usesWorker));
     }
     el.retryBtn.hidden = !showRetry;
     el.copyScrambleBtn.disabled = !currentCopyableScramble() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
-    el.newScrambleBtn.disabled = !!press || !!activeScramble || !engineReady || engineDead || generating ||
-      (state !== 'IDLE' && state !== 'STOPPED');
+    var canNew = !press && !activeScramble && !generating && (state === 'IDLE' || state === 'STOPPED') &&
+      (!puzzle.usesWorker || (engineReady && !engineDead));
+    el.newScrambleBtn.disabled = !canNew;
     if (el.netPreviewTrigger) {
+      el.netPreviewTrigger.hidden = !settings.showNet;
       el.netPreviewTrigger.disabled = !facelets || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
     }
-    renderNet(facelets);
+    renderNet(facelets, puzzleForNet);
   }
 
-  function buildNetSvg(facelets) {
+  function buildNetSvg(facelets, puzzleId) {
+    var pid = puzzleId || currentPuzzleId();
+    if (Puzzles && pid !== '333' && pid !== '333oh') {
+      return Puzzles.buildNetSvg(document, facelets, pid);
+    }
     var svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('viewBox', '0 0 ' + NET_W + ' ' + NET_H);
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
@@ -3156,10 +3869,12 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     return svg;
   }
 
-  function renderNet(facelets) {
-    if (facelets === netKey) return;
-    netKey = facelets;
-    el.net.replaceChildren(buildNetSvg(facelets));
+  function renderNet(facelets, puzzleId) {
+    var pid = puzzleId || currentPuzzleId();
+    var cacheKey = pid + ':' + String(facelets || '');
+    if (cacheKey === netKey) return;
+    netKey = cacheKey;
+    el.net.replaceChildren(buildNetSvg(facelets, pid));
   }
 
   function openMobileSheet(kind) {
@@ -3185,7 +3900,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     if (detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
     closeMobileSheet();
     netPreviewOpen = true;
-    if (el.netPreviewCanvas) el.netPreviewCanvas.replaceChildren(buildNetSvg(currentScramble.facelets));
+    if (el.netPreviewCanvas) el.netPreviewCanvas.replaceChildren(buildNetSvg(currentScramble.facelets, currentScramble.puzzle || currentPuzzleId()));
     if (el.netPreviewScramble) el.netPreviewScramble.textContent = currentScramble.algorithm || '';
     if (!el.netPreviewDialog.open && typeof el.netPreviewDialog.showModal === 'function') {
       el.netPreviewDialog.showModal();
@@ -3221,7 +3936,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       el.subStatus.textContent = '按住，保持到变绿' + mark;
       return;
     }
-    el.subStatus.textContent = '观察中' + mark + ' · 按住 0.3 秒起表';
+    el.subStatus.textContent = '观察中' + mark + ' · ' + holdDelayLabel();
   }
 
   function inspectionFrame() {
@@ -3248,6 +3963,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   }
 
   function triggerNativeHaptic(kind) {
+    if (!settings.haptics) return;
     var nativeBridge = getNativeBridge();
     if (nativeBridge && typeof nativeBridge.haptic === 'function') {
       try { nativeBridge.haptic(kind); } catch (err) {}
@@ -3256,14 +3972,15 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
 
   function idleHintText() {
     var touchOnly = isTouchOnlyUi();
-    if (state === 'BOOT') return '打乱引擎初始化中…';
-    if (engineDead) return '打乱不可用，仍可计时';
+    var puzzle = currentPuzzle();
+    if (state === 'BOOT' && puzzle.usesWorker) return '打乱引擎初始化中…';
+    if (engineDead && puzzle.usesWorker) return '打乱不可用，仍可计时';
     if (generating) return (state === 'STOPPED' ? (memoryMode ? '已留在本页 · ' : '已保存 · ') : '') + '下一条打乱生成中…';
     if (genFailed) return touchOnly ? '打乱生成失败，点击重试' : '打乱生成失败，按 N 或点击重试';
     if (state === 'STOPPED') {
-      return (memoryMode ? '已留在本页 · ' : '已保存 · ') + (settings.inspection ? (touchOnly ? '轻点进入观察' : '空格 / 轻点进入观察') : '按住 0.3 秒开始下一次');
+      return (memoryMode ? '已留在本页 · ' : '已保存 · ') + (settings.inspection ? (touchOnly ? '轻点进入观察' : '空格 / 轻点进入观察') : holdDelayLabel());
     }
-    return settings.inspection ? (touchOnly ? '轻点进入 15 秒观察' : '空格 / 轻点进入 15 秒观察') : '按住 0.3 秒起表';
+    return settings.inspection ? (touchOnly ? '轻点进入 15 秒观察' : '空格 / 轻点进入 15 秒观察') : holdDelayLabel();
   }
 
   function renderTimerAndPad() {
@@ -3277,13 +3994,14 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     el.cancelBtn.hidden = !(settings.inspection && (state === 'INSPECTING' || state === 'READY'));
     el.pbBadge.hidden = true;
 
+    var zeroText = settings.precision === 2 ? '0.00' : '0.000';
     if (state === 'RUNNING') {
-      setTimer(Stats.formatMs(performance.now() - runStart), C.white);
+      setTimer(settings.hideTimer ? '计时中' : formatDisplayMs(performance.now() - runStart), C.white);
       el.subStatus.textContent = isTouchOnlyUi() ? '轻点任意处停表' : '空格 / 轻点停表';
       return;
     }
     if (state === 'READY') {
-      setTimer('0.000', C.ready);
+      setTimer(zeroText, C.ready);
       renderReadyHint();
       return;
     }
@@ -3292,15 +4010,15 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       return;
     }
     if (holding) {
-      setTimer('0.000', C.hold);
-      el.subStatus.textContent = '按住准备 · 保持 0.3 秒';
+      setTimer(zeroText, C.hold);
+      el.subStatus.textContent = '按住准备 · 保持 ' + (settings.holdMs / 1000) + ' 秒';
       return;
     }
 
     if (latest) {
-      setTimer(Stats.formatResult(latest), latest.penalty === 'dnf' ? C.bad : C.normal);
+      setTimer(formatDisplayResult(latest), latest.penalty === 'dnf' ? C.bad : C.normal);
     } else {
-      setTimer('0.000', C.dim);
+      setTimer(zeroText, C.dim);
     }
 
     if (latest && records.length >= 2 && latest.penalty !== 'dnf' &&
@@ -3324,7 +4042,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       node.classList.add('is-dnf');
       return;
     }
-    node.textContent = Stats.formatMs(value);
+    node.textContent = formatDisplayMs(value);
     node.classList.remove('is-dnf');
   }
 
@@ -3340,7 +4058,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
 
     var pb = Stats.personalBest(records);
     if (pb) {
-      el.pb.textContent = Stats.formatMs(pb.value) + (pb.record.penalty === '+2' ? '+' : '');
+      el.pb.textContent = formatDisplayMs(pb.value) + (pb.record.penalty === '+2' ? '+' : '');
       el.pb.classList.remove('is-dnf');
     } else {
       el.pb.textContent = '—';
@@ -3349,8 +4067,11 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     setStatValue(el.bestAo5, Stats.bestAo5(records));
     var globalBest = Stats.personalBest(allRecords);
     setStatValue(el.globalPb, globalBest ? globalBest.value : null);
-    [[el.coreAo5, el.ao5], [el.coreAo12, el.ao12], [el.corePb, el.pb],
-      [el.coreCount, el.count], [el.coreGlobalPb, el.globalPb]].forEach(function (pair) {
+    var corePairs = [[el.coreAo5, el.ao5], [el.coreAo12, el.ao12], [el.corePb, el.pb],
+      [el.coreCount, el.count], [el.coreGlobalPb, el.globalPb]];
+    if (el.coreAo100) corePairs.push([el.coreAo100, el.ao100]);
+    if (el.coreMean) corePairs.push([el.coreMean, el.avg]);
+    corePairs.forEach(function (pair) {
       pair[0].textContent = pair[1].textContent;
       pair[0].classList.toggle('is-dnf', pair[1].textContent === 'DNF');
     });
@@ -3539,7 +4260,57 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     el.switchBtn.title = canToggle ? '切换 15 秒观察' : '观察开关仅在就绪或停止后可切换';
     el.importBtn.disabled = !canToggle || memoryMode;
     el.exportBtn.disabled = state === 'RUNNING' || state === 'INSPECTING' || state === 'READY' || !!press || importing;
+    renderSettingsPanel(canToggle);
     syncHistoryExportControl();
+  }
+
+  function renderSettingsPanel(canToggle) {
+    var locked = !canToggle;
+    if (el.hideTimerToggle) {
+      el.hideTimerToggle.setAttribute('aria-checked', String(settings.hideTimer));
+      el.hideTimerToggle.disabled = locked;
+    }
+    if (el.hapticsToggle) {
+      el.hapticsToggle.setAttribute('aria-checked', String(settings.haptics));
+      el.hapticsToggle.disabled = locked;
+    }
+    if (el.keepScreenToggle) {
+      el.keepScreenToggle.setAttribute('aria-checked', String(settings.keepScreenOn));
+      el.keepScreenToggle.disabled = locked;
+    }
+    if (el.showNetToggle) {
+      el.showNetToggle.setAttribute('aria-checked', String(settings.showNet));
+      el.showNetToggle.disabled = locked;
+    }
+    if (el.holdDelayGroup && el.holdDelayGroup.querySelectorAll) {
+      el.holdDelayGroup.querySelectorAll('button').forEach(function (btn) {
+        var val = Number(btn.getAttribute('data-hold-ms'));
+        btn.setAttribute('aria-pressed', String(val === settings.holdMs));
+        btn.disabled = locked;
+      });
+    }
+    if (el.precisionGroup && el.precisionGroup.querySelectorAll) {
+      el.precisionGroup.querySelectorAll('button').forEach(function (btn) {
+        var val = Number(btn.getAttribute('data-precision'));
+        btn.setAttribute('aria-pressed', String(val === settings.precision));
+        btn.disabled = locked;
+      });
+    }
+    if (el.themePickerGroup && el.themePickerGroup.querySelectorAll) {
+      var themeDisabled = detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
+      el.themePickerGroup.querySelectorAll('button').forEach(function (btn) {
+        var t = btn.getAttribute('data-theme-pick');
+        btn.setAttribute('aria-pressed', String(t === settings.theme));
+        btn.disabled = themeDisabled;
+      });
+    }
+    if (el.reviewScopePills && el.reviewScopePills.querySelectorAll) {
+      el.reviewScopePills.querySelectorAll('button').forEach(function (btn) {
+        var r = btn.getAttribute('data-range');
+        btn.setAttribute('aria-pressed', String(r === String(reviewLimit)));
+        btn.disabled = locked;
+      });
+    }
   }
 
   function canChangeGroup() {
@@ -3724,8 +4495,17 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     var selected = groups.find(function (group) { return group.id === currentGroupId; });
     el.groupSelect.title = selected ? selected.name : '';
     el.timerGroupName.textContent = selected ? selected.name : '';
+    var activePuzzle = currentPuzzle();
     if (el.mobileGroupName) el.mobileGroupName.textContent = selected ? selected.name : '默认训练';
+    if (el.mobilePuzzleBadge) el.mobilePuzzleBadge.textContent = activePuzzle.name;
     var disabled = !canChangeGroup() || editingGroup !== null;
+    if (el.puzzleBar && el.puzzleBar.querySelectorAll) {
+      el.puzzleBar.querySelectorAll('button').forEach(function (btn) {
+        var pid = btn.getAttribute('data-puzzle');
+        btn.setAttribute('aria-pressed', String(pid === activePuzzle.id));
+        btn.disabled = disabled;
+      });
+    }
     var isDefault = currentGroupId === window.StarCubeStore.defaultGroupId;
     el.groupSelect.disabled = disabled;
     el.groupNew.disabled = disabled;
@@ -3740,6 +4520,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     if (!canChangeGroup() || editingGroup !== null || !groups.some(function (group) { return group.id === id; })) {
       el.groupSelect.value = currentGroupId; return;
     }
+    var prevPuzzle = currentPuzzleId();
     currentGroupId = id;
     try { window.sessionStorage.setItem(SELECTION_KEY, id); }
     catch (err) { el.feedback.textContent = '本页无法记住训练选择；刷新后可能恢复默认训练。'; }
@@ -3748,7 +4529,50 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     el.historyBody.scrollTop = 0;
     if (activeMobileSheet === 'groups') closeMobileSheet();
     dataChanged();
+    var nextPuzzle = currentPuzzleId();
+    if (nextPuzzle !== prevPuzzle) {
+      if (genTimer) { clearTimeout(genTimer); genTimer = 0; }
+      generating = false;
+      pendingRequestId = null;
+      genFailed = false;
+      currentScramble = null;
+      scrambleUsed = false;
+      if (state === 'STOPPED') state = 'IDLE';
+      render();
+      requestScramble(true);
+      return;
+    }
     render();
+  }
+
+  function switchPuzzle(puzzleId) {
+    if (!Puzzles || !canChangeGroup() || editingGroup !== null) return;
+    var targetId = Puzzles.normalize(puzzleId);
+    if (targetId === currentPuzzleId()) {
+      if (activeMobileSheet === 'groups') closeMobileSheet();
+      return;
+    }
+    var existing = groups.find(function (g) { return Puzzles.normalize(g.puzzle) === targetId; });
+    if (existing) {
+      selectGroup(existing.id);
+      showToast('已切换项目：' + Puzzles.get(targetId).name);
+      return;
+    }
+    var puzzle = Puzzles.get(targetId);
+    var group = {
+      id: window.StarCubeStore.newUid(),
+      origin: window.StarCubeStore.newUid(),
+      name: puzzle.name + ' 训练'
+    };
+    if (targetId !== '333') group.puzzle = targetId;
+    if (!memoryMode) {
+      try { store.putGroup(group); readStore(); }
+      catch (err) { setMemoryMode('训练保存失败'); groups.push(group); }
+    } else {
+      groups.push(group);
+    }
+    selectGroup(group.id);
+    showToast('已切换项目：' + puzzle.name);
   }
 
   function openGroupEditor(rename) {
@@ -3784,8 +4608,13 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
         }
       }
       var existing = groups.find(function (g) { return g.id === editingGroup; });
-      group = existing ? Object.assign({}, existing, { name: name }) :
-        { id: window.StarCubeStore.newUid(), origin: window.StarCubeStore.newUid(), name: name };
+      if (existing) {
+        group = Object.assign({}, existing, { name: name });
+      } else {
+        var activePid = currentPuzzleId();
+        group = { id: window.StarCubeStore.newUid(), origin: window.StarCubeStore.newUid(), name: name };
+        if (activePid !== '333') group.puzzle = activePid;
+      }
       if (!memoryMode) {
         try { store.putGroup(group); readStore(); }
         catch (err) {
@@ -4167,12 +4996,24 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
 
   function freezeScramble() {
     activeScramble = currentScramble ? { algorithm: currentScramble.algorithm, facelets: currentScramble.facelets,
-      requestId: currentScramble.requestId } : { algorithm: '—', facelets: null, requestId: null };
+      puzzle: currentScramble.puzzle || currentPuzzleId(), requestId: currentScramble.requestId } : { algorithm: '—', facelets: null, puzzle: currentPuzzleId(), requestId: null };
     activeScramble.groupId = currentGroupId;
   }
 
   function armHold() {
     clearTimeout(holdTimer);
+    var delay = settings.holdMs;
+    if (delay <= 0) {
+      if (!press || press.suppressed || press.ready) return;
+      if (state !== 'IDLE' && state !== 'STOPPED' && state !== 'INSPECTING') return;
+      if (!activeIsReady()) { abortPress(); return; }
+      press.ready = true;
+      readyFrom = state;
+      state = 'READY';
+      triggerNativeHaptic('ready');
+      render();
+      return;
+    }
     holdTimer = setTimeout(function () {
       holdTimer = 0;
       if (!press || press.suppressed || press.ready) return;
@@ -4183,7 +5024,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       state = 'READY';
       triggerNativeHaptic('ready');
       render();
-    }, HOLD_MS);
+    }, delay);
   }
 
   function beginPress(source) {
@@ -4313,7 +5154,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       runRaf = 0;
       return;
     }
-    el.timer.textContent = Stats.formatMs(performance.now() - runStart);
+    el.timer.textContent = settings.hideTimer ? '计时中' : formatDisplayMs(performance.now() - runStart);
     el.timer.style.color = C.white;
     runRaf = requestAnimationFrame(runFrame);
   }
@@ -4400,9 +5241,27 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   }
 
   function requestScramble(force) {
-    if (engineDead || generating || !engineReady || press || activeScramble) return;
+    var puzzle = currentPuzzle();
+    if (generating || press || activeScramble) return;
     if (state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
     if (!force && scrambleUsed) return;
+    if (!puzzle.usesWorker && Puzzles) {
+      var generated = Puzzles.generateScramble(puzzle.id);
+      if (generated) {
+        genFailed = false;
+        currentScramble = {
+          algorithm: generated.algorithm,
+          facelets: generated.facelets,
+          puzzle: generated.puzzle,
+          requestId: ++requestSerial
+        };
+        scrambleUsed = false;
+        if (state === 'BOOT') state = 'IDLE';
+        render();
+      }
+      return;
+    }
+    if (engineDead || !engineReady) return;
     generating = true;
     var requestId = ++requestSerial;
     pendingRequestId = requestId;
@@ -4458,7 +5317,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       engineReady = true;
       engineMode = 'worker';
       render();
-      requestScramble(false);
+      if (currentPuzzle().usesWorker) requestScramble(false);
       return;
     }
     if (data.cmd === 'scramble') {
@@ -4697,7 +5556,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     if (currentView !== 'timer' || detailsOpen()) return;
     if (press || activeScramble) return;
     if (state !== 'IDLE' && state !== 'STOPPED') return;
-    if (engineDead || !engineReady || generating) return;
+    if ((currentPuzzle().usesWorker && (engineDead || !engineReady)) || generating) return;
     if (genFailed) {
       requestScramble(true);
       return;
@@ -4713,7 +5572,8 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   function trackTouchStart(event) {
     if (event.pointerType !== 'touch') return;
     touchContacts.add(event.pointerId);
-    if (touchContacts.size > 1) {
+    // 手机一屏沉浸模式允许双手起停表与掌缘轻触，不再因多指强制断触
+    if (!isTouchOnlyUi() && touchContacts.size > 1) {
       touchGestureBlocked = true;
       abandonPointerGesture();
     }
@@ -4745,7 +5605,16 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   function getPointerPress(event) {
     trackTouchStart(event);
     if (event.pointerType === 'mouse' && event.button !== 0) return;
-    if (event.pointerType === 'touch' && (touchGestureBlocked || touchContacts.size > 1)) return;
+    var touchMode = isTouchOnlyUi();
+    // 手机计时中任意手指拍屏都能立刻停表，避免双手拍表漏停
+    if (touchMode && state === 'RUNNING') {
+      if (currentView !== 'timer' || detailsOpen() || importing || editingGroup !== null) return;
+      pointerId = event.pointerId;
+      pointerGesture = { x: event.clientX || 0, y: event.clientY || 0, type: event.pointerType };
+      beginPress('pointer');
+      return;
+    }
+    if (!touchMode && event.pointerType === 'touch' && (touchGestureBlocked || touchContacts.size > 1)) return;
     if (currentView !== 'timer' || detailsOpen() || importing || editingGroup !== null) return;
     if (pointerId !== null) return;
     if (press && press.source !== 'pointer') return;
@@ -4758,8 +5627,12 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
 
   function movePointer(event) {
     if (pointerId !== event.pointerId || !pointerGesture || pointerGesture.type === 'mouse') return;
+    // 手机一屏模式：一旦进入 READY 变绿状态后永不因手指微移断触；蓄力中放宽容差至 80px
+    var touchMode = isTouchOnlyUi();
+    if (touchMode && state === 'READY') return;
+    var limit = touchMode ? 80 : TOUCH_MOVE_PX;
     var dx = (event.clientX || 0) - pointerGesture.x, dy = (event.clientY || 0) - pointerGesture.y;
-    if (dx * dx + dy * dy >= TOUCH_MOVE_PX * TOUCH_MOVE_PX) abandonPointerGesture();
+    if (dx * dx + dy * dy >= limit * limit) abandonPointerGesture();
   }
 
   function releasePointer(event) {
@@ -4773,6 +5646,8 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
 
   function cancelPointer(event) {
     if (event.type === 'pointercancel') releaseTouchContact(event);
+    // Android WebView 专注模式淡出重绘时偶发 lostpointercapture，手机端忽略该误报避免断触
+    if (event.type === 'lostpointercapture' && isTouchOnlyUi()) return;
     if (pointerId !== event.pointerId) return;
     abandonPointerGesture();
   }
@@ -5447,6 +6322,100 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     });
     if (el.netPreviewTrigger) el.netPreviewTrigger.addEventListener('click', openNetPreview);
     if (el.netPreviewClose) el.netPreviewClose.addEventListener('click', closeNetPreview);
+    if (el.puzzleBar && el.puzzleBar.querySelectorAll) {
+      el.puzzleBar.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var pid = btn.getAttribute('data-puzzle');
+          if (pid) switchPuzzle(pid);
+        });
+      });
+    }
+    if (el.reviewScopePills && el.reviewScopePills.querySelectorAll) {
+      el.reviewScopePills.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var rangeVal = btn.getAttribute('data-range');
+          if (!rangeVal || btn.disabled) return;
+          el.reviewRange.value = rangeVal;
+          if (typeof el.reviewRange.dispatchEvent === 'function') {
+            el.reviewRange.dispatchEvent(new Event('change'));
+          } else if (typeof el.reviewRange.dispatch === 'function') {
+            el.reviewRange.dispatch('change');
+          }
+        });
+      });
+    }
+    if (el.holdDelayGroup && el.holdDelayGroup.querySelectorAll) {
+      el.holdDelayGroup.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!canChangeGroup() || editingGroup !== null) return;
+          var val = Number(btn.getAttribute('data-hold-ms'));
+          if (!VALID_HOLD_MS.includes(val)) return;
+          settings.holdMs = val;
+          persistSettings();
+          render();
+          showToast('起表延迟已设为 ' + (val / 1000) + ' 秒');
+        });
+      });
+    }
+    if (el.precisionGroup && el.precisionGroup.querySelectorAll) {
+      el.precisionGroup.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!canChangeGroup() || editingGroup !== null) return;
+          var val = Number(btn.getAttribute('data-precision'));
+          if (val !== 2 && val !== 3) return;
+          settings.precision = val;
+          statsVersion = -1;
+          persistSettings();
+          render();
+          showToast('已切换为 ' + (val === 2 ? '0.01s（两位小数）' : '0.001s（三位小数）'));
+        });
+      });
+    }
+    if (el.hideTimerToggle) el.hideTimerToggle.addEventListener('click', function () {
+      if (!canChangeGroup() || editingGroup !== null) return;
+      settings.hideTimer = !settings.hideTimer;
+      persistSettings();
+      render();
+      showToast(settings.hideTimer ? '已开启计时隐藏数字' : '已关闭计时隐藏数字');
+    });
+    if (el.hapticsToggle) el.hapticsToggle.addEventListener('click', function () {
+      if (!canChangeGroup() || editingGroup !== null) return;
+      settings.haptics = !settings.haptics;
+      persistSettings();
+      render();
+      if (settings.haptics) triggerNativeHaptic('ready');
+      showToast(settings.haptics ? '已开启触觉轻震动' : '已关闭触觉轻震动');
+    });
+    if (el.keepScreenToggle) el.keepScreenToggle.addEventListener('click', function () {
+      if (!canChangeGroup() || editingGroup !== null) return;
+      settings.keepScreenOn = !settings.keepScreenOn;
+      persistSettings();
+      var bridge = getNativeBridge();
+      if (bridge && typeof bridge.setKeepScreenOn === 'function') {
+        try { bridge.setKeepScreenOn(settings.keepScreenOn); } catch (err) {}
+      }
+      render();
+      showToast(settings.keepScreenOn ? '已开启练习时屏幕常亮' : '已关闭屏幕常亮');
+    });
+    if (el.showNetToggle) el.showNetToggle.addEventListener('click', function () {
+      if (!canChangeGroup() || editingGroup !== null) return;
+      settings.showNet = !settings.showNet;
+      persistSettings();
+      render();
+      showToast(settings.showNet ? '已显示魔方展开图' : '已隐藏魔方展开图');
+    });
+    if (el.themePickerGroup && el.themePickerGroup.querySelectorAll) {
+      el.themePickerGroup.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (detailsOpen() || press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
+          var chosen = normalizeTheme(btn.getAttribute('data-theme-pick'));
+          applyTheme(chosen);
+          persistSettings();
+          render();
+          showToast('已切换主题：' + THEME_META[chosen].label);
+        });
+      });
+    }
     if (el.checkUpdateBtn) el.checkUpdateBtn.addEventListener('click', checkForAppUpdate);
     if (el.downloadUpdateBtn) el.downloadUpdateBtn.addEventListener('click', startAppUpdateDownload);
     if (el.openReleaseBtn) el.openReleaseBtn.addEventListener('click', function () {
@@ -5533,6 +6502,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   }
   render();
   bootSolver();
+  if (!currentPuzzle().usesWorker) requestScramble(false);
   var readyBridge = getNativeBridge();
   if (readyBridge && typeof readyBridge.onReady === 'function') {
     try { readyBridge.onReady(); } catch (err) {}

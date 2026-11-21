@@ -18,6 +18,7 @@ const scripts = [
   'test-backup.cjs',
   'test-review.cjs',
   'test-store.cjs',
+  'test-puzzles.cjs',
   'test-domain-regression.cjs',
   'test-app-regression.cjs',
   'test-mobile.cjs',

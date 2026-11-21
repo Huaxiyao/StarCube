@@ -63,6 +63,7 @@ public class MainActivity extends BridgeActivity {
     private static final String PREFS_NAME = "starcube_ui_prefs";
     private static final String KEY_THEME_BG = "theme_bg";
     private static final String KEY_THEME_DARK = "theme_dark";
+    private static final String KEY_KEEP_SCREEN_ON = "keep_screen_on";
     private static final String RELEASES_API_URL = "https://api.github.com/repos/Huaxiyao/StarCube/releases/latest";
     private static final String RELEASES_PAGE_URL = "https://github.com/Huaxiyao/StarCube/releases";
     private static final long MIN_SPLASH_MS = 340L;
@@ -139,12 +140,15 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 魔方练习期间保持屏幕常亮，避免观察或思考时息屏
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String savedBg = prefs.getString(KEY_THEME_BG, "#f3f4f6");
         boolean savedDark = prefs.getBoolean(KEY_THEME_DARK, false);
+        boolean keepScreenOn = prefs.getBoolean(KEY_KEEP_SCREEN_ON, true);
+
+        // 魔方练习期间按用户偏好保持屏幕常亮
+        if (keepScreenOn) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
 
         rootContentView = findViewById(android.R.id.content);
         if (rootContentView != null) {
@@ -711,6 +715,23 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void onAppReady() {
             runOnUiThread(MainActivity.this::dismissSplashOverlay);
+        }
+
+        @JavascriptInterface
+        public void setKeepScreenOn(final boolean enabled) {
+            getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_KEEP_SCREEN_ON, enabled)
+                .apply();
+            runOnUiThread(() -> {
+                Window window = getWindow();
+                if (window == null) return;
+                if (enabled) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                }
+            });
         }
 
         @JavascriptInterface

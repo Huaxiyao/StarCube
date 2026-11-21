@@ -26,6 +26,7 @@
     return typeof value === 'number' && isFinite(value) && Math.floor(value) === value && value >= min && value <= max;
   }
 
+  var VALID_PUZZLES = ['333', '222', '444', '555', '333oh', 'pyram', 'skewb'];
   function defaultGroup() { return { id: DEFAULT_GROUP, origin: 'builtin-default', name: '默认训练' }; }
   function validateName(name) {
     if (typeof name !== 'string' || !name.trim() || name.trim().length > 40 || /[\u0000-\u001f\u007f]/.test(name)) {
@@ -36,7 +37,11 @@
   function validateGroup(group) {
     if (!group || !validUid(group.id) || !validUid(group.origin)) throw error('训练分组身份无效', 'INVALID_GROUP');
     if ((group.id === DEFAULT_GROUP) !== (group.origin === 'builtin-default')) throw error('默认训练身份无效', 'INVALID_GROUP');
-    return { id: group.id, origin: group.origin, name: validateName(group.name) };
+    var out = { id: group.id, origin: group.origin, name: validateName(group.name) };
+    if (typeof group.puzzle === 'string' && VALID_PUZZLES.indexOf(group.puzzle) !== -1 && group.puzzle !== '333') {
+      out.puzzle = group.puzzle;
+    }
+    return out;
   }
   function recoveredGroup(id) { return { id: id, origin: 'recovered-' + hash(id), name: '恢复的训练 · ' + id.slice(0, 12) }; }
 

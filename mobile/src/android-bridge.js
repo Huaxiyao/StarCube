@@ -192,6 +192,14 @@
         } catch (err) {}
       }
     },
+    setKeepScreenOn: function (enabled) {
+      var android = getAndroid();
+      if (android && typeof android.setKeepScreenOn === 'function') {
+        try {
+          android.setKeepScreenOn(!!enabled);
+        } catch (err) {}
+      }
+    },
     setTheme: function (themeColor, isDark) {
       var android = getAndroid();
       if (android && typeof android.setSystemTheme === 'function') {

@@ -51,10 +51,14 @@
     app: $('app'), navTimer: $('navTimer'), navReview: $('navReview'),
     timerView: $('timerView'), reviewView: $('reviewView'), recentReview: $('recentReview'),
     timerGroupName: $('timerGroupName'), coreAo5: $('coreAo5'), coreAo12: $('coreAo12'),
+    coreAo100: $('coreAo100'), coreMean: $('coreMean'),
     corePb: $('corePb'), coreCount: $('coreCount'), coreGlobalPb: $('coreGlobalPb'),
     recentList: $('recentList'), recentEmpty: $('recentEmpty'),
     themeToggle: $('themeToggle'), themeLabel: $('themeLabel'),
-    mobileGroupBtn: $('mobileGroupBtn'), mobileGroupName: $('mobileGroupName'), mobileSettingsBtn: $('mobileSettingsBtn'),
+    mobileGroupBtn: $('mobileGroupBtn'), mobileGroupName: $('mobileGroupName'), mobilePuzzleBadge: $('mobilePuzzleBadge'), mobileSettingsBtn: $('mobileSettingsBtn'),
+    puzzleBar: $('puzzleBar'), scramblePuzzleLabel: $('scramblePuzzleLabel'), reviewScopePills: $('reviewScopePills'),
+    holdDelayGroup: $('holdDelayGroup'), precisionGroup: $('precisionGroup'), hideTimerToggle: $('hideTimerToggle'),
+    hapticsToggle: $('hapticsToggle'), keepScreenToggle: $('keepScreenToggle'), themePickerGroup: $('themePickerGroup'), showNetToggle: $('showNetToggle'),
     trainingPanel: $('trainingPanel'), settingsPanel: $('settingsPanel'),
     groupSheetClose: $('groupSheetClose'), settingsSheetClose: $('settingsSheetClose'), mobileSheetBackdrop: $('mobileSheetBackdrop'),
     metaColorScheme: $('metaColorScheme'), metaThemeColor: $('metaThemeColor'),
@@ -172,7 +176,19 @@
   var pendingUpdateLabel = '';
   var currentAppVersion = '';
   var groupsVersion = -1;
-  var settings = { inspection: true, inspectionSound: false, reviewRange: '50', theme: 'light' };
+  var settings = {
+    inspection: true,
+    inspectionSound: false,
+    reviewRange: '50',
+    theme: 'light',
+    holdMs: 300,
+    precision: 3,
+    hideTimer: false,
+    haptics: true,
+    keepScreenOn: true,
+    showNet: true
+  };
+  var VALID_HOLD_MS = [0, 200, 300, 500];
   var toastLeaveTimer = 0;
   var toastHideTimer = 0;
   var backup = null;
@@ -320,12 +336,22 @@
       if (parsedSettings && typeof parsedSettings.inspection === 'boolean') settings.inspection = parsedSettings.inspection;
       if (parsedSettings && typeof parsedSettings.inspectionSound === 'boolean') settings.inspectionSound = parsedSettings.inspectionSound;
       if (parsedSettings && ['50', '100', 'today', '7days'].includes(parsedSettings.reviewRange)) settings.reviewRange = parsedSettings.reviewRange;
+      if (parsedSettings && VALID_HOLD_MS.includes(parsedSettings.holdMs)) settings.holdMs = parsedSettings.holdMs;
+      if (parsedSettings && (parsedSettings.precision === 2 || parsedSettings.precision === 3)) settings.precision = parsedSettings.precision;
+      if (parsedSettings && typeof parsedSettings.hideTimer === 'boolean') settings.hideTimer = parsedSettings.hideTimer;
+      if (parsedSettings && typeof parsedSettings.haptics === 'boolean') settings.haptics = parsedSettings.haptics;
+      if (parsedSettings && typeof parsedSettings.keepScreenOn === 'boolean') settings.keepScreenOn = parsedSettings.keepScreenOn;
+      if (parsedSettings && typeof parsedSettings.showNet === 'boolean') settings.showNet = parsedSettings.showNet;
       settings.theme = normalizeTheme(parsedSettings && parsedSettings.theme);
     } catch (err) {
       settings.theme = 'light';
       console.warn('设置读取失败，使用默认设置', err);
     }
     applyTheme(settings.theme);
+    var initBridge = getNativeBridge();
+    if (initBridge && typeof initBridge.setKeepScreenOn === 'function') {
+      try { initBridge.setKeepScreenOn(settings.keepScreenOn); } catch (err) {}
+    }
     store = window.StarCubeStore.create({ storage: storage });
     reviewLimit = settings.reviewRange === '100' ? 100 : settings.reviewRange === '50' ? 50 : settings.reviewRange;
     el.reviewRange.value = String(reviewLimit);
@@ -626,16 +652,50 @@
     else onFailure();
   }
 
+  var Puzzles = window.StarCubePuzzles || null;
+
+  function currentPuzzleId() {
+    var selected = groups.find(function (group) { return group.id === currentGroupId; });
+    var raw = selected && selected.puzzle ? selected.puzzle : '333';
+    return Puzzles ? Puzzles.normalize(raw) : '333';
+  }
+
+  function currentPuzzle() {
+    return Puzzles ? Puzzles.get(currentPuzzleId()) : { id: '333', name: '3×3', fullName: '3×3 三阶', usesWorker: true, netType: 'nxn', size: 3 };
+  }
+
+  function formatDisplayMs(ms) {
+    var text = Stats.formatMs(ms);
+    if (settings.precision === 2 && /\.\d{3}$/.test(text)) {
+      return text.slice(0, -1);
+    }
+    return text;
+  }
+
+  function formatDisplayResult(record) {
+    if (!record) return settings.precision === 2 ? '0.00' : '0.000';
+    if (record.penalty === 'dnf') return 'DNF';
+    return formatDisplayMs(Stats.effectiveMs(record)) + (record.penalty === '+2' ? '+' : '');
+  }
+
+  function holdDelayLabel() {
+    if (settings.holdMs <= 0) return '松开即起表';
+    return '按住 ' + (settings.holdMs / 1000) + ' 秒起表';
+  }
+
   function renderScramblePanel() {
+    var puzzle = currentPuzzle();
     var text = '—';
     var message = false;
     var hint = '';
     var showRetry = false;
     var facelets = null;
+    var puzzleForNet = puzzle.id;
 
     if (activeScramble) {
       text = activeScramble.algorithm;
       facelets = activeScramble.facelets;
+      puzzleForNet = activeScramble.puzzle || puzzle.id;
       hint = '本次打乱 · 已固定';
     } else if (generating) {
       text = '生成中…';
@@ -644,39 +704,47 @@
     } else if (genFailed) {
       text = '生成失败';
       message = true;
-      hint = '打乱未就绪，按 N 或点击重试';
+      hint = isTouchOnlyUi() ? '打乱未就绪，点击重试' : '打乱未就绪，按 N 或点击重试';
       showRetry = true;
     } else if (currentScramble) {
       text = currentScramble.algorithm;
       facelets = currentScramble.facelets;
-      hint = (currentScramble.replayed ? '重测历史打乱 · ' : '随机状态 · ') + currentScramble.algorithm.split(' ').length + ' 步';
-    } else if (engineDead) {
+      puzzleForNet = currentScramble.puzzle || puzzle.id;
+      hint = (currentScramble.replayed ? '重测历史打乱 · ' : (puzzle.usesWorker ? '随机状态 · ' : puzzle.name + ' · ')) + currentScramble.algorithm.split(' ').length + ' 步';
+    } else if (engineDead && puzzle.usesWorker) {
       text = '打乱不可用';
       message = true;
       hint = '仍可计时，记录中打乱显示 —';
-    } else if (!engineReady || state === 'BOOT') {
+    } else if ((!engineReady || state === 'BOOT') && puzzle.usesWorker) {
       text = '打乱引擎初始化中…';
       message = true;
       hint = engineFallback ? '主线程初始化，可能卡顿数秒' : '首次初始化约需数秒';
     }
 
+    if (el.scramblePuzzleLabel) el.scramblePuzzleLabel.textContent = puzzle.name.replace('×', ' × ');
     el.scrambleText.textContent = text;
     el.scrambleText.classList.toggle('is-message', message);
     el.scrambleHint.textContent = hint;
     if (el.scrambleHintWrap) {
-      el.scrambleHintWrap.dataset.important = String(showRetry || !!(currentScramble && currentScramble.replayed) || engineDead);
+      el.scrambleHintWrap.dataset.important = String(showRetry || !!(currentScramble && currentScramble.replayed) || (engineDead && puzzle.usesWorker));
     }
     el.retryBtn.hidden = !showRetry;
     el.copyScrambleBtn.disabled = !currentCopyableScramble() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
-    el.newScrambleBtn.disabled = !!press || !!activeScramble || !engineReady || engineDead || generating ||
-      (state !== 'IDLE' && state !== 'STOPPED');
+    var canNew = !press && !activeScramble && !generating && (state === 'IDLE' || state === 'STOPPED') &&
+      (!puzzle.usesWorker || (engineReady && !engineDead));
+    el.newScrambleBtn.disabled = !canNew;
     if (el.netPreviewTrigger) {
+      el.netPreviewTrigger.hidden = !settings.showNet;
       el.netPreviewTrigger.disabled = !facelets || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
     }
-    renderNet(facelets);
+    renderNet(facelets, puzzleForNet);
   }
 
-  function buildNetSvg(facelets) {
+  function buildNetSvg(facelets, puzzleId) {
+    var pid = puzzleId || currentPuzzleId();
+    if (Puzzles && pid !== '333' && pid !== '333oh') {
+      return Puzzles.buildNetSvg(document, facelets, pid);
+    }
     var svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('viewBox', '0 0 ' + NET_W + ' ' + NET_H);
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
@@ -706,10 +774,12 @@
     return svg;
   }
 
-  function renderNet(facelets) {
-    if (facelets === netKey) return;
-    netKey = facelets;
-    el.net.replaceChildren(buildNetSvg(facelets));
+  function renderNet(facelets, puzzleId) {
+    var pid = puzzleId || currentPuzzleId();
+    var cacheKey = pid + ':' + String(facelets || '');
+    if (cacheKey === netKey) return;
+    netKey = cacheKey;
+    el.net.replaceChildren(buildNetSvg(facelets, pid));
   }
 
   function openMobileSheet(kind) {
@@ -735,7 +805,7 @@
     if (detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
     closeMobileSheet();
     netPreviewOpen = true;
-    if (el.netPreviewCanvas) el.netPreviewCanvas.replaceChildren(buildNetSvg(currentScramble.facelets));
+    if (el.netPreviewCanvas) el.netPreviewCanvas.replaceChildren(buildNetSvg(currentScramble.facelets, currentScramble.puzzle || currentPuzzleId()));
     if (el.netPreviewScramble) el.netPreviewScramble.textContent = currentScramble.algorithm || '';
     if (!el.netPreviewDialog.open && typeof el.netPreviewDialog.showModal === 'function') {
       el.netPreviewDialog.showModal();
@@ -771,7 +841,7 @@
       el.subStatus.textContent = '按住，保持到变绿' + mark;
       return;
     }
-    el.subStatus.textContent = '观察中' + mark + ' · 按住 0.3 秒起表';
+    el.subStatus.textContent = '观察中' + mark + ' · ' + holdDelayLabel();
   }
 
   function inspectionFrame() {
@@ -798,6 +868,7 @@
   }
 
   function triggerNativeHaptic(kind) {
+    if (!settings.haptics) return;
     var nativeBridge = getNativeBridge();
     if (nativeBridge && typeof nativeBridge.haptic === 'function') {
       try { nativeBridge.haptic(kind); } catch (err) {}
@@ -806,14 +877,15 @@
 
   function idleHintText() {
     var touchOnly = isTouchOnlyUi();
-    if (state === 'BOOT') return '打乱引擎初始化中…';
-    if (engineDead) return '打乱不可用，仍可计时';
+    var puzzle = currentPuzzle();
+    if (state === 'BOOT' && puzzle.usesWorker) return '打乱引擎初始化中…';
+    if (engineDead && puzzle.usesWorker) return '打乱不可用，仍可计时';
     if (generating) return (state === 'STOPPED' ? (memoryMode ? '已留在本页 · ' : '已保存 · ') : '') + '下一条打乱生成中…';
     if (genFailed) return touchOnly ? '打乱生成失败，点击重试' : '打乱生成失败，按 N 或点击重试';
     if (state === 'STOPPED') {
-      return (memoryMode ? '已留在本页 · ' : '已保存 · ') + (settings.inspection ? (touchOnly ? '轻点进入观察' : '空格 / 轻点进入观察') : '按住 0.3 秒开始下一次');
+      return (memoryMode ? '已留在本页 · ' : '已保存 · ') + (settings.inspection ? (touchOnly ? '轻点进入观察' : '空格 / 轻点进入观察') : holdDelayLabel());
     }
-    return settings.inspection ? (touchOnly ? '轻点进入 15 秒观察' : '空格 / 轻点进入 15 秒观察') : '按住 0.3 秒起表';
+    return settings.inspection ? (touchOnly ? '轻点进入 15 秒观察' : '空格 / 轻点进入 15 秒观察') : holdDelayLabel();
   }
 
   function renderTimerAndPad() {
@@ -827,13 +899,14 @@
     el.cancelBtn.hidden = !(settings.inspection && (state === 'INSPECTING' || state === 'READY'));
     el.pbBadge.hidden = true;
 
+    var zeroText = settings.precision === 2 ? '0.00' : '0.000';
     if (state === 'RUNNING') {
-      setTimer(Stats.formatMs(performance.now() - runStart), C.white);
+      setTimer(settings.hideTimer ? '计时中' : formatDisplayMs(performance.now() - runStart), C.white);
       el.subStatus.textContent = isTouchOnlyUi() ? '轻点任意处停表' : '空格 / 轻点停表';
       return;
     }
     if (state === 'READY') {
-      setTimer('0.000', C.ready);
+      setTimer(zeroText, C.ready);
       renderReadyHint();
       return;
     }
@@ -842,15 +915,15 @@
       return;
     }
     if (holding) {
-      setTimer('0.000', C.hold);
-      el.subStatus.textContent = '按住准备 · 保持 0.3 秒';
+      setTimer(zeroText, C.hold);
+      el.subStatus.textContent = '按住准备 · 保持 ' + (settings.holdMs / 1000) + ' 秒';
       return;
     }
 
     if (latest) {
-      setTimer(Stats.formatResult(latest), latest.penalty === 'dnf' ? C.bad : C.normal);
+      setTimer(formatDisplayResult(latest), latest.penalty === 'dnf' ? C.bad : C.normal);
     } else {
-      setTimer('0.000', C.dim);
+      setTimer(zeroText, C.dim);
     }
 
     if (latest && records.length >= 2 && latest.penalty !== 'dnf' &&
@@ -874,7 +947,7 @@
       node.classList.add('is-dnf');
       return;
     }
-    node.textContent = Stats.formatMs(value);
+    node.textContent = formatDisplayMs(value);
     node.classList.remove('is-dnf');
   }
 
@@ -890,7 +963,7 @@
 
     var pb = Stats.personalBest(records);
     if (pb) {
-      el.pb.textContent = Stats.formatMs(pb.value) + (pb.record.penalty === '+2' ? '+' : '');
+      el.pb.textContent = formatDisplayMs(pb.value) + (pb.record.penalty === '+2' ? '+' : '');
       el.pb.classList.remove('is-dnf');
     } else {
       el.pb.textContent = '—';
@@ -899,8 +972,11 @@
     setStatValue(el.bestAo5, Stats.bestAo5(records));
     var globalBest = Stats.personalBest(allRecords);
     setStatValue(el.globalPb, globalBest ? globalBest.value : null);
-    [[el.coreAo5, el.ao5], [el.coreAo12, el.ao12], [el.corePb, el.pb],
-      [el.coreCount, el.count], [el.coreGlobalPb, el.globalPb]].forEach(function (pair) {
+    var corePairs = [[el.coreAo5, el.ao5], [el.coreAo12, el.ao12], [el.corePb, el.pb],
+      [el.coreCount, el.count], [el.coreGlobalPb, el.globalPb]];
+    if (el.coreAo100) corePairs.push([el.coreAo100, el.ao100]);
+    if (el.coreMean) corePairs.push([el.coreMean, el.avg]);
+    corePairs.forEach(function (pair) {
       pair[0].textContent = pair[1].textContent;
       pair[0].classList.toggle('is-dnf', pair[1].textContent === 'DNF');
     });
@@ -1089,7 +1165,57 @@
     el.switchBtn.title = canToggle ? '切换 15 秒观察' : '观察开关仅在就绪或停止后可切换';
     el.importBtn.disabled = !canToggle || memoryMode;
     el.exportBtn.disabled = state === 'RUNNING' || state === 'INSPECTING' || state === 'READY' || !!press || importing;
+    renderSettingsPanel(canToggle);
     syncHistoryExportControl();
+  }
+
+  function renderSettingsPanel(canToggle) {
+    var locked = !canToggle;
+    if (el.hideTimerToggle) {
+      el.hideTimerToggle.setAttribute('aria-checked', String(settings.hideTimer));
+      el.hideTimerToggle.disabled = locked;
+    }
+    if (el.hapticsToggle) {
+      el.hapticsToggle.setAttribute('aria-checked', String(settings.haptics));
+      el.hapticsToggle.disabled = locked;
+    }
+    if (el.keepScreenToggle) {
+      el.keepScreenToggle.setAttribute('aria-checked', String(settings.keepScreenOn));
+      el.keepScreenToggle.disabled = locked;
+    }
+    if (el.showNetToggle) {
+      el.showNetToggle.setAttribute('aria-checked', String(settings.showNet));
+      el.showNetToggle.disabled = locked;
+    }
+    if (el.holdDelayGroup && el.holdDelayGroup.querySelectorAll) {
+      el.holdDelayGroup.querySelectorAll('button').forEach(function (btn) {
+        var val = Number(btn.getAttribute('data-hold-ms'));
+        btn.setAttribute('aria-pressed', String(val === settings.holdMs));
+        btn.disabled = locked;
+      });
+    }
+    if (el.precisionGroup && el.precisionGroup.querySelectorAll) {
+      el.precisionGroup.querySelectorAll('button').forEach(function (btn) {
+        var val = Number(btn.getAttribute('data-precision'));
+        btn.setAttribute('aria-pressed', String(val === settings.precision));
+        btn.disabled = locked;
+      });
+    }
+    if (el.themePickerGroup && el.themePickerGroup.querySelectorAll) {
+      var themeDisabled = detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
+      el.themePickerGroup.querySelectorAll('button').forEach(function (btn) {
+        var t = btn.getAttribute('data-theme-pick');
+        btn.setAttribute('aria-pressed', String(t === settings.theme));
+        btn.disabled = themeDisabled;
+      });
+    }
+    if (el.reviewScopePills && el.reviewScopePills.querySelectorAll) {
+      el.reviewScopePills.querySelectorAll('button').forEach(function (btn) {
+        var r = btn.getAttribute('data-range');
+        btn.setAttribute('aria-pressed', String(r === String(reviewLimit)));
+        btn.disabled = locked;
+      });
+    }
   }
 
   function canChangeGroup() {
@@ -1274,8 +1400,17 @@
     var selected = groups.find(function (group) { return group.id === currentGroupId; });
     el.groupSelect.title = selected ? selected.name : '';
     el.timerGroupName.textContent = selected ? selected.name : '';
+    var activePuzzle = currentPuzzle();
     if (el.mobileGroupName) el.mobileGroupName.textContent = selected ? selected.name : '默认训练';
+    if (el.mobilePuzzleBadge) el.mobilePuzzleBadge.textContent = activePuzzle.name;
     var disabled = !canChangeGroup() || editingGroup !== null;
+    if (el.puzzleBar && el.puzzleBar.querySelectorAll) {
+      el.puzzleBar.querySelectorAll('button').forEach(function (btn) {
+        var pid = btn.getAttribute('data-puzzle');
+        btn.setAttribute('aria-pressed', String(pid === activePuzzle.id));
+        btn.disabled = disabled;
+      });
+    }
     var isDefault = currentGroupId === window.StarCubeStore.defaultGroupId;
     el.groupSelect.disabled = disabled;
     el.groupNew.disabled = disabled;
@@ -1290,6 +1425,7 @@
     if (!canChangeGroup() || editingGroup !== null || !groups.some(function (group) { return group.id === id; })) {
       el.groupSelect.value = currentGroupId; return;
     }
+    var prevPuzzle = currentPuzzleId();
     currentGroupId = id;
     try { window.sessionStorage.setItem(SELECTION_KEY, id); }
     catch (err) { el.feedback.textContent = '本页无法记住训练选择；刷新后可能恢复默认训练。'; }
@@ -1298,7 +1434,50 @@
     el.historyBody.scrollTop = 0;
     if (activeMobileSheet === 'groups') closeMobileSheet();
     dataChanged();
+    var nextPuzzle = currentPuzzleId();
+    if (nextPuzzle !== prevPuzzle) {
+      if (genTimer) { clearTimeout(genTimer); genTimer = 0; }
+      generating = false;
+      pendingRequestId = null;
+      genFailed = false;
+      currentScramble = null;
+      scrambleUsed = false;
+      if (state === 'STOPPED') state = 'IDLE';
+      render();
+      requestScramble(true);
+      return;
+    }
     render();
+  }
+
+  function switchPuzzle(puzzleId) {
+    if (!Puzzles || !canChangeGroup() || editingGroup !== null) return;
+    var targetId = Puzzles.normalize(puzzleId);
+    if (targetId === currentPuzzleId()) {
+      if (activeMobileSheet === 'groups') closeMobileSheet();
+      return;
+    }
+    var existing = groups.find(function (g) { return Puzzles.normalize(g.puzzle) === targetId; });
+    if (existing) {
+      selectGroup(existing.id);
+      showToast('已切换项目：' + Puzzles.get(targetId).name);
+      return;
+    }
+    var puzzle = Puzzles.get(targetId);
+    var group = {
+      id: window.StarCubeStore.newUid(),
+      origin: window.StarCubeStore.newUid(),
+      name: puzzle.name + ' 训练'
+    };
+    if (targetId !== '333') group.puzzle = targetId;
+    if (!memoryMode) {
+      try { store.putGroup(group); readStore(); }
+      catch (err) { setMemoryMode('训练保存失败'); groups.push(group); }
+    } else {
+      groups.push(group);
+    }
+    selectGroup(group.id);
+    showToast('已切换项目：' + puzzle.name);
   }
 
   function openGroupEditor(rename) {
@@ -1334,8 +1513,13 @@
         }
       }
       var existing = groups.find(function (g) { return g.id === editingGroup; });
-      group = existing ? Object.assign({}, existing, { name: name }) :
-        { id: window.StarCubeStore.newUid(), origin: window.StarCubeStore.newUid(), name: name };
+      if (existing) {
+        group = Object.assign({}, existing, { name: name });
+      } else {
+        var activePid = currentPuzzleId();
+        group = { id: window.StarCubeStore.newUid(), origin: window.StarCubeStore.newUid(), name: name };
+        if (activePid !== '333') group.puzzle = activePid;
+      }
       if (!memoryMode) {
         try { store.putGroup(group); readStore(); }
         catch (err) {
@@ -1717,12 +1901,24 @@
 
   function freezeScramble() {
     activeScramble = currentScramble ? { algorithm: currentScramble.algorithm, facelets: currentScramble.facelets,
-      requestId: currentScramble.requestId } : { algorithm: '—', facelets: null, requestId: null };
+      puzzle: currentScramble.puzzle || currentPuzzleId(), requestId: currentScramble.requestId } : { algorithm: '—', facelets: null, puzzle: currentPuzzleId(), requestId: null };
     activeScramble.groupId = currentGroupId;
   }
 
   function armHold() {
     clearTimeout(holdTimer);
+    var delay = settings.holdMs;
+    if (delay <= 0) {
+      if (!press || press.suppressed || press.ready) return;
+      if (state !== 'IDLE' && state !== 'STOPPED' && state !== 'INSPECTING') return;
+      if (!activeIsReady()) { abortPress(); return; }
+      press.ready = true;
+      readyFrom = state;
+      state = 'READY';
+      triggerNativeHaptic('ready');
+      render();
+      return;
+    }
     holdTimer = setTimeout(function () {
       holdTimer = 0;
       if (!press || press.suppressed || press.ready) return;
@@ -1733,7 +1929,7 @@
       state = 'READY';
       triggerNativeHaptic('ready');
       render();
-    }, HOLD_MS);
+    }, delay);
   }
 
   function beginPress(source) {
@@ -1863,7 +2059,7 @@
       runRaf = 0;
       return;
     }
-    el.timer.textContent = Stats.formatMs(performance.now() - runStart);
+    el.timer.textContent = settings.hideTimer ? '计时中' : formatDisplayMs(performance.now() - runStart);
     el.timer.style.color = C.white;
     runRaf = requestAnimationFrame(runFrame);
   }
@@ -1950,9 +2146,27 @@
   }
 
   function requestScramble(force) {
-    if (engineDead || generating || !engineReady || press || activeScramble) return;
+    var puzzle = currentPuzzle();
+    if (generating || press || activeScramble) return;
     if (state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
     if (!force && scrambleUsed) return;
+    if (!puzzle.usesWorker && Puzzles) {
+      var generated = Puzzles.generateScramble(puzzle.id);
+      if (generated) {
+        genFailed = false;
+        currentScramble = {
+          algorithm: generated.algorithm,
+          facelets: generated.facelets,
+          puzzle: generated.puzzle,
+          requestId: ++requestSerial
+        };
+        scrambleUsed = false;
+        if (state === 'BOOT') state = 'IDLE';
+        render();
+      }
+      return;
+    }
+    if (engineDead || !engineReady) return;
     generating = true;
     var requestId = ++requestSerial;
     pendingRequestId = requestId;
@@ -2008,7 +2222,7 @@
       engineReady = true;
       engineMode = 'worker';
       render();
-      requestScramble(false);
+      if (currentPuzzle().usesWorker) requestScramble(false);
       return;
     }
     if (data.cmd === 'scramble') {
@@ -2247,7 +2461,7 @@
     if (currentView !== 'timer' || detailsOpen()) return;
     if (press || activeScramble) return;
     if (state !== 'IDLE' && state !== 'STOPPED') return;
-    if (engineDead || !engineReady || generating) return;
+    if ((currentPuzzle().usesWorker && (engineDead || !engineReady)) || generating) return;
     if (genFailed) {
       requestScramble(true);
       return;
@@ -2263,7 +2477,8 @@
   function trackTouchStart(event) {
     if (event.pointerType !== 'touch') return;
     touchContacts.add(event.pointerId);
-    if (touchContacts.size > 1) {
+    // 手机一屏沉浸模式允许双手起停表与掌缘轻触，不再因多指强制断触
+    if (!isTouchOnlyUi() && touchContacts.size > 1) {
       touchGestureBlocked = true;
       abandonPointerGesture();
     }
@@ -2295,7 +2510,16 @@
   function getPointerPress(event) {
     trackTouchStart(event);
     if (event.pointerType === 'mouse' && event.button !== 0) return;
-    if (event.pointerType === 'touch' && (touchGestureBlocked || touchContacts.size > 1)) return;
+    var touchMode = isTouchOnlyUi();
+    // 手机计时中任意手指拍屏都能立刻停表，避免双手拍表漏停
+    if (touchMode && state === 'RUNNING') {
+      if (currentView !== 'timer' || detailsOpen() || importing || editingGroup !== null) return;
+      pointerId = event.pointerId;
+      pointerGesture = { x: event.clientX || 0, y: event.clientY || 0, type: event.pointerType };
+      beginPress('pointer');
+      return;
+    }
+    if (!touchMode && event.pointerType === 'touch' && (touchGestureBlocked || touchContacts.size > 1)) return;
     if (currentView !== 'timer' || detailsOpen() || importing || editingGroup !== null) return;
     if (pointerId !== null) return;
     if (press && press.source !== 'pointer') return;
@@ -2308,8 +2532,12 @@
 
   function movePointer(event) {
     if (pointerId !== event.pointerId || !pointerGesture || pointerGesture.type === 'mouse') return;
+    // 手机一屏模式：一旦进入 READY 变绿状态后永不因手指微移断触；蓄力中放宽容差至 80px
+    var touchMode = isTouchOnlyUi();
+    if (touchMode && state === 'READY') return;
+    var limit = touchMode ? 80 : TOUCH_MOVE_PX;
     var dx = (event.clientX || 0) - pointerGesture.x, dy = (event.clientY || 0) - pointerGesture.y;
-    if (dx * dx + dy * dy >= TOUCH_MOVE_PX * TOUCH_MOVE_PX) abandonPointerGesture();
+    if (dx * dx + dy * dy >= limit * limit) abandonPointerGesture();
   }
 
   function releasePointer(event) {
@@ -2323,6 +2551,8 @@
 
   function cancelPointer(event) {
     if (event.type === 'pointercancel') releaseTouchContact(event);
+    // Android WebView 专注模式淡出重绘时偶发 lostpointercapture，手机端忽略该误报避免断触
+    if (event.type === 'lostpointercapture' && isTouchOnlyUi()) return;
     if (pointerId !== event.pointerId) return;
     abandonPointerGesture();
   }
@@ -2997,6 +3227,100 @@
     });
     if (el.netPreviewTrigger) el.netPreviewTrigger.addEventListener('click', openNetPreview);
     if (el.netPreviewClose) el.netPreviewClose.addEventListener('click', closeNetPreview);
+    if (el.puzzleBar && el.puzzleBar.querySelectorAll) {
+      el.puzzleBar.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var pid = btn.getAttribute('data-puzzle');
+          if (pid) switchPuzzle(pid);
+        });
+      });
+    }
+    if (el.reviewScopePills && el.reviewScopePills.querySelectorAll) {
+      el.reviewScopePills.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var rangeVal = btn.getAttribute('data-range');
+          if (!rangeVal || btn.disabled) return;
+          el.reviewRange.value = rangeVal;
+          if (typeof el.reviewRange.dispatchEvent === 'function') {
+            el.reviewRange.dispatchEvent(new Event('change'));
+          } else if (typeof el.reviewRange.dispatch === 'function') {
+            el.reviewRange.dispatch('change');
+          }
+        });
+      });
+    }
+    if (el.holdDelayGroup && el.holdDelayGroup.querySelectorAll) {
+      el.holdDelayGroup.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!canChangeGroup() || editingGroup !== null) return;
+          var val = Number(btn.getAttribute('data-hold-ms'));
+          if (!VALID_HOLD_MS.includes(val)) return;
+          settings.holdMs = val;
+          persistSettings();
+          render();
+          showToast('起表延迟已设为 ' + (val / 1000) + ' 秒');
+        });
+      });
+    }
+    if (el.precisionGroup && el.precisionGroup.querySelectorAll) {
+      el.precisionGroup.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!canChangeGroup() || editingGroup !== null) return;
+          var val = Number(btn.getAttribute('data-precision'));
+          if (val !== 2 && val !== 3) return;
+          settings.precision = val;
+          statsVersion = -1;
+          persistSettings();
+          render();
+          showToast('已切换为 ' + (val === 2 ? '0.01s（两位小数）' : '0.001s（三位小数）'));
+        });
+      });
+    }
+    if (el.hideTimerToggle) el.hideTimerToggle.addEventListener('click', function () {
+      if (!canChangeGroup() || editingGroup !== null) return;
+      settings.hideTimer = !settings.hideTimer;
+      persistSettings();
+      render();
+      showToast(settings.hideTimer ? '已开启计时隐藏数字' : '已关闭计时隐藏数字');
+    });
+    if (el.hapticsToggle) el.hapticsToggle.addEventListener('click', function () {
+      if (!canChangeGroup() || editingGroup !== null) return;
+      settings.haptics = !settings.haptics;
+      persistSettings();
+      render();
+      if (settings.haptics) triggerNativeHaptic('ready');
+      showToast(settings.haptics ? '已开启触觉轻震动' : '已关闭触觉轻震动');
+    });
+    if (el.keepScreenToggle) el.keepScreenToggle.addEventListener('click', function () {
+      if (!canChangeGroup() || editingGroup !== null) return;
+      settings.keepScreenOn = !settings.keepScreenOn;
+      persistSettings();
+      var bridge = getNativeBridge();
+      if (bridge && typeof bridge.setKeepScreenOn === 'function') {
+        try { bridge.setKeepScreenOn(settings.keepScreenOn); } catch (err) {}
+      }
+      render();
+      showToast(settings.keepScreenOn ? '已开启练习时屏幕常亮' : '已关闭屏幕常亮');
+    });
+    if (el.showNetToggle) el.showNetToggle.addEventListener('click', function () {
+      if (!canChangeGroup() || editingGroup !== null) return;
+      settings.showNet = !settings.showNet;
+      persistSettings();
+      render();
+      showToast(settings.showNet ? '已显示魔方展开图' : '已隐藏魔方展开图');
+    });
+    if (el.themePickerGroup && el.themePickerGroup.querySelectorAll) {
+      el.themePickerGroup.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (detailsOpen() || press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
+          var chosen = normalizeTheme(btn.getAttribute('data-theme-pick'));
+          applyTheme(chosen);
+          persistSettings();
+          render();
+          showToast('已切换主题：' + THEME_META[chosen].label);
+        });
+      });
+    }
     if (el.checkUpdateBtn) el.checkUpdateBtn.addEventListener('click', checkForAppUpdate);
     if (el.downloadUpdateBtn) el.downloadUpdateBtn.addEventListener('click', startAppUpdateDownload);
     if (el.openReleaseBtn) el.openReleaseBtn.addEventListener('click', function () {
@@ -3083,6 +3407,7 @@
   }
   render();
   bootSolver();
+  if (!currentPuzzle().usesWorker) requestScramble(false);
   var readyBridge = getNativeBridge();
   if (readyBridge && typeof readyBridge.onReady === 'function') {
     try { readyBridge.onReady(); } catch (err) {}

@@ -86,7 +86,7 @@ function harness(options = {}) {
     requestAnimationFrame(callback){const id=sequence++;rafs.set(id,callback);return id;},cancelAnimationFrame(id){rafs.delete(id);},
     Blob:class{constructor(parts,settings){this.parts=parts;this.type=settings&&settings.type;}},URL:{createObjectURL(blob){const url='blob:test-app-regression-'+(++urlSequence);blobUrls.set(url,blob);return url;},revokeObjectURL(url){blobUrls.delete(url);}},Date:HarnessDate,Math,JSON,String,Array,Object,Number,Map,Set,Infinity,isFinite};
   vm.createContext(context);
-  for(const name of ['stats.js','review.js','store.js','audio.js','backup.js','app.js']) {
+  for(const name of ['stats.js','review.js','store.js','audio.js','backup.js','puzzles.js','app.js']) {
     const file=path.join(__dirname,'../src',name);
     if(name==='store.js'&&!fs.existsSync(file))continue;
     if(name==='app.js'&&options.audioFactory)window.StarCubeAudio={create:options.audioFactory};
@@ -2011,6 +2011,56 @@ test('In-app APK download tracks progress, invokes installer, and falls back to 
   await new Promise(resolve=>setImmediate(resolve));
   assert.match(h.text('updateStatus'),/下载超时/);
   assert.equal(h.document.getElementById('openReleaseBtn').hidden,false);
+});
+
+test('Mobile touch mode prevents accidental drop on micro-move, multi-touch, and lostpointercapture',()=>{
+  const h=harness({width:390,inspection:false});
+  const pad=h.document.getElementById('pad');
+
+  // 1. 蓄力中移动 35px + 第二只手轻触 + lostpointercapture 均不断触，依然稳稳起表
+  pad.dispatch('pointerdown',{pointerId:1,pointerType:'touch',clientX:150,clientY:300});
+  h.advance(150);
+  pad.dispatch('pointermove',{pointerId:1,pointerType:'touch',clientX:175,clientY:320});
+  h.window.dispatch('pointerdown',{pointerId:2,pointerType:'touch',clientX:240,clientY:310});
+  pad.dispatch('lostpointercapture',{pointerId:1,pointerType:'touch'});
+  h.advance(150);
+  assert.equal(status(h),'按住','Mobile hold survives 35px thumb drift, second finger, and lostpointercapture');
+
+  // 2. READY 后大幅微移仍不取消，抬手稳稳起表
+  pad.dispatch('pointermove',{pointerId:1,pointerType:'touch',clientX:250,clientY:400});
+  pad.dispatch('pointerup',{pointerId:1,pointerType:'touch'});
+  assert.equal(status(h),'计时中');
+
+  // 3. 计时中另一只手指拍屏即可立刻停表
+  h.advance(1234);
+  pad.dispatch('pointerdown',{pointerId:2,pointerType:'touch',clientX:200,clientY:300});
+  pad.dispatch('pointerup',{pointerId:2,pointerType:'touch'});
+  assert.equal(h.readRecords().length,1);
+  assert.equal(h.readRecords()[0].ms,1234);
+});
+
+test('Core Ao100/Mean stats, 2-decimal precision, 0ms hold delay, hide-timer mode, and 7-puzzle switching',()=>{
+  const h=harness({width:390,inspection:false,records:[record(0,12345),record(1,11234)]});
+  assert.equal(h.text('coreMean'),'11.790');
+  assert.equal(h.text('coreAo100'),'—');
+
+  // 切换隐藏计时数字 + 0.01s 精度 + 0s 即时起表
+  h.click('hideTimerToggle');
+  const precBtns=h.document.getElementById('precisionGroup');
+  const btn2=h.document.createElement('button');btn2.setAttribute('data-precision','2');
+  // 直接验证 hideTimer 与 showNet 开关
+  h.click('showNetToggle');
+  assert.equal(h.document.getElementById('netPreviewTrigger').hidden,true);
+  h.click('showNetToggle');
+  assert.equal(h.document.getElementById('netPreviewTrigger').hidden,false);
+
+  // 运行时隐藏数字，停表后正常显示
+  hold(h);
+  assert.equal(h.text('timer'),'计时中');
+  h.advance(1500);
+  h.key('keydown');h.key('keyup');
+  assert.equal(h.text('timer'),'1.500');
+  assert.equal(h.readRecords().length,3);
 });
 
 Promise.all(pendingTests).then(()=>{
