@@ -3,6 +3,8 @@ package com.starcube.timer;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.net.Uri;
@@ -39,15 +41,26 @@ import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.ConnectException;
+import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
+import java.net.URL;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends BridgeActivity {
     private static final String PREFS_NAME = "starcube_ui_prefs";
     private static final String KEY_THEME_BG = "theme_bg";
     private static final String KEY_THEME_DARK = "theme_dark";
+    private static final String RELEASES_API_URL = "https://api.github.com/repos/Huaxiyao/StarCube/releases/latest";
+    private static final String RELEASES_PAGE_URL = "https://github.com/Huaxiyao/StarCube/releases";
     private static final long MIN_SPLASH_MS = 340L;
     private static final long MAX_SPLASH_MS = 1800L;
 
@@ -350,7 +363,146 @@ public class MainActivity extends BridgeActivity {
         });
     }
 
+    private void notifyUpdateResult(String requestId, JSONObject payload) {
+        runOnUiThread(() -> {
+            WebView webView = getBridge() != null ? getBridge().getWebView() : null;
+            if (webView == null) {
+                return;
+            }
+            String js = "if (window.__starCubeOnUpdateResult) { window.__starCubeOnUpdateResult("
+                + JSONObject.quote(requestId) + ", "
+                + JSONObject.quote(payload.toString())
+                + "); }";
+            webView.evaluateJavascript(js, null);
+        });
+    }
+
+    private String readAppVersionName() {
+        try {
+            PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+            if (info != null && info.versionName != null && !info.versionName.isEmpty()) {
+                return info.versionName;
+            }
+        } catch (PackageManager.NameNotFoundException ignored) {
+        }
+        return "1.0.0";
+    }
+
+    private boolean isAllowedExternalUrl(String url) {
+        if (url == null) {
+            return false;
+        }
+        return url.startsWith("https://github.com/Huaxiyao/StarCube")
+            || url.startsWith("https://objects.githubusercontent.com/")
+            || url.startsWith("https://release-assets.githubusercontent.com/");
+    }
+
     private final class StarCubeAndroidBridge {
+        @JavascriptInterface
+        public String getAppVersion() {
+            return readAppVersionName();
+        }
+
+        @JavascriptInterface
+        public void checkUpdate(final String requestId) {
+            new Thread(() -> {
+                JSONObject result = new JSONObject();
+                HttpURLConnection conn = null;
+                try {
+                    result.put("htmlUrl", RELEASES_PAGE_URL);
+                    conn = (HttpURLConnection) new URL(RELEASES_API_URL).openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(8000);
+                    conn.setReadTimeout(8000);
+                    conn.setRequestProperty("Accept", "application/vnd.github+json");
+                    conn.setRequestProperty("User-Agent", "StarCube-Android/" + readAppVersionName());
+
+                    int code = conn.getResponseCode();
+                    if (code != HttpURLConnection.HTTP_OK) {
+                        result.put("status", "error");
+                        result.put("message", code == 403 ? "GitHub 请求频率受限，请稍后再试" : "检查更新失败（HTTP " + code + "）");
+                        notifyUpdateResult(requestId, result);
+                        return;
+                    }
+
+                    StringBuilder sb = new StringBuilder();
+                    try (InputStream is = conn.getInputStream();
+                         BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            sb.append(line);
+                        }
+                    }
+
+                    JSONObject release = new JSONObject(sb.toString());
+                    String tag = release.optString("tag_name", "");
+                    String htmlUrl = release.optString("html_url", RELEASES_PAGE_URL);
+                    String body = release.optString("body", "");
+                    String downloadUrl = htmlUrl;
+
+                    JSONArray assets = release.optJSONArray("assets");
+                    if (assets != null) {
+                        for (int i = 0; i < assets.length(); i++) {
+                            JSONObject asset = assets.optJSONObject(i);
+                            if (asset == null) continue;
+                            String name = asset.optString("name", "");
+                            String url = asset.optString("browser_download_url", "");
+                            if (name.toLowerCase().endsWith(".apk") && !url.isEmpty()) {
+                                downloadUrl = url;
+                                break;
+                            }
+                        }
+                    }
+
+                    result.put("status", "ok");
+                    result.put("tag", tag);
+                    result.put("notes", body);
+                    result.put("htmlUrl", htmlUrl);
+                    result.put("downloadUrl", downloadUrl);
+                    notifyUpdateResult(requestId, result);
+                } catch (UnknownHostException | ConnectException err) {
+                    try {
+                        result.put("status", "offline");
+                        result.put("message", "当前未联网，离线模式不影响练习；联网后可再次检查更新");
+                    } catch (Exception ignored) {}
+                    notifyUpdateResult(requestId, result);
+                } catch (SocketTimeoutException err) {
+                    try {
+                        result.put("status", "error");
+                        result.put("message", "连接 GitHub 超时，请稍后再试");
+                    } catch (Exception ignored) {}
+                    notifyUpdateResult(requestId, result);
+                } catch (Exception err) {
+                    try {
+                        result.put("status", "error");
+                        result.put("message", "检查更新失败，可稍后再试");
+                    } catch (Exception ignored) {}
+                    notifyUpdateResult(requestId, result);
+                } finally {
+                    if (conn != null) {
+                        conn.disconnect();
+                    }
+                }
+            }).start();
+        }
+
+        @JavascriptInterface
+        public boolean openExternalUrl(final String url) {
+            if (!isAllowedExternalUrl(url)) {
+                return false;
+            }
+            runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                } catch (Exception err) {
+                    Toast.makeText(MainActivity.this, "未找到可用的浏览器打开下载链接", Toast.LENGTH_SHORT).show();
+                }
+            });
+            return true;
+        }
+
         @JavascriptInterface
         public void onAppReady() {
             runOnUiThread(MainActivity.this::dismissSplashOverlay);

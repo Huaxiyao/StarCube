@@ -2,7 +2,9 @@
   'use strict';
 
   var pendingExports = Object.create(null);
+  var pendingUpdates = Object.create(null);
   var exportSeq = 0;
+  var updateSeq = 0;
   var lastBackPressAt = 0;
   var readyNotified = false;
 
@@ -35,6 +37,17 @@
       status: status || 'error',
       message: message || ''
     });
+  };
+
+  window.__starCubeOnUpdateResult = function (requestId, payloadJson) {
+    var resolver = pendingUpdates[requestId];
+    if (!resolver) return;
+    delete pendingUpdates[requestId];
+    try {
+      resolver(JSON.parse(payloadJson || '{}'));
+    } catch (err) {
+      resolver({ status: 'error', message: '解析更新信息失败' });
+    }
   };
 
   window.__starCubeOnBackPressed = function () {
@@ -88,6 +101,41 @@
   window.StarCubeNative = {
     platform: 'android',
     onReady: notifyReadyOnce,
+    getVersion: function () {
+      var android = getAndroid();
+      if (android && typeof android.getAppVersion === 'function') {
+        try {
+          return String(android.getAppVersion() || '');
+        } catch (err) {}
+      }
+      return '';
+    },
+    checkUpdate: function () {
+      return new Promise(function (resolve) {
+        var android = getAndroid();
+        if (!android || typeof android.checkUpdate !== 'function') {
+          resolve({ status: 'error', message: '当前环境不支持应用内检查更新' });
+          return;
+        }
+        var requestId = 'upd-' + (++updateSeq);
+        pendingUpdates[requestId] = resolve;
+        try {
+          android.checkUpdate(requestId);
+        } catch (err) {
+          delete pendingUpdates[requestId];
+          resolve({ status: 'error', message: (err && err.message) || '发起更新检查失败' });
+        }
+      });
+    },
+    openUrl: function (url) {
+      var android = getAndroid();
+      if (android && typeof android.openExternalUrl === 'function') {
+        try {
+          return !!android.openExternalUrl(String(url || ''));
+        } catch (err) {}
+      }
+      return false;
+    },
     haptic: function (kind) {
       var android = getAndroid();
       if (android && typeof android.haptic === 'function') {

@@ -57,7 +57,7 @@ if (fs.existsSync(stylesPath)) {
   if (styles.includes('AppTheme.NoActionBarLaunch') && !styles.includes('windowSplashScreenBackground')) {
     styles = styles.replace(
       /(<style\s+name="AppTheme\.NoActionBarLaunch"[^>]*>)/,
-      '$1\n        <item name="android:windowBackground">@drawable/launch_screen_bg</item>\n        <item name="windowSplashScreenBackground">#F3F4F6</item>\n        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_mark</item>'
+      '$1\n        <item name="android:windowBackground">@drawable/launch_screen_bg</item>\n        <item name="windowSplashScreenBackground">#F3F4F6</item>\n        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_window_icon</item>'
     );
   }
   fs.writeFileSync(stylesPath, styles, 'utf8');

@@ -37,7 +37,7 @@ function test(name, fn) {
 
 test('android-bridge.js bridges exportFile promises, theme sync, haptics, splash ready, json accept and double-back exit', async () => {
   let now = 10000;
-  const calls = { themes: [], exports: [], toasts: [], exits: 0, haptics: [], ready: 0 };
+  const calls = { themes: [], exports: [], updates: [], urls: [], toasts: [], exits: 0, haptics: [], ready: 0 };
   const attrs = {};
   const importInput = {
     setAttribute(k, v) { attrs[k] = String(v); },
@@ -51,6 +51,9 @@ test('android-bridge.js bridges exportFile promises, theme sync, haptics, splash
   const appToasts = [];
   const window = {
     StarCubeAndroid: {
+      getAppVersion() { return '1.2.0'; },
+      checkUpdate(reqId) { calls.updates.push(reqId); },
+      openExternalUrl(url) { calls.urls.push(url); return true; },
       onAppReady() { calls.ready++; },
       haptic(kind) { calls.haptics.push(kind); },
       setSystemTheme(color, isDark) { calls.themes.push({ color, isDark }); },
@@ -70,18 +73,28 @@ test('android-bridge.js bridges exportFile promises, theme sync, haptics, splash
     addEventListener() {}
   };
   const FakeDate = { now: () => now };
-  const context = { window, document, Date: FakeDate, Promise, Object, String };
+  const context = { window, document, Date: FakeDate, Promise, Object, String, JSON };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(mobileRoot, 'src', 'android-bridge.js'), 'utf8'), context, {
     filename: 'android-bridge.js'
   });
 
-  // 初始主题已同步、启动页就绪已通知、importFile accept 已放宽、震动桥接正常
+  // 初始主题已同步、版本号读取、启动页就绪已通知、importFile accept 已放宽、震动与更新桥接正常
   assert.deepEqual(calls.themes, [{ color: '#efe6d5', isDark: false }]);
+  assert.equal(window.StarCubeNative.getVersion(), '1.2.0');
   assert.equal(calls.ready, 1);
   window.StarCubeNative.haptic('ready');
   assert.deepEqual(calls.haptics, ['ready']);
   assert.match(importInput.getAttribute('accept'), /application\/octet-stream/);
+
+  const updPromise = window.StarCubeNative.checkUpdate();
+  assert.equal(calls.updates.length, 1);
+  window.__starCubeOnUpdateResult(calls.updates[0], JSON.stringify({ status: 'ok', tag: 'v1.3.0' }));
+  const updRes = await updPromise;
+  assert.equal(updRes.status, 'ok');
+  assert.equal(updRes.tag, 'v1.3.0');
+  assert.equal(window.StarCubeNative.openUrl('https://github.com/Huaxiyao/StarCube/releases'), true);
+  assert.equal(calls.urls.length, 1);
 
   // 原生导出 Promise 配对回调
   const exportPromise = window.StarCubeNative.exportFile({
@@ -174,12 +187,13 @@ test('configure-android.cjs patches MainActivity, adaptive icons, manifest, vers
     assert.ok(fs.existsSync(path.join(appMain, 'res', 'drawable', 'ic_launcher_foreground.xml')));
     assert.ok(fs.existsSync(path.join(appMain, 'res', 'drawable', 'ic_launcher_background.xml')));
     assert.ok(fs.existsSync(path.join(appMain, 'res', 'drawable', 'ic_splash_mark.xml')));
+    assert.ok(fs.existsSync(path.join(appMain, 'res', 'drawable', 'ic_splash_window_icon.xml')));
     assert.ok(fs.existsSync(path.join(appMain, 'res', 'drawable', 'launch_screen_bg.xml')));
     assert.ok(fs.existsSync(path.join(appMain, 'res', 'mipmap-anydpi-v26', 'ic_launcher.xml')));
 
     const styles = fs.readFileSync(path.join(appMain, 'res', 'values', 'styles.xml'), 'utf8');
     assert.match(styles, /@drawable\/launch_screen_bg/);
-    assert.match(styles, /windowSplashScreenAnimatedIcon/);
+    assert.match(styles, /@drawable\/ic_splash_window_icon/);
     assert.equal((styles.match(/windowSplashScreenBackground/g) || []).length, 1, 'styles.xml patch must be idempotent');
 
     const manifest = fs.readFileSync(path.join(appMain, 'AndroidManifest.xml'), 'utf8');

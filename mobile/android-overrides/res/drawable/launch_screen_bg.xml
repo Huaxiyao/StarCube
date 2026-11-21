@@ -4,8 +4,8 @@
         <color android:color="#F3F4F6" />
     </item>
     <item
-        android:width="76dp"
-        android:height="76dp"
+        android:width="108dp"
+        android:height="108dp"
         android:gravity="center"
-        android:drawable="@drawable/ic_splash_mark" />
+        android:drawable="@drawable/ic_splash_window_icon" />
 </layer-list>

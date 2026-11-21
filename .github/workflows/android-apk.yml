@@ -64,7 +64,8 @@ jobs:
           elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             VERSION_NAME="${GITHUB_REF#refs/tags/v}"
           else
-            VERSION_NAME="1.0.${GITHUB_RUN_NUMBER}"
+            PKG_VER="$(node -e "console.log(require('./mobile/package.json').version || '1.0.0')")"
+            VERSION_NAME="${PKG_VER}"
           fi
 
           if [ "$HAS_KEYSTORE" = "true" ] && [ "$HAS_KS_PASS" = "true" ] && [ "$HAS_KEY_ALIAS" = "true" ] && [ "$HAS_KEY_PASS" = "true" ]; then

@@ -1913,6 +1913,52 @@ test('Mobile focus mode, touch copy, haptics, bottom sheets, net preview, and em
   assert.doesNotMatch(h.text('subStatus'),/已保存/);
 });
 
+test('About section displays native version and handles up-to-date, new release, and offline update checks',async ()=>{
+  const openedUrls=[];
+  let nextResponse={status:'ok',tag:'v1.2.0',htmlUrl:'https://github.com/Huaxiyao/StarCube/releases/tag/v1.2.0'};
+  const h=harness({
+    width:390,
+    nativeBridge:{
+      setTheme(){},
+      getVersion(){return '1.2.0';},
+      checkUpdate(){return Promise.resolve(nextResponse);},
+      openUrl(url){openedUrls.push(url);return true;}
+    }
+  });
+  assert.equal(h.text('aboutVersion'),'v1.2.0');
+  assert.equal(h.document.getElementById('aboutActions').hidden,false);
+
+  // 已是最新版
+  h.click('checkUpdateBtn');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.match(h.text('updateStatus'),/当前已是最新版本/);
+  assert.equal(h.document.getElementById('downloadUpdateBtn').hidden,true);
+
+  // 发现新版 v1.3.0
+  nextResponse={
+    status:'ok',
+    tag:'v1.3.0',
+    notes:'新增更多功能',
+    htmlUrl:'https://github.com/Huaxiyao/StarCube/releases/tag/v1.3.0',
+    downloadUrl:'https://github.com/Huaxiyao/StarCube/releases/download/v1.3.0/StarCube-v1.3.0.apk'
+  };
+  h.click('checkUpdateBtn');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.match(h.text('updateStatus'),/发现新版本 v1\.3\.0/);
+  assert.equal(h.document.getElementById('downloadUpdateBtn').hidden,false);
+  assert.equal(h.text('downloadUpdateBtn'),'下载 v1.3.0');
+  assert.equal(h.document.getElementById('updateNotes').hidden,false);
+  h.click('downloadUpdateBtn');
+  assert.deepEqual(openedUrls,['https://github.com/Huaxiyao/StarCube/releases/download/v1.3.0/StarCube-v1.3.0.apk']);
+
+  // 离线状态
+  nextResponse={status:'offline',message:'当前未联网，离线模式不影响练习'};
+  h.click('checkUpdateBtn');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.match(h.text('updateStatus'),/当前未联网/);
+  assert.equal(h.document.getElementById('downloadUpdateBtn').hidden,true);
+});
+
 Promise.all(pendingTests).then(()=>{
   console.log('\n'+passed+' passed, '+failures+' failed');
   if(failures)process.exitCode=1;

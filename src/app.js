@@ -79,6 +79,7 @@
     feedback: $('dataFeedback'),
     soundToggle: $('soundToggle'), soundPreview: $('soundPreview'), soundFeedback: $('soundFeedback'),
     backupReminder: $('backupReminder'), backupMessage: $('backupMessage'), backupLater: $('backupLater'), backupExport: $('backupExport'), backupStatus: $('backupStatus'),
+    aboutVersion: $('aboutVersion'), aboutActions: $('aboutActions'), checkUpdateBtn: $('checkUpdateBtn'), downloadUpdateBtn: $('downloadUpdateBtn'), updateStatus: $('updateStatus'), updateNotes: $('updateNotes'),
     coreAo5Detail: $('coreAo5Detail'), coreAo12Detail: $('coreAo12Detail'), ao5Detail: $('ao5Detail'), ao12Detail: $('ao12Detail'),
     averageDialog: $('averageDialog'), averageClose: $('averageClose'), averageContinue: $('averageContinue'), averageTitle: $('averageTitle'), averageGroup: $('averageGroup'),
     averageResult: $('averageResult'), averageFormula: $('averageFormula'), averageRows: $('averageRows'),
@@ -162,6 +163,9 @@
   var deleteGroupFocus = null;
   var activeMobileSheet = null;
   var netPreviewOpen = false;
+  var checkingUpdate = false;
+  var pendingUpdateUrl = '';
+  var currentAppVersion = '';
   var groupsVersion = -1;
   var settings = { inspection: true, inspectionSound: false, reviewRange: '50', theme: 'light' };
   var toastLeaveTimer = 0;
@@ -2332,6 +2336,121 @@
     return typeof window !== 'undefined' && window.StarCubeNative ? window.StarCubeNative : null;
   }
 
+  function normalizeVersionLabel(version) {
+    var text = String(version || '').trim();
+    if (!text) return '';
+    return /^[vV]/.test(text) ? 'v' + text.slice(1) : 'v' + text;
+  }
+
+  function parseVersionParts(version) {
+    var cleaned = String(version || '').trim().replace(/^[vV]/, '').split(/[-+]/)[0];
+    if (!cleaned) return [];
+    return cleaned.split('.').map(function (part) {
+      var n = parseInt(part, 10);
+      return Number.isFinite(n) ? n : 0;
+    });
+  }
+
+  function compareVersionTags(current, latest) {
+    var a = parseVersionParts(current);
+    var b = parseVersionParts(latest);
+    var len = Math.max(a.length, b.length);
+    for (var i = 0; i < len; i++) {
+      var av = i < a.length ? a[i] : 0;
+      var bv = i < b.length ? b[i] : 0;
+      if (bv !== av) return bv > av ? 1 : -1;
+    }
+    return 0;
+  }
+
+  function initAboutSection() {
+    var nativeBridge = getNativeBridge();
+    if (!nativeBridge) return;
+    if (typeof nativeBridge.getVersion === 'function') {
+      try { currentAppVersion = String(nativeBridge.getVersion() || '').trim(); } catch (err) {}
+    }
+    if (el.aboutVersion && currentAppVersion) {
+      el.aboutVersion.textContent = normalizeVersionLabel(currentAppVersion);
+    }
+    if (el.aboutActions && typeof nativeBridge.checkUpdate === 'function') {
+      el.aboutActions.hidden = false;
+    }
+  }
+
+  function checkForAppUpdate() {
+    var nativeBridge = getNativeBridge();
+    if (!nativeBridge || typeof nativeBridge.checkUpdate !== 'function' || checkingUpdate) return;
+    checkingUpdate = true;
+    pendingUpdateUrl = '';
+    if (el.checkUpdateBtn) {
+      el.checkUpdateBtn.disabled = true;
+      el.checkUpdateBtn.textContent = '检查中…';
+    }
+    if (el.downloadUpdateBtn) el.downloadUpdateBtn.hidden = true;
+    if (el.updateNotes) { el.updateNotes.hidden = true; el.updateNotes.textContent = ''; }
+    if (el.updateStatus) el.updateStatus.textContent = '正在连接 GitHub 检查最新版本…';
+
+    Promise.resolve().then(function () {
+      return nativeBridge.checkUpdate();
+    }).then(function (result) {
+      checkingUpdate = false;
+      if (el.checkUpdateBtn) {
+        el.checkUpdateBtn.disabled = false;
+        el.checkUpdateBtn.textContent = '检查更新';
+      }
+      if (!result || result.status === 'offline') {
+        var offlineMsg = (result && result.message) || '当前未联网，离线模式不影响练习；联网后可再次检查更新';
+        if (el.updateStatus) el.updateStatus.textContent = offlineMsg;
+        showToast('当前处于离线状态');
+        return;
+      }
+      if (result.status !== 'ok') {
+        var errMsg = result.message || '检查更新失败，请稍后再试';
+        if (el.updateStatus) el.updateStatus.textContent = errMsg;
+        if (result.htmlUrl && el.downloadUpdateBtn) {
+          pendingUpdateUrl = result.htmlUrl;
+          el.downloadUpdateBtn.textContent = '查看 Releases';
+          el.downloadUpdateBtn.hidden = false;
+        }
+        showToast('检查更新失败');
+        return;
+      }
+
+      var latestTag = String(result.tag || '').trim();
+      var latestLabel = normalizeVersionLabel(latestTag);
+      var currentLabel = normalizeVersionLabel(currentAppVersion || '1.0.0');
+      if (latestTag && compareVersionTags(currentAppVersion || '0.0.0', latestTag) > 0) {
+        pendingUpdateUrl = result.downloadUrl || result.htmlUrl || '';
+        if (el.updateStatus) {
+          el.updateStatus.textContent = '发现新版本 ' + latestLabel + '（当前 ' + currentLabel + '）。更新前建议先导出备份。';
+        }
+        if (el.downloadUpdateBtn && pendingUpdateUrl) {
+          el.downloadUpdateBtn.textContent = '下载 ' + latestLabel;
+          el.downloadUpdateBtn.hidden = false;
+        }
+        var notes = String(result.notes || '').trim();
+        if (el.updateNotes && notes) {
+          el.updateNotes.textContent = notes.length > 360 ? notes.slice(0, 360) + '…' : notes;
+          el.updateNotes.hidden = false;
+        }
+        showToast('发现新版本 ' + latestLabel);
+      } else {
+        if (el.updateStatus) {
+          el.updateStatus.textContent = '当前已是最新版本（' + (currentLabel || latestLabel) + '）。';
+        }
+        showToast('当前已是最新版本');
+      }
+    }, function () {
+      checkingUpdate = false;
+      if (el.checkUpdateBtn) {
+        el.checkUpdateBtn.disabled = false;
+        el.checkUpdateBtn.textContent = '检查更新';
+      }
+      if (el.updateStatus) el.updateStatus.textContent = '检查更新失败，请稍后再试';
+      showToast('检查更新失败');
+    });
+  }
+
   function exportHistoryCsv() {
     if (el.exportHistoryCsv.disabled || !canChangeGroup() || editingGroup !== null) return;
     if (!memoryMode) readStore();
@@ -2772,6 +2891,16 @@
     });
     if (el.netPreviewTrigger) el.netPreviewTrigger.addEventListener('click', openNetPreview);
     if (el.netPreviewClose) el.netPreviewClose.addEventListener('click', closeNetPreview);
+    if (el.checkUpdateBtn) el.checkUpdateBtn.addEventListener('click', checkForAppUpdate);
+    if (el.downloadUpdateBtn) el.downloadUpdateBtn.addEventListener('click', function () {
+      var nativeBridge = getNativeBridge();
+      if (!pendingUpdateUrl || !nativeBridge || typeof nativeBridge.openUrl !== 'function') return;
+      if (nativeBridge.openUrl(pendingUpdateUrl)) {
+        showToast('正在打开下载页面…');
+      } else {
+        showToast('无法打开下载链接');
+      }
+    });
     if (el.netPreviewDialog) {
       el.netPreviewDialog.addEventListener('cancel', function (event) { event.preventDefault(); closeNetPreview(); });
       el.netPreviewDialog.addEventListener('close', function () { if (!el.netPreviewDialog.open && netPreviewOpen) closeNetPreview(); });
@@ -2837,6 +2966,7 @@
   }
 
   loadData();
+  initAboutSection();
   el.historyBody.hidden = !historyOpen;
   el.historyToggle.setAttribute('aria-expanded', String(historyOpen));
   el.reviewBody.hidden = !reviewOpen;
