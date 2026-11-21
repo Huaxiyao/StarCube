@@ -86,7 +86,7 @@ function harness(options = {}) {
     requestAnimationFrame(callback){const id=sequence++;rafs.set(id,callback);return id;},cancelAnimationFrame(id){rafs.delete(id);},
     Blob:class{constructor(parts,settings){this.parts=parts;this.type=settings&&settings.type;}},URL:{createObjectURL(blob){const url='blob:test-app-regression-'+(++urlSequence);blobUrls.set(url,blob);return url;},revokeObjectURL(url){blobUrls.delete(url);}},Date:HarnessDate,Math,JSON,String,Array,Object,Number,Map,Set,Infinity,isFinite};
   vm.createContext(context);
-  for(const name of ['stats.js','review.js','store.js','audio.js','backup.js','puzzles.js','app.js']) {
+  for(const name of ['stats.js','review.js','store.js','audio.js','backup.js','puzzles.js','challenge.js','formulas.js','app.js']) {
     const file=path.join(__dirname,'../src',name);
     if(name==='store.js'&&!fs.existsSync(file))continue;
     if(name==='app.js'&&options.audioFactory)window.StarCubeAudio={create:options.audioFactory};
@@ -126,6 +126,17 @@ function status(h){return h.text('status');}
 function hold(h){h.key('keydown');h.advance(300);assert.equal(status(h),'按住');h.key('keyup');assert.equal(status(h),'计时中');}
 function finish(h,elapsed=1000){h.advance(elapsed);h.key('keydown');h.key('keyup');assert.equal(h.text('count'),'1');}
 function hueName(hex){const s=hex.replace('#','');const rgb=[0,2,4].map(offset=>parseInt(s.slice(offset,offset+2),16)/255);const max=Math.max(...rgb),min=Math.min(...rgb),delta=max-min;if(delta<0.08)return max>0.8?'white':'neutral';let hue=max===rgb[0]?(rgb[1]-rgb[2])/delta:max===rgb[1]?2+(rgb[2]-rgb[0])/delta:4+(rgb[0]-rgb[1])/delta;hue=(hue*60+360)%360;return hue<18||hue>=345?'red':hue<38?'orange':hue<78?'yellow':hue<175?'green':hue<275?'blue':'other';}
+
+test('Formula practice is a browser tab and stays hidden with the Android bridge',()=>{
+  const browser = harness();
+  assert.equal(browser.nodes.get('navFormulas').hidden, false);
+  hold(browser);
+  assert.equal(browser.nodes.get('navFormulas').disabled, true);
+  const android = harness({nativeBridge: {}});
+  assert.equal(android.nodes.get('navFormulas').hidden, true);
+  android.click('navFormulas');
+  assert.equal(android.nodes.get('app').dataset.view, 'timer');
+});
 
 test('Solved net has 54 distinct cells and complete 12 by 9 cross',()=>{
   const h=harness();const rects=h.descendants(h.document.getElementById('net')).filter(node=>node.tagName==='RECT');assert.equal(rects.length,54);
@@ -2061,6 +2072,47 @@ test('Core Ao100/Mean stats, 2-decimal precision, 0ms hold delay, hide-timer mod
   h.key('keydown');h.key('keyup');
   assert.equal(h.text('timer'),'1.500');
   assert.equal(h.readRecords().length,3);
+});
+
+test('PB celebration banner, dedicated records menu, local profile card, and daily challenge flow',()=>{
+  const h=harness({width:390,inspection:false,records:[record(0,15000)]});
+
+  // 1. 破单次 PB 触发庆祝横幅
+  hold(h);
+  h.advance(10500);
+  h.key('keydown');h.key('keyup');
+  assert.equal(h.document.getElementById('pbCelebrateBanner').hidden,false);
+  assert.match(h.text('pbCelebrateBanner'),/NEW PB/);
+
+  // 2. 独立「记录」视图渲染全部记录并支持排序/筛选
+  h.respond(h.requests().at(-1));
+  h.click('navRecords');
+  assert.equal(h.document.getElementById('app').dataset.view,'records');
+  assert.equal(h.text('recSumCount'),'2');
+  assert.equal(h.document.getElementById('recordsGrid').children.length,2);
+  h.click('recordsSortBtn');
+  assert.equal(h.text('recordsSortBtn'),'最快在前');
+
+  // 3. 个人账号资料保存自定义名字与预设头像
+  h.click('profileTrigger');
+  assert.equal(h.document.getElementById('profileDialog').open,true);
+  h.document.getElementById('profileNameInput').value='小星魔方';
+  h.document.getElementById('profileBioInput').value='目标 Sub-10';
+  h.document.getElementById('profileForm').dispatch('submit');
+  assert.equal(h.text('topbarProfileName'),'小星魔方');
+  assert.equal(h.document.getElementById('profileDialog').open,false);
+
+  // 4. 个人赛事：开启日赛第 1 把并完成计入进度
+  h.click('navContest');
+  assert.equal(h.document.getElementById('app').dataset.view,'contest');
+  h.click('contestStartBtn');
+  assert.equal(h.document.getElementById('app').dataset.view,'timer');
+  assert.equal(h.document.getElementById('contestBanner').hidden,false);
+  assert.match(h.text('contestBannerText'),/日赛 · 第 1 \/ 5 把/);
+  hold(h);
+  h.advance(11200);
+  h.key('keydown');h.key('keyup');
+  assert.match(h.text('contestBannerText'),/日赛 · 第 2 \/ 5 把/);
 });
 
 Promise.all(pendingTests).then(()=>{

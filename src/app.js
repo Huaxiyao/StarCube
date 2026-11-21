@@ -9,6 +9,7 @@
   var INIT_TIMEOUT = 30000;
   var RECORDS_KEY = 'starcube.records.v1';
   var SETTINGS_KEY = 'starcube.settings.v1';
+  var PROFILE_KEY = 'starcube.profile.v1';
   var SELECTION_KEY = 'starcube.currentGroup.v1';
   var THEMES = ['light', 'warm', 'dark'];
   var THEME_META = {
@@ -48,8 +49,26 @@
   function $(id) { return document.getElementById(id); }
 
   var el = {
-    app: $('app'), navTimer: $('navTimer'), navReview: $('navReview'),
-    timerView: $('timerView'), reviewView: $('reviewView'), recentReview: $('recentReview'),
+    app: $('app'), navTimer: $('navTimer'), navRecords: $('navRecords'), navContest: $('navContest'), navReview: $('navReview'),
+    navFormulas: $('navFormulas'), formulasView: $('formulasView'),
+    timerView: $('timerView'), recordsView: $('recordsView'), contestView: $('contestView'), reviewView: $('reviewView'), recentReview: $('recentReview'),
+    confettiCanvas: $('confettiCanvas'), pbCelebrateBanner: $('pbCelebrateBanner'),
+    contestBanner: $('contestBanner'), contestBannerText: $('contestBannerText'), contestBannerExit: $('contestBannerExit'),
+    profileTrigger: $('profileTrigger'), topbarAvatar: $('topbarAvatar'), topbarProfileName: $('topbarProfileName'),
+    profileDialog: $('profileDialog'), profileClose: $('profileClose'), profilePreviewAvatar: $('profilePreviewAvatar'),
+    profileUploadBtn: $('profileUploadBtn'), profileAvatarFile: $('profileAvatarFile'), profilePresets: $('profilePresets'),
+    profileForm: $('profileForm'), profileNameInput: $('profileNameInput'), profileBioInput: $('profileBioInput'),
+    profileTotalSolves: $('profileTotalSolves'), profileBestSingle: $('profileBestSingle'),
+    profileTotalContests: $('profileTotalContests'), profileStreakDays: $('profileStreakDays'),
+    recordsHeading: $('recordsHeading'), recSumCount: $('recSumCount'), recSumPb: $('recSumPb'), recSumMean: $('recSumMean'), recSumAo100: $('recSumAo100'),
+    recordsFilters: $('recordsFilters'), recordsSortBtn: $('recordsSortBtn'), recordsCsvBtn: $('recordsCsvBtn'),
+    recordsGrid: $('recordsGrid'), recordsEmpty: $('recordsEmpty'), recordsMoreBtn: $('recordsMoreBtn'),
+    contestAvatar: $('contestAvatar'), contestPlayerName: $('contestPlayerName'), contestPlayerBio: $('contestPlayerBio'),
+    contestStreakNum: $('contestStreakNum'), contestModeBar: $('contestModeBar'), contestCardTitle: $('contestCardTitle'),
+    contestPeriodTag: $('contestPeriodTag'), contestSlots: $('contestSlots'), contestAvgLabel: $('contestAvgLabel'),
+    contestCurrAvg: $('contestCurrAvg'), contestCurrBest: $('contestCurrBest'), contestBestEver: $('contestBestEver'),
+    contestStartBtn: $('contestStartBtn'), contestHistoryCount: $('contestHistoryCount'),
+    contestHistoryList: $('contestHistoryList'), contestHistoryEmpty: $('contestHistoryEmpty'),
     timerGroupName: $('timerGroupName'), coreAo5: $('coreAo5'), coreAo12: $('coreAo12'),
     coreAo100: $('coreAo100'), coreMean: $('coreMean'),
     corePb: $('corePb'), coreCount: $('coreCount'), coreGlobalPb: $('coreGlobalPb'),
@@ -158,6 +177,7 @@
 
   var state = 'BOOT';
   var currentView = 'timer';
+  var formulaPractice = null;
   var records = [];
   var allRecords = [];
   var groups = [];
@@ -189,6 +209,17 @@
     showNet: true
   };
   var VALID_HOLD_MS = [0, 200, 300, 500];
+  var profile = { name: '魔方手', bio: '', avatarType: 'emoji', avatar: '🧊' };
+  var profileDraftAvatar = { avatarType: 'emoji', avatar: '🧊' };
+  var profileOpen = false;
+  var challengeStore = null;
+  var contestMode = 'daily';
+  var activeContest = null;
+  var recordsFilter = 'all';
+  var recordsSort = 'latest';
+  var recordsPageLimit = 60;
+  var pbCelebrateTimer = 0;
+  var confettiRaf = 0;
   var toastLeaveTimer = 0;
   var toastHideTimer = 0;
   var backup = null;
@@ -353,6 +384,10 @@
       try { initBridge.setKeepScreenOn(settings.keepScreenOn); } catch (err) {}
     }
     store = window.StarCubeStore.create({ storage: storage });
+    if (window.StarCubeChallenge) {
+      challengeStore = window.StarCubeChallenge.create({ storage: storage, stats: Stats, puzzles: window.StarCubePuzzles });
+    }
+    loadProfile(storage);
     reviewLimit = settings.reviewRange === '100' ? 100 : settings.reviewRange === '50' ? 50 : settings.reviewRange;
     el.reviewRange.value = String(reviewLimit);
     backup = window.StarCubeBackup.create({ storage: storage, threshold: 100 });
@@ -483,6 +518,10 @@
     renderControls();
     renderGroups();
     renderReview();
+    renderRecordsView();
+    renderContestView();
+    renderContestBanner();
+    renderProfileUi();
     renderRecordDialog();
     renderAverageDialog();
     renderBackup();
@@ -494,23 +533,41 @@
   function renderViews() {
     el.app.dataset.view = currentView;
     el.timerView.hidden = currentView !== 'timer';
+    if (el.recordsView) el.recordsView.hidden = currentView !== 'records';
+    if (el.contestView) el.contestView.hidden = currentView !== 'contest';
     el.reviewView.hidden = currentView !== 'review';
     el.navTimer.setAttribute('aria-pressed', String(currentView === 'timer'));
+    if (el.navRecords) el.navRecords.setAttribute('aria-pressed', String(currentView === 'records'));
+    if (el.navContest) el.navContest.setAttribute('aria-pressed', String(currentView === 'contest'));
     el.navReview.setAttribute('aria-pressed', String(currentView === 'review'));
+    el.formulasView.hidden = currentView !== 'formulas';
+    el.navFormulas.setAttribute('aria-pressed', String(currentView === 'formulas'));
   }
 
   function switchView(view) {
-    if (!canChangeGroup() || editingGroup !== null || (view !== 'timer' && view !== 'review')) return;
+    if (!canChangeGroup() || editingGroup !== null || !['timer', 'records', 'contest', 'review', 'formulas'].includes(view)) return;
+    if (view === 'formulas') {
+      if (el.navFormulas.hidden || !window.StarCubeFormulas) return;
+      if (!formulaPractice) {
+        formulaPractice = window.StarCubeFormulas.create(el.formulasView, function (algorithm) {
+          return algorithm ? computeFacelets(algorithm) : SOLVED_FACELETS;
+        });
+      }
+    }
     closeMobileSheet();
     if (currentView !== view) {
+      if (currentView === 'formulas') formulaPractice.pause();
       currentView = view;
+      if (view === 'records') recordsPageLimit = 60;
       if (!undoDeletions.length) undoMessage = '';
-      // Showing the panel precedes chart measurement. Hidden panels release their
-      // expensive DOM through their normal render paths; model state stays live.
       render();
       window.scrollTo(0, 0);
     }
-    if (view === 'timer') el.pad.focus({ preventScroll: true }); else el.reviewView.focus({ preventScroll: true });
+    if (view === 'formulas') formulaPractice.focus();
+    else if (view === 'timer') el.pad.focus({ preventScroll: true });
+    else if (view === 'records' && el.recordsView) el.recordsView.focus({ preventScroll: true });
+    else if (view === 'contest' && el.contestView) el.contestView.focus({ preventScroll: true });
+    else el.reviewView.focus({ preventScroll: true });
   }
 
   function returnTimerFocus(event) {
@@ -1144,10 +1201,12 @@
     var canToggle = canChangeGroup() && editingGroup === null;
     historyDetailButtons.forEach(function (button) { button.disabled = !canToggle; });
     recentDetailButtons.forEach(function (button) { button.disabled = !canToggle; });
-    [el.navTimer, el.navReview, el.recentReview].forEach(function (button) {
+    [el.navTimer, el.navRecords, el.navContest, el.navReview, el.navFormulas, el.recentReview].forEach(function (button) {
+      if (!button) return;
       button.disabled = !canToggle;
       button.title = canToggle ? '' : '请先完成当前操作';
     });
+    if (el.profileTrigger) el.profileTrigger.disabled = !canToggle;
     el.switchBtn.disabled = !canToggle;
     if (el.themeToggle) el.themeToggle.disabled = detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
     if (el.mobileGroupBtn) el.mobileGroupBtn.disabled = !canToggle;
@@ -1222,7 +1281,481 @@
     return (state === 'IDLE' || state === 'STOPPED') && !press && !activeScramble && !importing && !detailsOpen();
   }
 
-  function detailsOpen() { return !!selectedRecordUid || selectedAverage !== null || deletingGroupId !== null; }
+  function hidePbCelebration() {
+    if (pbCelebrateTimer) { clearTimeout(pbCelebrateTimer); pbCelebrateTimer = 0; }
+    if (el.pbCelebrateBanner) el.pbCelebrateBanner.hidden = true;
+    if (el.timer && el.timer.classList) el.timer.classList.remove('is-pb-pop');
+  }
+
+  function launchConfetti() {
+    var canvas = el.confettiCanvas;
+    if (!canvas || typeof canvas.getContext !== 'function') return;
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (err) {}
+    }
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    cancelAnimationFrame(confettiRaf);
+    var dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+    var width = (typeof window !== 'undefined' && window.innerWidth) || 390;
+    var height = (typeof window !== 'undefined' && window.innerHeight) || 800;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    var palette = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
+    var particles = [];
+    for (var i = 0; i < 68; i++) {
+      var angle = (-Math.PI / 2) + (Math.random() - 0.5) * 1.4;
+      var speed = 5 + Math.random() * 7;
+      particles.push({
+        x: width * (0.2 + Math.random() * 0.6),
+        y: height * 0.28 + (Math.random() - 0.5) * 30,
+        vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 3,
+        vy: Math.sin(angle) * speed - 2,
+        w: 6 + Math.random() * 6,
+        h: 4 + Math.random() * 4,
+        rot: Math.random() * Math.PI * 2,
+        vrot: (Math.random() - 0.5) * 0.24,
+        color: palette[i % palette.length],
+        alpha: 1
+      });
+    }
+    var startAt = performance.now();
+    function frame(now) {
+      var elapsed = now - startAt;
+      ctx.clearRect(0, 0, width, height);
+      var alive = false;
+      for (var k = 0; k < particles.length; k++) {
+        var p = particles[k];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.24;
+        p.vx *= 0.99;
+        p.rot += p.vrot;
+        if (elapsed > 1100) p.alpha = Math.max(0, 1 - (elapsed - 1100) / 700);
+        if (p.alpha > 0.02 && p.y < height + 30) {
+          alive = true;
+          ctx.save();
+          ctx.globalAlpha = p.alpha;
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          ctx.restore();
+        }
+      }
+      if (alive && elapsed < 1900) {
+        confettiRaf = requestAnimationFrame(frame);
+      } else {
+        ctx.clearRect(0, 0, width, height);
+        confettiRaf = 0;
+      }
+    }
+    confettiRaf = requestAnimationFrame(frame);
+  }
+
+  function celebrateMilestone(label) {
+    hidePbCelebration();
+    if (el.pbCelebrateBanner) {
+      el.pbCelebrateBanner.textContent = label;
+      el.pbCelebrateBanner.hidden = false;
+    }
+    if (el.timer && el.timer.classList) {
+      el.timer.classList.remove('is-pb-pop');
+      el.timer.classList.add('is-pb-pop');
+    }
+    launchConfetti();
+    triggerNativeHaptic('ready');
+    setTimeout(function () { triggerNativeHaptic('stop'); }, 110);
+    pbCelebrateTimer = setTimeout(function () {
+      pbCelebrateTimer = 0;
+      if (el.timer && el.timer.classList) el.timer.classList.remove('is-pb-pop');
+    }, 650);
+  }
+
+  function loadProfile(storage) {
+    try {
+      var raw = storage ? storage.getItem(PROFILE_KEY) : null;
+      var parsed = raw ? JSON.parse(raw) : null;
+      if (parsed && typeof parsed === 'object') {
+        if (typeof parsed.name === 'string' && parsed.name.trim()) profile.name = parsed.name.trim().slice(0, 20);
+        if (typeof parsed.bio === 'string') profile.bio = parsed.bio.trim().slice(0, 40);
+        if (parsed.avatarType === 'image' && typeof parsed.avatar === 'string' && parsed.avatar.indexOf('data:image/') === 0) {
+          profile.avatarType = 'image';
+          profile.avatar = parsed.avatar;
+        } else if (typeof parsed.avatar === 'string' && parsed.avatar) {
+          profile.avatarType = 'emoji';
+          profile.avatar = parsed.avatar;
+        }
+      }
+    } catch (err) {}
+  }
+
+  function persistProfile() {
+    if (memoryMode) return;
+    try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); }
+    catch (err) { showToast('头像或资料保存失败，可能超出存储限制'); }
+  }
+
+  function renderAvatarInto(node, data) {
+    if (!node) return;
+    var info = data || profile;
+    if (info.avatarType === 'image' && info.avatar && info.avatar.indexOf('data:image/') === 0) {
+      var img = document.createElement('img');
+      img.src = info.avatar;
+      img.alt = '';
+      node.replaceChildren(img);
+    } else {
+      node.textContent = info.avatar || '🧊';
+    }
+  }
+
+  function renderProfileUi() {
+    renderAvatarInto(el.topbarAvatar, profile);
+    if (el.topbarProfileName) el.topbarProfileName.textContent = profile.name || '魔方手';
+    renderAvatarInto(el.contestAvatar, profile);
+    if (el.contestPlayerName) el.contestPlayerName.textContent = profile.name || '魔方手';
+    if (el.contestPlayerBio) {
+      el.contestPlayerBio.textContent = profile.bio || '点击右上角头像可自定义昵称与头像';
+    }
+    if (el.profileTotalSolves) el.profileTotalSolves.textContent = String(allRecords.length);
+    if (el.profileBestSingle) {
+      var bestAll = Stats.personalBest(allRecords);
+      el.profileBestSingle.textContent = bestAll ? formatDisplayMs(bestAll.value) : '—';
+    }
+    if (el.profileTotalContests && challengeStore) {
+      el.profileTotalContests.textContent = String(challengeStore.totalCompleted());
+    }
+    if (el.profileStreakDays && challengeStore) {
+      el.profileStreakDays.textContent = challengeStore.dailyStreak() + ' 天';
+    }
+  }
+
+  function openProfileDialog() {
+    if (!el.profileDialog || detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
+    closeMobileSheet();
+    profileOpen = true;
+    profileDraftAvatar = { avatarType: profile.avatarType, avatar: profile.avatar };
+    renderAvatarInto(el.profilePreviewAvatar, profileDraftAvatar);
+    if (el.profileNameInput) el.profileNameInput.value = profile.name || '';
+    if (el.profileBioInput) el.profileBioInput.value = profile.bio || '';
+    if (el.profilePresets && el.profilePresets.querySelectorAll) {
+      el.profilePresets.querySelectorAll('button').forEach(function (btn) {
+        var emoji = btn.getAttribute('data-avatar');
+        btn.setAttribute('aria-pressed', String(profileDraftAvatar.avatarType === 'emoji' && profileDraftAvatar.avatar === emoji));
+      });
+    }
+    renderProfileUi();
+    if (!el.profileDialog.open && typeof el.profileDialog.showModal === 'function') {
+      el.profileDialog.showModal();
+    }
+  }
+
+  function closeProfileDialog() {
+    if (!profileOpen && (!el.profileDialog || !el.profileDialog.open)) return;
+    profileOpen = false;
+    if (el.profileDialog && el.profileDialog.open) el.profileDialog.close();
+  }
+
+  function handleAvatarFile() {
+    var file = el.profileAvatarFile && el.profileAvatarFile.files && el.profileAvatarFile.files[0];
+    if (!file) return;
+    el.profileAvatarFile.value = '';
+    if (typeof FileReader !== 'function' || typeof Image !== 'function') {
+      showToast('当前环境不支持读取图片');
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var canvas = document.createElement('canvas');
+          var size = 160;
+          canvas.width = size;
+          canvas.height = size;
+          var ctx = canvas.getContext('2d');
+          var minSide = Math.min(img.width, img.height);
+          var sx = (img.width - minSide) / 2;
+          var sy = (img.height - minSide) / 2;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          profileDraftAvatar = { avatarType: 'image', avatar: dataUrl };
+          renderAvatarInto(el.profilePreviewAvatar, profileDraftAvatar);
+          if (el.profilePresets && el.profilePresets.querySelectorAll) {
+            el.profilePresets.querySelectorAll('button').forEach(function (btn) { btn.setAttribute('aria-pressed', 'false'); });
+          }
+          showToast('已载入新头像，点击保存生效');
+        } catch (err) {
+          showToast('头像裁剪失败，请换一张图片');
+        }
+      };
+      img.onerror = function () { showToast('无法解析该图片文件'); };
+      img.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function saveProfile(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    var nextName = el.profileNameInput ? el.profileNameInput.value.trim().slice(0, 20) : '';
+    var nextBio = el.profileBioInput ? el.profileBioInput.value.trim().slice(0, 40) : '';
+    profile.name = nextName || '魔方手';
+    profile.bio = nextBio;
+    profile.avatarType = profileDraftAvatar.avatarType;
+    profile.avatar = profileDraftAvatar.avatar;
+    persistProfile();
+    renderProfileUi();
+    closeProfileDialog();
+    showToast('已保存个人名片');
+  }
+
+  function computePbUidSet(list) {
+    var pbUids = new Set();
+    var best = Infinity;
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      if (!r || r.penalty === 'dnf') continue;
+      var eff = Stats.effectiveMs(r);
+      if (eff < best) {
+        best = eff;
+        pbUids.add(r.uid);
+      }
+    }
+    return pbUids;
+  }
+
+  function renderRecordsView() {
+    if (currentView !== 'records' || !el.recordsGrid) return;
+    var selected = groups.find(function (g) { return g.id === currentGroupId; });
+    var puzzle = currentPuzzle();
+    if (el.recordsHeading) el.recordsHeading.textContent = (selected ? selected.name : '默认训练') + ' · ' + puzzle.name;
+    if (el.recSumCount) el.recSumCount.textContent = String(records.length);
+    var pb = Stats.personalBest(records);
+    if (el.recSumPb) el.recSumPb.textContent = pb ? formatDisplayMs(pb.value) + (pb.record.penalty === '+2' ? '+' : '') : '—';
+    var mean = Stats.overallAverage(records);
+    if (el.recSumMean) el.recSumMean.textContent = mean === null ? '—' : mean === 'DNF' ? 'DNF' : formatDisplayMs(mean);
+    var ao100 = Stats.aoN(records, 100);
+    if (el.recSumAo100) el.recSumAo100.textContent = ao100 === null ? '—' : ao100 === 'DNF' ? 'DNF' : formatDisplayMs(ao100);
+
+    if (el.recordsFilters && el.recordsFilters.querySelectorAll) {
+      el.recordsFilters.querySelectorAll('button').forEach(function (btn) {
+        btn.setAttribute('aria-pressed', String(btn.getAttribute('data-filter') === recordsFilter));
+      });
+    }
+    if (el.recordsSortBtn) el.recordsSortBtn.textContent = recordsSort === 'fastest' ? '最快在前' : '最新在前';
+    if (el.recordsCsvBtn) el.recordsCsvBtn.disabled = !records.length;
+
+    var pbUids = computePbUidSet(records);
+    var indexed = records.map(function (r, idx) { return { record: r, index: idx, isPb: pbUids.has(r.uid) }; });
+    var filtered = indexed.filter(function (entry) {
+      if (recordsFilter === 'pb') return entry.isPb;
+      if (recordsFilter === '+2') return entry.record.penalty === '+2';
+      if (recordsFilter === 'dnf') return entry.record.penalty === 'dnf';
+      return true;
+    });
+    if (recordsSort === 'fastest') {
+      filtered.sort(function (a, b) {
+        var av = a.record.penalty === 'dnf' ? Infinity : Stats.effectiveMs(a.record);
+        var bv = b.record.penalty === 'dnf' ? Infinity : Stats.effectiveMs(b.record);
+        return av !== bv ? av - bv : a.index - b.index;
+      });
+    } else {
+      filtered.reverse();
+    }
+
+    var total = filtered.length;
+    if (el.recordsEmpty) el.recordsEmpty.hidden = total > 0;
+    if (el.recordsMoreBtn) {
+      el.recordsMoreBtn.hidden = total <= recordsPageLimit;
+      el.recordsMoreBtn.textContent = '再显示 60 条 · 已显示 ' + Math.min(recordsPageLimit, total) + ' / ' + total;
+    }
+
+    var fragment = document.createDocumentFragment();
+    var slice = filtered.slice(0, recordsPageLimit);
+    slice.forEach(function (entry) {
+      var li = document.createElement('li');
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'record-tile' + (entry.record.penalty === 'dnf' ? ' is-dnf' : entry.record.penalty === '+2' ? ' is-plus' : '');
+      btn.setAttribute('data-record-uid', entry.record.uid);
+
+      var top = document.createElement('span');
+      top.className = 'record-tile-top';
+      var num = document.createElement('span');
+      num.textContent = '#' + (entry.index + 1);
+      top.appendChild(num);
+      if (entry.isPb) {
+        var badge = document.createElement('span');
+        badge.className = 'record-tile-pb';
+        badge.textContent = 'PB';
+        top.appendChild(badge);
+      }
+
+      var time = document.createElement('span');
+      time.className = 'record-tile-time';
+      time.textContent = formatDisplayResult(entry.record);
+
+      var date = document.createElement('span');
+      date.className = 'record-tile-date';
+      date.textContent = formatAt(entry.record.at);
+
+      btn.appendChild(top);
+      btn.appendChild(time);
+      btn.appendChild(date);
+      li.appendChild(btn);
+      fragment.appendChild(li);
+    });
+    el.recordsGrid.replaceChildren(fragment);
+  }
+
+  function renderContestBanner() {
+    if (!el.contestBanner) return;
+    if (!activeContest) {
+      el.contestBanner.hidden = true;
+      return;
+    }
+    var label = activeContest.type === 'weekly' ? '周赛' : '日赛';
+    var total = activeContest.scrambles.length;
+    el.contestBannerText.textContent = currentPuzzle().name + ' ' + label + ' · 第 ' + (activeContest.index + 1) + ' / ' + total + ' 把';
+    el.contestBanner.hidden = false;
+  }
+
+  function renderContestView() {
+    if (currentView !== 'contest' || !challengeStore || !el.contestSlots) return;
+    var puzzle = currentPuzzle();
+    var data = challengeStore.getOrInit(contestMode, puzzle.id);
+    var entry = data.entry;
+    var summary = data.summary;
+    var isWeekly = contestMode === 'weekly';
+
+    if (el.contestStreakNum) el.contestStreakNum.textContent = String(challengeStore.dailyStreak());
+    if (el.contestModeBar && el.contestModeBar.querySelectorAll) {
+      el.contestModeBar.querySelectorAll('button').forEach(function (btn) {
+        btn.setAttribute('aria-pressed', String(btn.getAttribute('data-contest-type') === contestMode));
+      });
+    }
+    if (el.contestCardTitle) el.contestCardTitle.textContent = (isWeekly ? '本周 ' : '今日 ') + puzzle.name + (isWeekly ? ' 周赛' : ' 日赛');
+    if (el.contestPeriodTag) el.contestPeriodTag.textContent = entry.period;
+    if (el.contestAvgLabel) el.contestAvgLabel.textContent = isWeekly ? '本场 Ao12' : '本场 Ao5';
+
+    el.contestSlots.classList.toggle('is-weekly', isWeekly);
+    var slotFrag = document.createDocumentFragment();
+    for (var i = 0; i < summary.total; i++) {
+      var solve = entry.solves[i];
+      var slot = document.createElement('div');
+      slot.className = 'contest-slot' + (solve ? ' is-done' : i === entry.solves.length ? ' is-next' : '') + (solve && solve.penalty === 'dnf' ? ' is-dnf' : '');
+      var idxEl = document.createElement('span');
+      idxEl.className = 'contest-slot-idx';
+      idxEl.textContent = '#' + (i + 1);
+      var valEl = document.createElement('span');
+      valEl.className = 'contest-slot-val';
+      valEl.textContent = solve ? formatDisplayResult(solve) : (i === entry.solves.length ? '待打' : '—');
+      slot.appendChild(idxEl);
+      slot.appendChild(valEl);
+      slotFrag.appendChild(slot);
+    }
+    el.contestSlots.replaceChildren(slotFrag);
+
+    if (el.contestCurrAvg) {
+      el.contestCurrAvg.textContent = summary.average === null ? '—' : summary.average === 'DNF' ? 'DNF' : formatDisplayMs(summary.average);
+    }
+    if (el.contestCurrBest) {
+      el.contestCurrBest.textContent = summary.best === null ? '—' : formatDisplayMs(summary.best);
+    }
+    var bestEver = challengeStore.bestAverage(contestMode, puzzle.id);
+    if (el.contestBestEver) {
+      el.contestBestEver.textContent = bestEver === null ? '—' : formatDisplayMs(bestEver);
+    }
+    if (el.contestStartBtn) {
+      if (summary.completed) {
+        el.contestStartBtn.textContent = (isWeekly ? '本周' : '今日') + '已完赛 ✓';
+        el.contestStartBtn.disabled = true;
+      } else {
+        el.contestStartBtn.disabled = false;
+        el.contestStartBtn.textContent = entry.solves.length === 0
+          ? ('开始' + (isWeekly ? '本周' : '今日') + '第 1 把')
+          : ('继续第 ' + (entry.solves.length + 1) + ' / ' + summary.total + ' 把');
+      }
+    }
+
+    var historyList = challengeStore.history(contestMode, puzzle.id);
+    if (el.contestHistoryCount) el.contestHistoryCount.textContent = historyList.length + ' 场';
+    if (el.contestHistoryEmpty) el.contestHistoryEmpty.hidden = historyList.length > 0;
+    if (el.contestHistoryList) {
+      var histFrag = document.createDocumentFragment();
+      historyList.slice(0, 30).forEach(function (item) {
+        var li = document.createElement('li');
+        li.className = 'contest-history-item';
+        var left = document.createElement('div');
+        left.className = 'contest-history-left';
+        var p = document.createElement('span');
+        p.className = 'contest-history-period';
+        p.textContent = item.period + (item.completedAt ? '' : '（进行中 ' + item.solves.length + '/' + (item.type === 'weekly' ? 12 : 5) + '）');
+        var sub = document.createElement('span');
+        sub.className = 'contest-history-sub';
+        sub.textContent = '单次最佳：' + (item.best !== null ? formatDisplayMs(item.best) : '—');
+        left.appendChild(p);
+        left.appendChild(sub);
+
+        var score = document.createElement('span');
+        score.className = 'contest-history-score';
+        score.textContent = item.average === null ? '进行中' : item.average === 'DNF' ? 'DNF' : formatDisplayMs(item.average);
+
+        li.appendChild(left);
+        li.appendChild(score);
+        histFrag.appendChild(li);
+      });
+      el.contestHistoryList.replaceChildren(histFrag);
+    }
+  }
+
+  function loadActiveContestScramble() {
+    if (!activeContest) return;
+    var scr = activeContest.scrambles[activeContest.index];
+    if (!scr) return;
+    if (genTimer) { clearTimeout(genTimer); genTimer = 0; }
+    generating = false;
+    pendingRequestId = null;
+    genFailed = false;
+    currentScramble = {
+      algorithm: scr.algorithm,
+      facelets: scr.facelets,
+      puzzle: activeContest.puzzle,
+      requestId: ++requestSerial,
+      contest: true
+    };
+    scrambleUsed = false;
+    if (state === 'BOOT' || state === 'STOPPED') state = 'IDLE';
+  }
+
+  function startContestSession() {
+    if (!challengeStore || !canChangeGroup() || editingGroup !== null) return;
+    var puzzle = currentPuzzle();
+    var data = challengeStore.getOrInit(contestMode, puzzle.id);
+    if (data.summary.completed) return;
+    activeContest = {
+      type: contestMode,
+      puzzle: puzzle.id,
+      period: data.entry.period,
+      scrambles: data.scrambles,
+      index: data.entry.solves.length
+    };
+    loadActiveContestScramble();
+    switchView('timer');
+    showToast((contestMode === 'weekly' ? '周赛' : '日赛') + '第 ' + (activeContest.index + 1) + ' 把准备就绪');
+  }
+
+  function exitContestSession(silent) {
+    if (!activeContest) return;
+    activeContest = null;
+    renderContestBanner();
+    requestScramble(true);
+    if (!silent) showToast('已退出赛事模式');
+  }
+
+  function detailsOpen() { return !!selectedRecordUid || selectedAverage !== null || deletingGroupId !== null || profileOpen; }
 
   function renderBackup() {
     var status = backup.status();
@@ -1433,6 +1966,7 @@
     reviewSelectedUid = null;
     el.historyBody.scrollTop = 0;
     if (activeMobileSheet === 'groups') closeMobileSheet();
+    if (activeContest && currentPuzzleId() !== activeContest.puzzle) activeContest = null;
     dataChanged();
     var nextPuzzle = currentPuzzleId();
     if (nextPuzzle !== prevPuzzle) {
@@ -1890,6 +2424,7 @@
     var record = allRecords.find(function (item) { return item.uid === uid; });
     if (!record) { render(); return; }
     saveRecord(Object.assign({}, record, { penalty: penalty }));
+    if (challengeStore) challengeStore.updateSolvePenalty(uid, penalty);
     render();
     if (selectedRecordUid) el.recordFeedback.textContent = memoryMode ? '已在本页修改；请导出备份保存。' : '已保存，统计与曲线已更新。';
   }
@@ -1950,6 +2485,7 @@
     }
     if (state === 'IDLE' || state === 'STOPPED') {
       if (!canStart()) return;
+      hidePbCelebration();
       audio.stop();
       if (settings.inspectionSound && settings.inspection) audio.unlock();
       freezeScramble();
@@ -2069,6 +2605,9 @@
     var ms = Math.max(0, Math.round(performance.now() - runStart));
     cancelAnimationFrame(runRaf);
     runRaf = 0;
+    var prevGroupRecords = groupRecords(activeScramble.groupId);
+    var prevPb = Stats.personalBest(prevGroupRecords);
+    var prevBestAo5 = Stats.bestAo5(prevGroupRecords);
     var record = {
       id: nextId++,
       groupId: activeScramble.groupId,
@@ -2085,6 +2624,43 @@
     usedScramble = '';
     activeScramble = null;
     if (engineDead) currentScramble = null;
+
+    var celebrated = false;
+    if (record.penalty !== 'dnf' && prevGroupRecords.length >= 1) {
+      var newEff = Stats.effectiveMs(record);
+      if (prevPb && newEff < prevPb.value) {
+        var diffSec = ((prevPb.value - newEff) / 1000).toFixed(2);
+        celebrateMilestone('🎉 NEW PB · 快 ' + diffSec + 's');
+        celebrated = true;
+      } else {
+        var currAo5 = Stats.aoN(records, 5);
+        if (typeof currAo5 === 'number' && records.length >= 6 && (prevBestAo5 === null || currAo5 < prevBestAo5)) {
+          celebrateMilestone('🏆 NEW BEST Ao5 · ' + formatDisplayMs(currAo5));
+          celebrated = true;
+        }
+      }
+    }
+
+    if (activeContest && challengeStore) {
+      var contestRes = challengeStore.recordSolve(activeContest.type, activeContest.puzzle, activeContest.period, activeContest.index, record);
+      if (contestRes.justCompleted) {
+        var modeName = activeContest.type === 'weekly' ? '周赛' : '日赛';
+        var avgText = contestRes.summary.average === 'DNF' ? 'DNF' : contestRes.summary.average !== null ? formatDisplayMs(contestRes.summary.average) : '—';
+        activeContest = null;
+        if (!celebrated) {
+          celebrateMilestone(contestRes.isNewBest ? ('🏆 新' + modeName + '纪录 · ' + avgText) : ('🎉 完成' + modeName + ' · ' + avgText));
+        }
+        render();
+        requestScramble(true);
+        showToast(modeName + '完赛！成绩：' + avgText);
+        return;
+      }
+      activeContest.index = contestRes.entry.solves.length;
+      loadActiveContestScramble();
+      render();
+      return;
+    }
+
     render();
     requestScramble(true);
   }
@@ -2345,6 +2921,7 @@
       record.penalty = record.penalty === 'dnf' ? 'ok' : 'dnf';
     }
     saveRecord(record);
+    if (challengeStore) challengeStore.updateSolvePenalty(record.uid, record.penalty);
     render();
   }
 
@@ -2853,6 +3430,12 @@
     if (!memoryMode) readStore();
     var payload = { format: 'starcube', version: 3, exportedAt: new Date().toISOString(),
       groups: groups, records: allRecords, backups: store.backups() };
+    var hasCustomProfile = profile.name !== '魔方手' || !!profile.bio || profile.avatarType !== 'emoji' || profile.avatar !== '🧊';
+    if (hasCustomProfile) payload.profile = profile;
+    if (challengeStore) {
+      var exportedChallenges = challengeStore.exportAll();
+      if (Object.keys(exportedChallenges).length > 0) payload.challenges = exportedChallenges;
+    }
     var jsonText = JSON.stringify(payload, null, 2);
     var filename = 'starcube-backup-' + new Date().toISOString().slice(0, 10) + '.json';
     var groupCount = groups.length;
@@ -2940,6 +3523,24 @@
     render();
     file.text().then(function (raw) {
       var result = store.importRecords(raw);
+      try {
+        var extra = JSON.parse(raw);
+        if (extra && typeof extra === 'object') {
+          if (extra.challenges && challengeStore) challengeStore.importAll(extra.challenges);
+          if (extra.profile && typeof extra.profile === 'object' && typeof extra.profile.name === 'string' && extra.profile.name.trim()) {
+            profile.name = extra.profile.name.trim().slice(0, 20);
+            if (typeof extra.profile.bio === 'string') profile.bio = extra.profile.bio.trim().slice(0, 40);
+            if (extra.profile.avatarType === 'image' && typeof extra.profile.avatar === 'string' && extra.profile.avatar.indexOf('data:image/') === 0) {
+              profile.avatarType = 'image';
+              profile.avatar = extra.profile.avatar;
+            } else if (typeof extra.profile.avatar === 'string' && extra.profile.avatar) {
+              profile.avatarType = 'emoji';
+              profile.avatar = extra.profile.avatar;
+            }
+            persistProfile();
+          }
+        }
+      } catch (err) {}
       readStore();
       el.feedback.textContent = '已导入 ' + result.added + ' 条，跳过 ' + result.skipped + ' 条重复或已删除成绩' +
         (result.conflicts ? '，保留 ' + result.conflicts + ' 条编号冲突成绩' : '') +
@@ -3026,7 +3627,73 @@
     window.addEventListener('pointercancel', cancelPointer);
 
     el.navTimer.addEventListener('click', function () { switchView('timer'); });
+    if (el.navRecords) el.navRecords.addEventListener('click', function () { switchView('records'); });
+    if (el.navContest) el.navContest.addEventListener('click', function () { switchView('contest'); });
     el.navReview.addEventListener('click', function () { switchView('review'); });
+    if (el.contestBannerExit) el.contestBannerExit.addEventListener('click', function () { exitContestSession(false); });
+    if (el.profileTrigger) el.profileTrigger.addEventListener('click', openProfileDialog);
+    if (el.profileClose) el.profileClose.addEventListener('click', closeProfileDialog);
+    if (el.profileDialog) {
+      el.profileDialog.addEventListener('cancel', function (event) { event.preventDefault(); closeProfileDialog(); });
+      el.profileDialog.addEventListener('close', function () { if (!el.profileDialog.open && profileOpen) closeProfileDialog(); });
+      el.profileDialog.addEventListener('click', function (event) { if (event.target === el.profileDialog) closeProfileDialog(); });
+    }
+    if (el.profileUploadBtn && el.profileAvatarFile) {
+      el.profileUploadBtn.addEventListener('click', function () { el.profileAvatarFile.click(); });
+      el.profileAvatarFile.addEventListener('change', handleAvatarFile);
+    }
+    if (el.profilePresets && el.profilePresets.querySelectorAll) {
+      el.profilePresets.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var emoji = btn.getAttribute('data-avatar') || '🧊';
+          profileDraftAvatar = { avatarType: 'emoji', avatar: emoji };
+          renderAvatarInto(el.profilePreviewAvatar, profileDraftAvatar);
+          el.profilePresets.querySelectorAll('button').forEach(function (other) {
+            other.setAttribute('aria-pressed', String(other === btn));
+          });
+        });
+      });
+    }
+    if (el.profileForm) el.profileForm.addEventListener('submit', saveProfile);
+    if (el.recordsFilters && el.recordsFilters.querySelectorAll) {
+      el.recordsFilters.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var f = btn.getAttribute('data-filter');
+          if (!f) return;
+          recordsFilter = f;
+          recordsPageLimit = 60;
+          renderRecordsView();
+        });
+      });
+    }
+    if (el.recordsSortBtn) el.recordsSortBtn.addEventListener('click', function () {
+      recordsSort = recordsSort === 'latest' ? 'fastest' : 'latest';
+      recordsPageLimit = 60;
+      renderRecordsView();
+    });
+    if (el.recordsCsvBtn) el.recordsCsvBtn.addEventListener('click', exportHistoryCsv);
+    if (el.recordsMoreBtn) el.recordsMoreBtn.addEventListener('click', function () {
+      recordsPageLimit += 60;
+      renderRecordsView();
+    });
+    if (el.recordsGrid) el.recordsGrid.addEventListener('click', function (event) {
+      if (currentView !== 'records') return;
+      var button = event.target.closest('[data-record-uid]');
+      if (button) openRecord(button.getAttribute('data-record-uid'), button);
+    });
+    if (el.contestModeBar && el.contestModeBar.querySelectorAll) {
+      el.contestModeBar.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var type = btn.getAttribute('data-contest-type');
+          if (type !== 'daily' && type !== 'weekly') return;
+          contestMode = type;
+          renderContestView();
+        });
+      });
+    }
+    if (el.contestStartBtn) el.contestStartBtn.addEventListener('click', startContestSession);
+    el.navFormulas.hidden = !!getNativeBridge() || !window.StarCubeFormulas;
+    el.navFormulas.addEventListener('click', function () { switchView('formulas'); });
     el.recentReview.addEventListener('click', function () { switchView('review'); });
     el.recentList.addEventListener('click', function (event) {
       if (currentView !== 'timer') return;
@@ -3357,6 +4024,10 @@
   }
 
   function handleNativeBack() {
+    if (profileOpen || (el.profileDialog && el.profileDialog.open)) {
+      closeProfileDialog();
+      return true;
+    }
     if (netPreviewOpen || (el.netPreviewDialog && el.netPreviewDialog.open)) {
       closeNetPreview();
       return true;
@@ -3385,7 +4056,7 @@
       if (state === 'RUNNING') showToast('计时中，请先停表');
       return true;
     }
-    if (currentView === 'review') {
+    if (currentView !== 'timer') {
       switchView('timer');
       return true;
     }

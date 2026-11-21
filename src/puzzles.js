@@ -36,7 +36,10 @@
     return PUZZLE_MAP[normalizePuzzle(id)];
   }
 
-  function randomInt(max) {
+  function randomInt(max, rng) {
+    if (typeof rng === 'function') {
+      return Math.floor(rng() * max) % max;
+    }
     if (typeof crypto !== 'undefined' && crypto && typeof crypto.getRandomValues === 'function') {
       var arr = new Uint32Array(1);
       var limit = Math.floor(0x100000000 / max) * max;
@@ -166,18 +169,36 @@
     return out;
   }
 
-  function generateNxNScramble(size) {
+  function generateNxNScramble(size, rng, puzzleIdOverride) {
     var mods = ['', "'", '2'];
     var moves = [];
     if (size === 2) {
       var faces2 = ['R', 'U', 'F'];
-      var len2 = 9 + randomInt(3);
+      var len2 = 9 + randomInt(3, rng);
       var last2 = '';
       for (var i = 0; i < len2; i++) {
         var f2;
-        do { f2 = faces2[randomInt(faces2.length)]; } while (f2 === last2);
+        do { f2 = faces2[randomInt(faces2.length, rng)]; } while (f2 === last2);
         last2 = f2;
-        moves.push(f2 + mods[randomInt(3)]);
+        moves.push(f2 + mods[randomInt(3, rng)]);
+      }
+    } else if (size === 3) {
+      var axes3 = [['U', 'D'], ['R', 'L'], ['F', 'B']];
+      var lastAxis3 = -1;
+      var used3 = {};
+      for (var m3 = 0; m3 < 20; m3++) {
+        var ax3, face3, tries3 = 0;
+        do {
+          ax3 = randomInt(3, rng);
+          face3 = axes3[ax3][randomInt(2, rng)];
+          tries3++;
+        } while (tries3 < 20 && ax3 === lastAxis3 && (used3[face3] || Object.keys(used3).length >= 2));
+        if (ax3 !== lastAxis3) {
+          lastAxis3 = ax3;
+          used3 = {};
+        }
+        used3[face3] = true;
+        moves.push(face3 + mods[randomInt(3, rng)]);
       }
     } else {
       // 4x4 (44 moves) / 5x5 (60 moves) 符合 WCA 轴向防冗余规则
@@ -193,9 +214,9 @@
         var axis, pool, moveBase;
         var tries = 0;
         do {
-          axis = randomInt(3);
+          axis = randomInt(3, rng);
           pool = axes[axis];
-          moveBase = pool[randomInt(pool.length)];
+          moveBase = pool[randomInt(pool.length, rng)];
           tries++;
         } while (
           tries < 30 &&
@@ -206,7 +227,7 @@
           usedInAxis = {};
         }
         usedInAxis[moveBase] = true;
-        moves.push(moveBase + mods[randomInt(3)]);
+        moves.push(moveBase + mods[randomInt(3, rng)]);
       }
     }
     var state = createNxN(size);
@@ -214,7 +235,7 @@
     return {
       algorithm: moves.join(' '),
       facelets: nxnToFacelets(state, size),
-      puzzle: size === 2 ? '222' : size === 4 ? '444' : '555'
+      puzzle: puzzleIdOverride || (size === 2 ? '222' : size === 3 ? '333' : size === 4 ? '444' : '555')
     };
   }
 
@@ -274,19 +295,19 @@
     }
   }
 
-  function generatePyraminxScramble() {
+  function generatePyraminxScramble(rng) {
     var axes = ['U', 'L', 'R', 'B'];
     var tips = ['u', 'l', 'r', 'b'];
     var moves = [];
     var last = '';
     for (var i = 0; i < 11; i++) {
       var a;
-      do { a = axes[randomInt(4)]; } while (a === last);
+      do { a = axes[randomInt(4, rng)]; } while (a === last);
       last = a;
-      moves.push(a + (randomInt(2) ? "'" : ''));
+      moves.push(a + (randomInt(2, rng) ? "'" : ''));
     }
     for (var j = 0; j < tips.length; j++) {
-      var r = randomInt(3);
+      var r = randomInt(3, rng);
       if (r === 1) moves.push(tips[j]);
       else if (r === 2) moves.push(tips[j] + "'");
     }
@@ -347,15 +368,15 @@
     for (var t = 0; t < turns; t++) rotateSkewbCW(s, base);
   }
 
-  function generateSkewbScramble() {
+  function generateSkewbScramble(rng) {
     var axes = ['U', 'L', 'R', 'B'];
     var moves = [];
     var last = '';
     for (var i = 0; i < 11; i++) {
       var a;
-      do { a = axes[randomInt(4)]; } while (a === last);
+      do { a = axes[randomInt(4, rng)]; } while (a === last);
       last = a;
-      moves.push(a + (randomInt(2) ? "'" : ''));
+      moves.push(a + (randomInt(2, rng) ? "'" : ''));
     }
     var state = createSkewb();
     moves.forEach(function (mv) { applySkewbMove(state, mv); });
@@ -366,13 +387,14 @@
     };
   }
 
-  function generateScramble(puzzleId) {
+  function generateScramble(puzzleId, rng) {
     var id = normalizePuzzle(puzzleId);
-    if (id === '222') return generateNxNScramble(2);
-    if (id === '444') return generateNxNScramble(4);
-    if (id === '555') return generateNxNScramble(5);
-    if (id === 'pyram') return generatePyraminxScramble();
-    if (id === 'skewb') return generateSkewbScramble();
+    if (id === '222') return generateNxNScramble(2, rng, '222');
+    if (id === '444') return generateNxNScramble(4, rng, '444');
+    if (id === '555') return generateNxNScramble(5, rng, '555');
+    if (id === 'pyram') return generatePyraminxScramble(rng);
+    if (id === 'skewb') return generateSkewbScramble(rng);
+    if (typeof rng === 'function') return generateNxNScramble(3, rng, id);
     return null;
   }
 

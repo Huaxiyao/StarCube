@@ -12,6 +12,8 @@ const store = fs.readFileSync(path.join(buildDir, 'store.js'), 'utf8');
 const audio = fs.readFileSync(path.join(buildDir, 'audio.js'), 'utf8');
 const backup = fs.readFileSync(path.join(buildDir, 'backup.js'), 'utf8');
 const puzzles = fs.readFileSync(path.join(buildDir, 'puzzles.js'), 'utf8');
+const challenge = fs.readFileSync(path.join(buildDir, 'challenge.js'), 'utf8');
+const formulas = fs.readFileSync(path.join(buildDir, 'formulas.js'), 'utf8');
 const app = fs.readFileSync(path.join(buildDir, 'app.js'), 'utf8');
 const solver = fs.readFileSync(path.join(buildDir, 'solver.bundle.js'), 'utf8');
 
@@ -19,9 +21,10 @@ function escapeForInlineScript(source) {
   return source.replace(/<\/script/gi, '<\\/script');
 }
 
-const appScripts = escapeForInlineScript(stats + '\n' + review + '\n' + store + '\n' + audio + '\n' + backup + '\n' + puzzles + '\n' + app);
+const appSource = [stats, review, store, audio, backup, puzzles, challenge, formulas, app].join('\n');
+const appScripts = escapeForInlineScript(appSource);
 const solverSource = escapeForInlineScript(solver);
-new Function(stats + '\n' + review + '\n' + store + '\n' + audio + '\n' + backup + '\n' + puzzles + '\n' + app);
+new Function(appSource);
 new Function(solver);
 
 if (!template.includes('__SOLVER_SOURCE__') || !template.includes('//__APP_SCRIPTS__')) {

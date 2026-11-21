@@ -19,6 +19,7 @@ const scripts = [
   'test-review.cjs',
   'test-store.cjs',
   'test-puzzles.cjs',
+  'test-challenge.cjs',
   'test-domain-regression.cjs',
   'test-app-regression.cjs',
   'test-mobile.cjs',

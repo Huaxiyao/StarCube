@@ -8,7 +8,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const browserDir = path.join(__dirname, '..', 'tests', 'browser');
-const suites = ['existing', 'training', 'review', 'layout', 'usability', 'theme', 'redesign', 'polish', 'enhancements'];
+const suites = ['existing', 'training', 'review', 'layout', 'usability', 'theme', 'redesign', 'polish', 'enhancements', 'formulas'];
 const entryMarker = '(async()=>{';
 const read = name => fs.readFileSync(path.join(browserDir, name), 'utf8');
 

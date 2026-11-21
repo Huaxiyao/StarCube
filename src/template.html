@@ -798,6 +798,242 @@ button:active:not(:disabled) { background:var(--control-active); }
   .pad { min-height:170px; }
 }
 
+/* 公式练习：先看局面与当前转动，再看步进控件，说明与视角复位收在舞台底部。沿用现有主题、面板与圆角。 */
+#formulasView { max-width:1080px; margin:0 auto; }
+#formulasView button { touch-action:manipulation; }
+#formulasView h2 { margin:0; font-size:clamp(1.45rem,4.5vw,2.075rem); line-height:1.2; letter-spacing:-.025em; }
+.formula-heading { margin:8px 0 20px; }
+.formula-heading p,.formula-case-description { margin:8px 0 0; color:var(--muted); line-height:1.55; }
+#formulaSeriesIndex { max-width:760px; margin:0 auto; }
+.formula-series-list { display:grid; gap:9px; }
+.formula-series-card {
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:16px;
+  min-height:78px; padding:12px 16px; border:1px solid var(--line);
+  border-radius:var(--radius); color:var(--text); background:var(--panel); text-align:left;
+}
+.formula-series-card:hover { border-color:var(--accent-border); background:var(--panel-subtle); }
+.formula-series-code {
+  padding:10px 6px; min-width:58px; border-radius:var(--radius-control); text-align:center;
+  background:var(--accent-soft); color:var(--accent); font:750 .975rem var(--mono);
+}
+.formula-series-name,.formula-series-description { display:block; }
+.formula-series-name { font-size:1rem; line-height:1.3; }
+.formula-series-description { margin-top:4px; font-size:.84rem; line-height:1.45; color:var(--muted); }
+.formula-series-meta { display:flex; align-items:center; gap:9px; color:var(--muted); font-size:.82rem; white-space:nowrap; }
+.formula-series-arrow { font-size:1.3rem; line-height:1; }
+.formula-cases { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.formula-case {
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:16px; align-items:center;
+  min-height:112px; padding:14px 16px; border:1px solid var(--line);
+  border-radius:var(--radius); color:var(--text); background:var(--panel); text-align:left;
+}
+.formula-case:hover { border-color:var(--accent-border); background:var(--panel-subtle); }
+.formula-case > span:last-child { color:var(--muted); font-size:1.4rem; }
+.formula-case-pattern {
+  display:grid; grid-template-columns:repeat(5,1fr); grid-template-rows:repeat(5,1fr);
+  width:74px; aspect-ratio:1; padding:7px; gap:2px; border-radius:var(--radius-control); background:var(--control);
+}
+.formula-slot-pattern { grid-template-columns:repeat(6,1fr); grid-template-rows:repeat(6,1fr); }
+.formula-case-pattern i { border-radius:2px; background:var(--sticker); }
+[data-formula-color="U"] { --sticker:#f8d746; }
+[data-formula-color="R"] { --sticker:#f68a32; }
+[data-formula-color="F"] { --sticker:#33c083; }
+[data-formula-color="D"] { --sticker:#f4f3ed; }
+[data-formula-color="L"] { --sticker:#ed5149; }
+[data-formula-color="B"] { --sticker:#4083ed; }
+.formula-case-name,.formula-case-meta { display:block; }
+.formula-case-name { font-weight:750; font-size:1.125rem; margin-bottom:4px; }
+.formula-case-meta { color:var(--muted); font-size:.84rem; line-height:1.45; }
+.formula-back-button { margin-bottom:8px; }
+.formula-workspace { display:grid; grid-template-columns:minmax(0,1.16fr) minmax(0,1fr); gap:16px; align-items:start; }
+.formula-stage { position:relative; overflow:hidden; border:1px solid var(--line); border-radius:var(--radius-lg); background:var(--panel-subtle); }
+.formula-orbit {
+  --cube-unit:clamp(39px,12vw,69px);
+  --piece-half:calc(var(--cube-unit) / 2 - .65px);
+  position:relative; isolation:isolate; height:clamp(312px,31vw,438px); overflow:clip;
+  perspective:780px; touch-action:none; cursor:grab;
+  background:radial-gradient(ellipse at 50% 35%,var(--panel),transparent 72%);
+}
+.formula-orbit:active { cursor:grabbing; }
+.formula-orbit:focus-visible { outline-offset:-4px; }
+.formula-orbit::before {
+  content:""; position:absolute; left:50%; top:77%; transform:translateX(-50%);
+  width:44%; height:32px; background:radial-gradient(ellipse, rgb(15 23 42 / .24), transparent 70%);
+  filter:blur(5px); pointer-events:none;
+}
+.formula-cube,.formula-rotating-layer,.formula-piece { position:absolute; top:0; left:0; width:0; height:0; transform-style:preserve-3d; }
+.formula-cube { top:48%; left:50%; }
+.formula-face {
+  position:absolute; left:calc(-1 * var(--piece-half)); top:calc(-1 * var(--piece-half));
+  width:calc(2 * var(--piece-half)); height:calc(2 * var(--piece-half));
+  transform:var(--face-tilt) translateZ(var(--piece-half)); backface-visibility:hidden;
+  background:#1d222b; border-radius:8%;
+}
+.formula-sticker {
+  position:absolute; inset:8%; border-radius:12%; background:var(--sticker); transform:translateZ(.2px);
+  box-shadow:inset 0 0 0 1px rgb(29 34 43 / .16),inset 0 2px 2px rgb(250 252 255 / .21);
+}
+.formula-stage-caption { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:5px 12px; border-top:1px solid var(--line-soft); color:var(--muted); font-size:.8rem; }
+.formula-stage-caption button { padding:0 8px; white-space:nowrap; }
+.formula-panel { padding:16px; border:1px solid var(--line); border-radius:var(--radius-lg); background:var(--panel); }
+.formula-modes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; padding:4px; background:var(--control); border-radius:var(--radius-control); }
+.formula-modes button,.formula-move { border-radius:8px; color:var(--muted); white-space:nowrap; }
+.formula-modes button[aria-pressed="true"] { background:var(--panel); color:var(--text); box-shadow:var(--shadow-sm); font-weight:700; }
+.formula-step-status { margin:16px 0 3px; color:var(--text); font-weight:700; font-variant-numeric:tabular-nums; }
+.formula-mode-help { margin:10px 0 0; color:var(--muted); font-size:.84rem; line-height:1.45; }
+.formula-step-detail { min-height:2.9em; margin:0 0 9px; line-height:1.45; color:var(--muted); font-size:.88rem; }
+.formula-moves { display:flex; flex-wrap:wrap; gap:4px; margin-top:12px; }
+.formula-move { background:var(--control); font-family:var(--mono); font-size:.93rem; }
+.formula-move:hover,.formula-modes button:hover { background:var(--control-hover); }
+.formula-move[aria-current="step"] { background:var(--accent-soft); color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent-border); font-weight:750; }
+.formula-controls { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-top:8px; }
+.formula-controls .small-btn { padding:0 6px; white-space:nowrap; }
+.formula-controls button[hidden] ~ button:last-child { grid-column:2/-1; }
+.formula-controls .formula-primary { color:var(--on-accent); background:var(--accent-fill); border-color:transparent; }
+.formula-secondary { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; }
+.formula-speed { display:flex; align-items:center; gap:8px; font-size:.875rem; color:var(--muted); }
+.formula-speed select { min-height:44px; padding:0 8px; border:1px solid var(--line); border-radius:8px; background:var(--panel-subtle); color:var(--text); font:inherit; }
+.formula-hint { margin:8px 0 0; }
+#app[data-view="formulas"] .footer-dock:not(.is-sheet-open),
+#app[data-view="formulas"] #inspectionToggle,
+#app[data-view="formulas"] #trainingPanel,
+#app[data-view="formulas"] #mobileGroupBtn,
+#app[data-view="formulas"] #status { display:none; }
+
+@media (min-width:721px) and (max-width:1000px) {
+  #app[data-view="formulas"] .topbar { flex-wrap:wrap; }
+  #app[data-view="formulas"] .view-nav .nav-button { padding-inline:10px; }
+  .formula-orbit { --cube-unit:clamp(45px,6.5vw,64px); }
+}
+@media (max-width:720px) {
+  #app[data-view="formulas"] .brand { display:flex; }
+  .formula-series-card { gap:10px; padding:10px 11px; }
+  .formula-series-code { min-width:51px; font-size:.88rem; }
+  .formula-series-meta { gap:6px; }
+  .formula-workspace { grid-template-columns:minmax(0,1fr); gap:10px; }
+  .formula-orbit { height:clamp(245px,72vw,340px); }
+  .formula-cases { grid-template-columns:minmax(0,1fr); gap:8px; }
+  .formula-case { min-height:88px; padding:8px 12px; }
+  .formula-case-pattern { width:62px; }
+  .formula-panel { padding:12px; }
+}
+@media (max-width:420px) {
+  .view-nav:has(#navFormulas:not([hidden])) .nav-button { padding-inline:6px; }
+}
+
+/* ==================== v2.1 新特性：PB 庆祝动画、个人账号、独立记录页、日赛/周赛 ==================== */
+.confetti-canvas { position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:90; }
+@keyframes pb-pop {
+  0% { transform:scale(.92); }
+  45% { transform:scale(1.08); }
+  75% { transform:scale(.98); }
+  100% { transform:scale(1); }
+}
+@keyframes pb-banner-in {
+  from { opacity:0; transform:translateY(8px) scale(.94); }
+  to { opacity:1; transform:translateY(0) scale(1); }
+}
+.timer.is-pb-pop { animation:pb-pop 520ms cubic-bezier(.22,1,.36,1); }
+.pb-celebrate { display:inline-flex; align-items:center; gap:6px; margin-top:8px; padding:4px 12px; border-radius:var(--radius-pill); background:linear-gradient(135deg,#f59e0b,#ea580c); color:#ffffff; font-size:0.78rem; font-weight:700; letter-spacing:.01em; box-shadow:0 6px 18px rgb(245 158 11 / .32); animation:pb-banner-in 260ms cubic-bezier(.22,1,.36,1) both; }
+
+/* 顶栏个人头像按钮 */
+.profile-trigger { display:inline-flex; align-items:center; gap:7px; min-height:38px; min-width:38px; padding:2px 10px 2px 3px; border-radius:999px; border:1px solid var(--line-soft); background:var(--panel-subtle); color:var(--text); font-size:0.78rem; font-weight:600; flex:none; }
+.profile-avatar { width:30px; height:30px; border-radius:999px; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; background:var(--accent-soft); color:var(--accent); font-size:0.8rem; font-weight:700; flex:none; border:1.5px solid var(--line-soft); }
+.profile-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+.profile-name-short { max-width:72px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* 计时页赛事进行中状态条 */
+.contest-banner { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 12px; margin-bottom:6px; border-radius:12px; background:var(--accent-soft); border:1px solid var(--accent-border); color:var(--accent); font-size:0.8rem; font-weight:600; }
+.contest-banner .small-btn { min-height:28px; min-width:0; padding:0 10px; border-radius:999px; font-size:0.72rem; background:var(--panel); border:1px solid var(--accent-border); color:var(--accent); box-shadow:none; }
+
+/* 独立「记录」页 */
+.records-shell { display:flex; flex-direction:column; gap:12px; }
+.records-summary-bar { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.records-summary-card { padding:10px 12px; border-radius:14px; background:var(--panel); border:1px solid var(--line-soft); display:flex; flex-direction:column; gap:2px; }
+.records-summary-card span { font-size:0.72rem; color:var(--muted); }
+.records-summary-card strong { font:700 1.0625rem/1.3 var(--digits); color:var(--text); font-variant-numeric:tabular-nums; }
+.records-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; }
+.records-filters { display:flex; flex-wrap:wrap; gap:6px; }
+.records-filter-btn { min-height:34px; min-width:0; padding:0 12px; border-radius:999px; border:1px solid var(--line-soft); background:var(--panel); color:var(--muted); font-size:0.78rem; font-weight:600; }
+.records-filter-btn[aria-pressed="true"] { background:var(--accent-fill); border-color:var(--accent-fill); color:var(--on-accent); }
+.records-tools-right { display:flex; align-items:center; gap:6px; margin-left:auto; }
+.records-grid { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; }
+.record-tile { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:76px; padding:10px 8px; border-radius:15px; border:1px solid var(--line-soft); background:var(--panel); color:var(--text); text-align:center; width:100%; }
+.record-tile:active { transform:scale(.97); }
+.record-tile-top { width:100%; display:flex; align-items:center; justify-content:space-between; font-size:0.68rem; color:var(--muted); }
+.record-tile-pb { padding:0 5px; border-radius:999px; background:linear-gradient(135deg,#f59e0b,#ea580c); color:#fff; font-size:0.62rem; font-weight:700; line-height:1.5; }
+.record-tile-time { font:700 1.2rem/1.25 var(--digits); font-variant-numeric:tabular-nums; color:var(--text); margin:2px 0; }
+.record-tile.is-plus .record-tile-time { color:var(--yellow); }
+.record-tile.is-dnf .record-tile-time { color:var(--red-text); }
+.record-tile-date { font-size:0.66rem; color:var(--muted); opacity:.82; }
+.records-empty { padding:40px 16px; text-align:center; color:var(--muted); border-radius:16px; background:var(--panel); border:1px dashed var(--line); font-size:0.875rem; }
+
+/* 独立「赛事」页（日赛 & 周赛） */
+.contest-shell { display:flex; flex-direction:column; gap:14px; }
+.contest-hero { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-radius:18px; background:var(--panel); border:1px solid var(--line-soft); }
+.contest-hero-left { display:flex; align-items:center; gap:12px; min-width:0; }
+.contest-hero-avatar { width:44px; height:44px; font-size:1rem; }
+.contest-hero-name { font-size:0.95rem; font-weight:700; color:var(--text); }
+.contest-hero-bio { font-size:0.75rem; color:var(--muted); margin-top:2px; }
+.contest-streak-pill { display:inline-flex; flex-direction:column; align-items:center; padding:6px 12px; border-radius:14px; background:var(--accent-soft); color:var(--accent); flex:none; }
+.contest-streak-pill strong { font:700 1.125rem/1.1 var(--digits); }
+.contest-streak-pill span { font-size:0.68rem; font-weight:600; }
+.contest-mode-bar { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; padding:4px; border-radius:14px; background:var(--control); }
+.contest-mode-btn { min-height:40px; border-radius:10px; font-size:0.875rem; font-weight:700; color:var(--muted); background:transparent; }
+.contest-mode-btn[aria-pressed="true"] { background:var(--panel); color:var(--text); box-shadow:0 1px 4px rgb(15 23 42 / .12); }
+.contest-card { padding:16px; border-radius:18px; background:var(--panel); border:1px solid var(--line-soft); display:flex; flex-direction:column; gap:12px; }
+.contest-card-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.contest-card-head h3 { margin:0; font-size:1rem; font-weight:700; }
+.contest-period-tag { font:600 0.75rem/1.4 var(--mono); color:var(--accent); padding:2px 8px; border-radius:999px; background:var(--accent-soft); }
+.contest-slots { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; }
+.contest-slots.is-weekly { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.contest-slot { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:54px; padding:6px 4px; border-radius:12px; border:1px solid var(--line-soft); background:var(--panel-subtle); font-variant-numeric:tabular-nums; }
+.contest-slot.is-next { border-color:var(--accent); background:var(--accent-soft); }
+.contest-slot.is-done { background:var(--panel); border-color:var(--line); }
+.contest-slot-idx { font-size:0.65rem; color:var(--muted); }
+.contest-slot-val { font:700 0.875rem/1.2 var(--digits); color:var(--text); }
+.contest-slot.is-dnf .contest-slot-val { color:var(--red-text); }
+.contest-result-row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.contest-metric { padding:10px; border-radius:12px; background:var(--panel-subtle); border:1px solid var(--line-soft); text-align:center; }
+.contest-metric span { display:block; font-size:0.7rem; color:var(--muted); }
+.contest-metric strong { display:block; margin-top:2px; font:700 1.05rem/1.2 var(--digits); color:var(--text); }
+.contest-cta { width:100%; min-height:46px; border-radius:14px; background:var(--accent-fill); color:var(--on-accent); font-size:0.9375rem; font-weight:700; }
+.contest-history-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.contest-history-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 14px; border-radius:14px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
+.contest-history-left { display:flex; flex-direction:column; gap:2px; }
+.contest-history-period { font-size:0.84rem; font-weight:700; color:var(--text); }
+.contest-history-sub { font-size:0.72rem; color:var(--muted); }
+.contest-history-score { font:700 1.05rem/1.2 var(--digits); color:var(--accent); font-variant-numeric:tabular-nums; }
+
+/* 个人账号资料弹窗 */
+.profile-dialog { width:min(440px,calc(100% - 24px)); }
+.profile-editor-head { display:flex; align-items:center; gap:14px; margin:12px 0 14px; }
+.profile-avatar-lg { width:68px; height:68px; font-size:1.65rem; border-width:2px; }
+.profile-avatar-actions { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+.profile-presets { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; margin:8px 0 14px; }
+.profile-preset-btn { min-height:42px; min-width:0; padding:0; border-radius:999px; border:2px solid transparent; display:inline-flex; align-items:center; justify-content:center; font-size:1.15rem; background:var(--panel-subtle); }
+.profile-preset-btn[aria-pressed="true"] { border-color:var(--accent); transform:scale(1.06); }
+.profile-fields { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+.profile-fields label { display:flex; flex-direction:column; gap:4px; font-size:0.78rem; font-weight:600; color:var(--muted); }
+.profile-fields input { min-height:42px; padding:8px 12px; border-radius:11px; border:1px solid var(--control-border); background:var(--panel-subtle); color:var(--text); font-size:0.9rem; }
+.profile-career-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:14px; }
+.profile-career-item { padding:10px 12px; border-radius:12px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
+.profile-career-item span { display:block; font-size:0.72rem; color:var(--muted); }
+.profile-career-item strong { display:block; margin-top:2px; font:700 1.05rem/1.2 var(--digits); color:var(--text); }
+.profile-save-btn { width:100%; min-height:44px; border-radius:12px; background:var(--accent-fill); color:var(--on-accent); font-size:0.9rem; font-weight:700; }
+
+@media (max-width:720px) {
+  .profile-trigger { padding:0; width:36px; min-width:36px; min-height:36px; border:0; background:transparent; justify-content:center; }
+  .profile-name-short { display:none; }
+  .profile-avatar { width:30px; height:30px; }
+  .view-nav { left:12px; right:12px; transform:none; max-width:440px; width:auto; min-width:0; margin:0 auto; padding:4px; border-radius:20px; gap:2px; }
+  .nav-button { flex:1; flex-direction:column; min-height:46px; min-width:0; gap:2px; padding:4px 2px; border-radius:15px; font-size:0.68rem; }
+  .nav-button svg { width:18px; height:18px; }
+  .records-summary-bar { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .records-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  #app[data-focus="true"] .contest-banner { opacity:0; pointer-events:none; }
+}
+
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none !important; animation:none !important; scroll-behavior:auto !important; } }
 
 </style>
@@ -809,9 +1045,12 @@ button:active:not(:disabled) { background:var(--control-active); }
     <button id="mobileGroupBtn" class="mobile-group-btn" type="button" aria-label="切换项目或管理训练分组"><svg class="brand-symbol" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round" aria-hidden="true"><path class="cube-top" stroke="none" d="M16 2.4 28 9.2 16 16 4 9.2Z"/><path class="cube-left" stroke="none" d="M4 9.2 16 16v13.6L4 22.8Z"/><path class="cube-right" stroke="none" d="M16 16 28 9.2v13.6L16 29.6Z"/><path class="cube-grid" stroke-width=".65" stroke-linecap="round" d="M12 4.67 24 11.47M8 6.93 20 13.73M20 4.67 8 11.47M24 6.93 12 13.73M8 11.47v13.6M12 13.73v13.6M4 13.73 16 20.53M4 18.27 16 25.07M20 13.73v13.6M24 11.47v13.6M16 20.53 28 13.73M16 25.07 28 18.27"/><path d="M16 2.4 28 9.2v13.6L16 29.6 4 22.8V9.2ZM16 16 4 9.2M16 16l12-6.8M16 16v13.6"/><path class="cube-star-bg" stroke="none" d="M16 11.2Q16.3 15 20.6 16 16.3 17 16 20.8 15.7 17 11.4 16 15.7 15 16 11.2Z"/><path class="cube-star" stroke="none" d="M16 12.2Q16.25 15.25 19.6 16 16.25 16.75 16 19.8 15.75 16.75 12.4 16 15.75 15.25 16 12.2Z"/></svg><span id="mobileGroupName" class="mobile-group-name">默认训练</span><span id="mobilePuzzleBadge" class="mobile-puzzle-badge">3×3</span><svg class="mobile-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
     <nav class="view-nav" aria-label="主视图">
       <button id="navTimer" class="nav-button" type="button" aria-pressed="true" aria-controls="timerView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="14" r="8"/><path d="M9 2h6M12 2v4M12 10v5l3 2"/></svg>计时</button>
+      <button id="navRecords" class="nav-button" type="button" aria-pressed="false" aria-controls="recordsView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/></svg>记录</button>
+      <button id="navContest" class="nav-button" type="button" aria-pressed="false" aria-controls="contestView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>赛事</button>
       <button id="navReview" class="nav-button" type="button" aria-pressed="false" aria-controls="reviewView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 3v17h17M7 15l4-5 4 2 6-7"/></svg>复盘</button>
+      <button id="navFormulas" class="nav-button" type="button" aria-pressed="false" aria-controls="formulasView" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 9 8-4.5M12 12 4 7.5M12 12v9"/></svg>公式</button>
     </nav>
-    <div class="topbar-right"><button id="inspectionToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="15 秒观察" title="15 秒观察"><svg class="switch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6M19 5l1.5 1.5"/></svg><span class="switch-label">观察</span><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button><button id="themeToggle" class="theme-btn" type="button" data-theme="light" aria-label="切换主题，当前：纯净纸白，点击切换为复古暖纸" title="当前主题：纯净纸白（点击切换为复古暖纸）"><svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg><svg class="theme-icon theme-icon-warm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v18H7.5A2.5 2.5 0 0 0 5 22V4.5Z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19"/><path d="M9.5 7h5.5M9.5 11h4"/></svg><svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a6.7 6.7 0 0 0 11 11Z"/></svg><span id="themeLabel" class="theme-label">纸白</span></button><button id="mobileSettingsBtn" class="mobile-icon-btn" type="button" aria-label="练习设置与数据备份"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></button><span id="status" class="status" role="status">初始化中…</span></div>
+    <div class="topbar-right"><button id="inspectionToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="15 秒观察" title="15 秒观察"><svg class="switch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6M19 5l1.5 1.5"/></svg><span class="switch-label">观察</span><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button><button id="themeToggle" class="theme-btn" type="button" data-theme="light" aria-label="切换主题，当前：纯净纸白，点击切换为复古暖纸" title="当前主题：纯净纸白（点击切换为复古暖纸）"><svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg><svg class="theme-icon theme-icon-warm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v18H7.5A2.5 2.5 0 0 0 5 22V4.5Z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19"/><path d="M9.5 7h5.5M9.5 11h4"/></svg><svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a6.7 6.7 0 0 0 11 11Z"/></svg><span id="themeLabel" class="theme-label">纸白</span></button><button id="profileTrigger" class="profile-trigger" type="button" aria-label="个人账号资料"><span id="topbarAvatar" class="profile-avatar" aria-hidden="true">🧊</span><span id="topbarProfileName" class="profile-name-short">魔方手</span></button><button id="mobileSettingsBtn" class="mobile-icon-btn" type="button" aria-label="练习设置与数据备份"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></button><span id="status" class="status" role="status">初始化中…</span></div>
   </header>
   <div id="storageBanner" class="banner" hidden>成绩不会被保存：浏览器存储不可用</div>
   <main>
@@ -845,6 +1084,7 @@ button:active:not(:disabled) { background:var(--control-active); }
 
     <aside id="undoNotice" class="undo-notice" aria-label="删除与撤销" hidden><p id="undoMessage" role="status"></p><button id="undoDelete" class="small-btn" type="button">撤销</button><button id="undoDismiss" class="undo-dismiss" type="button" aria-label="关闭提示">×</button></aside>
     <section id="timerView" aria-label="计时">
+      <div id="contestBanner" class="contest-banner" hidden><span id="contestBannerText">日赛 · 第 1 / 5 把</span><button id="contestBannerExit" class="small-btn" type="button">退出赛事</button></div>
       <div class="timer-layout"><div class="timer-stage">
     <section class="scramble" aria-label="打乱">
       <div class="scramble-main">
@@ -864,6 +1104,7 @@ button:active:not(:disabled) { background:var(--control-active); }
       <div class="timer-line">
         <div id="timer" class="timer" aria-live="off">0.000</div>
       </div>
+      <div id="pbCelebrateBanner" class="pb-celebrate" hidden>🎉 NEW PB</div>
       <div id="subStatus" class="sub-status"></div>
       <button id="cancelInspection" class="cancel" type="button" hidden>取消观察</button>
     </section>
@@ -895,6 +1136,74 @@ button:active:not(:disabled) { background:var(--control-active); }
         <section class="recent-section" aria-label="最近成绩"><div class="section-heading"><h2>最近成绩</h2><button id="recentReview" class="text-btn" type="button">完整复盘 ↗</button></div><ol id="recentList" class="recent-list"></ol><p id="recentEmpty" class="recent-empty">完成第一把后，这里会显示<br>本组最近 5 次成绩。</p></section>
       </aside></div>
     </section>
+    <section id="recordsView" aria-label="全部记录" tabindex="-1" hidden>
+      <div class="view-heading"><h2 id="recordsHeading">复原记录</h2><p>本组全部复原记录一目了然，点击任意成绩查看详情</p></div>
+      <div class="records-shell">
+        <div class="records-summary-bar">
+          <div class="records-summary-card"><span>总把数</span><strong id="recSumCount">0</strong></div>
+          <div class="records-summary-card"><span>单次 PB</span><strong id="recSumPb">—</strong></div>
+          <div class="records-summary-card"><span>Mean</span><strong id="recSumMean">—</strong></div>
+          <div class="records-summary-card"><span>Ao100</span><strong id="recSumAo100">—</strong></div>
+        </div>
+        <div class="records-toolbar">
+          <div id="recordsFilters" class="records-filters" role="group" aria-label="记录筛选">
+            <button class="records-filter-btn" type="button" data-filter="all" aria-pressed="true">全部</button>
+            <button class="records-filter-btn" type="button" data-filter="pb" aria-pressed="false">PB 里程碑</button>
+            <button class="records-filter-btn" type="button" data-filter="+2" aria-pressed="false">+2</button>
+            <button class="records-filter-btn" type="button" data-filter="dnf" aria-pressed="false">DNF</button>
+          </div>
+          <div class="records-tools-right">
+            <button id="recordsSortBtn" class="small-btn" type="button">最新在前</button>
+            <button id="recordsCsvBtn" class="small-btn" type="button">导出 CSV</button>
+          </div>
+        </div>
+        <ol id="recordsGrid" class="records-grid"></ol>
+        <div id="recordsEmpty" class="records-empty">当前筛选下还没有复原记录，去计时页拧几把吧！</div>
+        <button id="recordsMoreBtn" class="history-more" type="button" hidden>加载更多记录</button>
+      </div>
+    </section>
+
+    <section id="contestView" aria-label="个人日赛与周赛" tabindex="-1" hidden>
+      <div class="view-heading"><h2>个人赛事</h2><p>每日 5 把 / 每周 12 把固定赛题，自己和自己较量</p></div>
+      <div class="contest-shell">
+        <div class="contest-hero">
+          <div class="contest-hero-left">
+            <span id="contestAvatar" class="profile-avatar contest-hero-avatar" aria-hidden="true">🧊</span>
+            <div>
+              <div id="contestPlayerName" class="contest-hero-name">魔方手</div>
+              <div id="contestPlayerBio" class="contest-hero-bio">点击右上角头像可自定义昵称与头像</div>
+            </div>
+          </div>
+          <div class="contest-streak-pill"><strong id="contestStreakNum">0</strong><span>天连打 🔥</span></div>
+        </div>
+        <div id="contestModeBar" class="contest-mode-bar" role="group" aria-label="赛事类型">
+          <button class="contest-mode-btn" type="button" data-contest-type="daily" aria-pressed="true">日赛 · 5 把 Ao5</button>
+          <button class="contest-mode-btn" type="button" data-contest-type="weekly" aria-pressed="false">周赛 · 12 把 Ao12</button>
+        </div>
+        <div class="contest-card">
+          <div class="contest-card-head">
+            <h3 id="contestCardTitle">今日 3×3 日赛</h3>
+            <span id="contestPeriodTag" class="contest-period-tag">2026-11-21</span>
+          </div>
+          <div id="contestSlots" class="contest-slots"></div>
+          <div class="contest-result-row">
+            <div class="contest-metric"><span id="contestAvgLabel">本场 Ao5</span><strong id="contestCurrAvg">—</strong></div>
+            <div class="contest-metric"><span>本场最佳</span><strong id="contestCurrBest">—</strong></div>
+            <div class="contest-metric"><span>历史最佳</span><strong id="contestBestEver">—</strong></div>
+          </div>
+          <button id="contestStartBtn" class="contest-cta" type="button">开始今日第 1 把</button>
+        </div>
+        <div class="contest-card">
+          <div class="contest-card-head">
+            <h3>历史赛绩记录</h3>
+            <span id="contestHistoryCount" class="label">0 场</span>
+          </div>
+          <ol id="contestHistoryList" class="contest-history-list"></ol>
+          <div id="contestHistoryEmpty" class="records-empty">还没有完成过本项目的该项赛事，马上开打第一场吧！</div>
+        </div>
+      </div>
+    </section>
+
     <section id="reviewView" aria-label="复盘" tabindex="-1" hidden>
       <div class="view-heading"><h2>训练复盘</h2><p>当前训练的趋势、统计与每一把成绩</p></div>
       <div class="review-layout">
@@ -980,6 +1289,66 @@ button:active:not(:disabled) { background:var(--control-active); }
 
       </div>
     </section>
+    <section id="formulasView" aria-label="公式练习" hidden>
+      <div id="formulaSeriesIndex">
+        <header class="formula-heading">
+          <h2 id="formulaSeriesTitle" tabindex="-1">公式系列</h2>
+          <p>三阶魔方</p>
+        </header>
+        <div id="formulaSeriesList" class="formula-series-list"></div>
+      </div>
+      <div id="formulaLibrary" hidden>
+        <button id="formulaLibraryBack" class="text-btn formula-back-button" type="button">← 返回系列</button>
+        <header class="formula-heading">
+          <h2 id="formulaLibraryTitle" tabindex="-1"></h2>
+          <p id="formulaLibraryDescription"></p>
+        </header>
+        <div id="formulaCases" class="formula-cases"></div>
+      </div>
+      <div id="formulaDetail" hidden>
+        <button id="formulaBack" class="text-btn formula-back-button" type="button">← 返回公式库</button>
+        <header class="formula-heading">
+          <h2 id="formulaTitle" tabindex="-1"></h2>
+          <p id="formulaDescription" class="formula-case-description"></p>
+        </header>
+        <div class="formula-workspace">
+          <div class="formula-stage">
+            <div id="formulaOrbit" class="formula-orbit" tabindex="0" role="group" aria-label="3D 魔方视角" aria-describedby="formulaOrbitHelp"></div>
+            <div class="formula-stage-caption">
+              <span id="formulaOrbitHelp">顶黄 · 前绿<br>拖动或按方向键查看</span>
+              <button id="formulaCameraReset" class="text-btn" type="button">复位视角</button>
+            </div>
+          </div>
+          <div class="formula-panel">
+            <div id="formulaModes" class="formula-modes" role="group" aria-label="练习方式">
+              <button type="button" data-formula-mode="demo" aria-pressed="true">演示</button>
+              <button type="button" data-formula-mode="setup" aria-pressed="false">摆出局面</button>
+              <button type="button" data-formula-mode="practice" aria-pressed="false">实体跟练</button>
+            </div>
+            <p id="formulaModeHelp" class="formula-mode-help" hidden></p>
+            <p id="formulaStatus" class="formula-step-status" role="status"></p>
+            <p id="formulaStepDetail" class="formula-step-detail"></p>
+            <button id="formulaHint" class="small-btn formula-hint" type="button" hidden>提示下一步</button>
+            <div class="formula-controls">
+              <button id="formulaPrev" class="small-btn" type="button">上一步</button>
+              <button id="formulaPlay" class="small-btn formula-primary" type="button">播放</button>
+              <button id="formulaNext" class="small-btn" type="button">下一步</button>
+            </div>
+            <div id="formulaMoves" class="formula-moves" role="group" aria-label="公式步骤"></div>
+            <div class="formula-secondary">
+              <button id="formulaRestart" class="text-btn" type="button">回到开头</button>
+              <label id="formulaSpeedControl" class="formula-speed">速度
+                <select id="formulaSpeed">
+                  <option value="680">慢速</option>
+                  <option value="400" selected>标准</option>
+                  <option value="240">快速</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
     <div id="settingsPanel" class="footer-dock">
       <div class="sheet-head"><h3>练习设置</h3><button id="settingsSheetClose" class="small-btn" type="button">完成</button></div>
       <section class="settings-group desktop-hide-settings" aria-label="计时与触控设置">
@@ -1061,8 +1430,43 @@ button:active:not(:disabled) { background:var(--control-active); }
   </main>
 </div>
 
+<canvas id="confettiCanvas" class="confetti-canvas" aria-hidden="true"></canvas>
 <div id="mobileSheetBackdrop" class="mobile-sheet-backdrop" hidden></div>
 <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+
+<dialog id="profileDialog" class="record-dialog profile-dialog" aria-labelledby="profileDialogTitle">
+  <div class="record-heading"><h2 id="profileDialogTitle">我的魔方名片</h2><button id="profileClose" class="small-btn" type="button" autofocus>关闭</button></div>
+  <div class="profile-editor-head">
+    <span id="profilePreviewAvatar" class="profile-avatar profile-avatar-lg" aria-hidden="true">🧊</span>
+    <div class="profile-avatar-actions">
+      <button id="profileUploadBtn" class="small-btn" type="button">从相册选择头像</button>
+      <input id="profileAvatarFile" type="file" accept="image/*" hidden>
+      <span class="setting-desc">离线保存于本机，也可随 JSON 备份迁移</span>
+    </div>
+  </div>
+  <div class="label">快捷预设头像</div>
+  <div id="profilePresets" class="profile-presets" role="group" aria-label="选择预设头像">
+    <button class="profile-preset-btn" type="button" data-avatar="🧊" aria-pressed="true">🧊</button>
+    <button class="profile-preset-btn" type="button" data-avatar="⚡" aria-pressed="false">⚡</button>
+    <button class="profile-preset-btn" type="button" data-avatar="🚀" aria-pressed="false">🚀</button>
+    <button class="profile-preset-btn" type="button" data-avatar="🌟" aria-pressed="false">🌟</button>
+    <button class="profile-preset-btn" type="button" data-avatar="🦊" aria-pressed="false">🦊</button>
+    <button class="profile-preset-btn" type="button" data-avatar="🏆" aria-pressed="false">🏆</button>
+  </div>
+  <form id="profileForm">
+    <div class="profile-fields">
+      <label>昵称（1–20 字）<input id="profileNameInput" type="text" maxlength="20" placeholder="例如：星际魔方手" autocomplete="off"></label>
+      <label>个人目标 / 签名（可选）<input id="profileBioInput" type="text" maxlength="40" placeholder="例如：今年冲进 Sub-10！" autocomplete="off"></label>
+    </div>
+    <div class="profile-career-grid">
+      <div class="profile-career-item"><span>全项目总复原</span><strong id="profileTotalSolves">0</strong></div>
+      <div class="profile-career-item"><span>历史最快单次</span><strong id="profileBestSingle">—</strong></div>
+      <div class="profile-career-item"><span>完赛场次</span><strong id="profileTotalContests">0</strong></div>
+      <div class="profile-career-item"><span>连续日赛打卡</span><strong id="profileStreakDays">0 天</strong></div>
+    </div>
+    <button id="profileSaveBtn" class="profile-save-btn" type="submit">保存个人资料</button>
+  </form>
+</dialog>
 
 <dialog id="netPreviewDialog" class="record-dialog net-preview-dialog" aria-labelledby="netPreviewTitle">
   <div class="record-heading"><h2 id="netPreviewTitle">魔方打乱展开图</h2><button id="netPreviewClose" class="small-btn" type="button" autofocus>关闭</button></div>

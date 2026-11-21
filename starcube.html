@@ -798,6 +798,242 @@ button:active:not(:disabled) { background:var(--control-active); }
   .pad { min-height:170px; }
 }
 
+/* 公式练习：先看局面与当前转动，再看步进控件，说明与视角复位收在舞台底部。沿用现有主题、面板与圆角。 */
+#formulasView { max-width:1080px; margin:0 auto; }
+#formulasView button { touch-action:manipulation; }
+#formulasView h2 { margin:0; font-size:clamp(1.45rem,4.5vw,2.075rem); line-height:1.2; letter-spacing:-.025em; }
+.formula-heading { margin:8px 0 20px; }
+.formula-heading p,.formula-case-description { margin:8px 0 0; color:var(--muted); line-height:1.55; }
+#formulaSeriesIndex { max-width:760px; margin:0 auto; }
+.formula-series-list { display:grid; gap:9px; }
+.formula-series-card {
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:16px;
+  min-height:78px; padding:12px 16px; border:1px solid var(--line);
+  border-radius:var(--radius); color:var(--text); background:var(--panel); text-align:left;
+}
+.formula-series-card:hover { border-color:var(--accent-border); background:var(--panel-subtle); }
+.formula-series-code {
+  padding:10px 6px; min-width:58px; border-radius:var(--radius-control); text-align:center;
+  background:var(--accent-soft); color:var(--accent); font:750 .975rem var(--mono);
+}
+.formula-series-name,.formula-series-description { display:block; }
+.formula-series-name { font-size:1rem; line-height:1.3; }
+.formula-series-description { margin-top:4px; font-size:.84rem; line-height:1.45; color:var(--muted); }
+.formula-series-meta { display:flex; align-items:center; gap:9px; color:var(--muted); font-size:.82rem; white-space:nowrap; }
+.formula-series-arrow { font-size:1.3rem; line-height:1; }
+.formula-cases { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.formula-case {
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:16px; align-items:center;
+  min-height:112px; padding:14px 16px; border:1px solid var(--line);
+  border-radius:var(--radius); color:var(--text); background:var(--panel); text-align:left;
+}
+.formula-case:hover { border-color:var(--accent-border); background:var(--panel-subtle); }
+.formula-case > span:last-child { color:var(--muted); font-size:1.4rem; }
+.formula-case-pattern {
+  display:grid; grid-template-columns:repeat(5,1fr); grid-template-rows:repeat(5,1fr);
+  width:74px; aspect-ratio:1; padding:7px; gap:2px; border-radius:var(--radius-control); background:var(--control);
+}
+.formula-slot-pattern { grid-template-columns:repeat(6,1fr); grid-template-rows:repeat(6,1fr); }
+.formula-case-pattern i { border-radius:2px; background:var(--sticker); }
+[data-formula-color="U"] { --sticker:#f8d746; }
+[data-formula-color="R"] { --sticker:#f68a32; }
+[data-formula-color="F"] { --sticker:#33c083; }
+[data-formula-color="D"] { --sticker:#f4f3ed; }
+[data-formula-color="L"] { --sticker:#ed5149; }
+[data-formula-color="B"] { --sticker:#4083ed; }
+.formula-case-name,.formula-case-meta { display:block; }
+.formula-case-name { font-weight:750; font-size:1.125rem; margin-bottom:4px; }
+.formula-case-meta { color:var(--muted); font-size:.84rem; line-height:1.45; }
+.formula-back-button { margin-bottom:8px; }
+.formula-workspace { display:grid; grid-template-columns:minmax(0,1.16fr) minmax(0,1fr); gap:16px; align-items:start; }
+.formula-stage { position:relative; overflow:hidden; border:1px solid var(--line); border-radius:var(--radius-lg); background:var(--panel-subtle); }
+.formula-orbit {
+  --cube-unit:clamp(39px,12vw,69px);
+  --piece-half:calc(var(--cube-unit) / 2 - .65px);
+  position:relative; isolation:isolate; height:clamp(312px,31vw,438px); overflow:clip;
+  perspective:780px; touch-action:none; cursor:grab;
+  background:radial-gradient(ellipse at 50% 35%,var(--panel),transparent 72%);
+}
+.formula-orbit:active { cursor:grabbing; }
+.formula-orbit:focus-visible { outline-offset:-4px; }
+.formula-orbit::before {
+  content:""; position:absolute; left:50%; top:77%; transform:translateX(-50%);
+  width:44%; height:32px; background:radial-gradient(ellipse, rgb(15 23 42 / .24), transparent 70%);
+  filter:blur(5px); pointer-events:none;
+}
+.formula-cube,.formula-rotating-layer,.formula-piece { position:absolute; top:0; left:0; width:0; height:0; transform-style:preserve-3d; }
+.formula-cube { top:48%; left:50%; }
+.formula-face {
+  position:absolute; left:calc(-1 * var(--piece-half)); top:calc(-1 * var(--piece-half));
+  width:calc(2 * var(--piece-half)); height:calc(2 * var(--piece-half));
+  transform:var(--face-tilt) translateZ(var(--piece-half)); backface-visibility:hidden;
+  background:#1d222b; border-radius:8%;
+}
+.formula-sticker {
+  position:absolute; inset:8%; border-radius:12%; background:var(--sticker); transform:translateZ(.2px);
+  box-shadow:inset 0 0 0 1px rgb(29 34 43 / .16),inset 0 2px 2px rgb(250 252 255 / .21);
+}
+.formula-stage-caption { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:5px 12px; border-top:1px solid var(--line-soft); color:var(--muted); font-size:.8rem; }
+.formula-stage-caption button { padding:0 8px; white-space:nowrap; }
+.formula-panel { padding:16px; border:1px solid var(--line); border-radius:var(--radius-lg); background:var(--panel); }
+.formula-modes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; padding:4px; background:var(--control); border-radius:var(--radius-control); }
+.formula-modes button,.formula-move { border-radius:8px; color:var(--muted); white-space:nowrap; }
+.formula-modes button[aria-pressed="true"] { background:var(--panel); color:var(--text); box-shadow:var(--shadow-sm); font-weight:700; }
+.formula-step-status { margin:16px 0 3px; color:var(--text); font-weight:700; font-variant-numeric:tabular-nums; }
+.formula-mode-help { margin:10px 0 0; color:var(--muted); font-size:.84rem; line-height:1.45; }
+.formula-step-detail { min-height:2.9em; margin:0 0 9px; line-height:1.45; color:var(--muted); font-size:.88rem; }
+.formula-moves { display:flex; flex-wrap:wrap; gap:4px; margin-top:12px; }
+.formula-move { background:var(--control); font-family:var(--mono); font-size:.93rem; }
+.formula-move:hover,.formula-modes button:hover { background:var(--control-hover); }
+.formula-move[aria-current="step"] { background:var(--accent-soft); color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent-border); font-weight:750; }
+.formula-controls { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-top:8px; }
+.formula-controls .small-btn { padding:0 6px; white-space:nowrap; }
+.formula-controls button[hidden] ~ button:last-child { grid-column:2/-1; }
+.formula-controls .formula-primary { color:var(--on-accent); background:var(--accent-fill); border-color:transparent; }
+.formula-secondary { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; }
+.formula-speed { display:flex; align-items:center; gap:8px; font-size:.875rem; color:var(--muted); }
+.formula-speed select { min-height:44px; padding:0 8px; border:1px solid var(--line); border-radius:8px; background:var(--panel-subtle); color:var(--text); font:inherit; }
+.formula-hint { margin:8px 0 0; }
+#app[data-view="formulas"] .footer-dock:not(.is-sheet-open),
+#app[data-view="formulas"] #inspectionToggle,
+#app[data-view="formulas"] #trainingPanel,
+#app[data-view="formulas"] #mobileGroupBtn,
+#app[data-view="formulas"] #status { display:none; }
+
+@media (min-width:721px) and (max-width:1000px) {
+  #app[data-view="formulas"] .topbar { flex-wrap:wrap; }
+  #app[data-view="formulas"] .view-nav .nav-button { padding-inline:10px; }
+  .formula-orbit { --cube-unit:clamp(45px,6.5vw,64px); }
+}
+@media (max-width:720px) {
+  #app[data-view="formulas"] .brand { display:flex; }
+  .formula-series-card { gap:10px; padding:10px 11px; }
+  .formula-series-code { min-width:51px; font-size:.88rem; }
+  .formula-series-meta { gap:6px; }
+  .formula-workspace { grid-template-columns:minmax(0,1fr); gap:10px; }
+  .formula-orbit { height:clamp(245px,72vw,340px); }
+  .formula-cases { grid-template-columns:minmax(0,1fr); gap:8px; }
+  .formula-case { min-height:88px; padding:8px 12px; }
+  .formula-case-pattern { width:62px; }
+  .formula-panel { padding:12px; }
+}
+@media (max-width:420px) {
+  .view-nav:has(#navFormulas:not([hidden])) .nav-button { padding-inline:6px; }
+}
+
+/* ==================== v2.1 新特性：PB 庆祝动画、个人账号、独立记录页、日赛/周赛 ==================== */
+.confetti-canvas { position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:90; }
+@keyframes pb-pop {
+  0% { transform:scale(.92); }
+  45% { transform:scale(1.08); }
+  75% { transform:scale(.98); }
+  100% { transform:scale(1); }
+}
+@keyframes pb-banner-in {
+  from { opacity:0; transform:translateY(8px) scale(.94); }
+  to { opacity:1; transform:translateY(0) scale(1); }
+}
+.timer.is-pb-pop { animation:pb-pop 520ms cubic-bezier(.22,1,.36,1); }
+.pb-celebrate { display:inline-flex; align-items:center; gap:6px; margin-top:8px; padding:4px 12px; border-radius:var(--radius-pill); background:linear-gradient(135deg,#f59e0b,#ea580c); color:#ffffff; font-size:0.78rem; font-weight:700; letter-spacing:.01em; box-shadow:0 6px 18px rgb(245 158 11 / .32); animation:pb-banner-in 260ms cubic-bezier(.22,1,.36,1) both; }
+
+/* 顶栏个人头像按钮 */
+.profile-trigger { display:inline-flex; align-items:center; gap:7px; min-height:38px; min-width:38px; padding:2px 10px 2px 3px; border-radius:999px; border:1px solid var(--line-soft); background:var(--panel-subtle); color:var(--text); font-size:0.78rem; font-weight:600; flex:none; }
+.profile-avatar { width:30px; height:30px; border-radius:999px; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; background:var(--accent-soft); color:var(--accent); font-size:0.8rem; font-weight:700; flex:none; border:1.5px solid var(--line-soft); }
+.profile-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+.profile-name-short { max-width:72px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* 计时页赛事进行中状态条 */
+.contest-banner { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 12px; margin-bottom:6px; border-radius:12px; background:var(--accent-soft); border:1px solid var(--accent-border); color:var(--accent); font-size:0.8rem; font-weight:600; }
+.contest-banner .small-btn { min-height:28px; min-width:0; padding:0 10px; border-radius:999px; font-size:0.72rem; background:var(--panel); border:1px solid var(--accent-border); color:var(--accent); box-shadow:none; }
+
+/* 独立「记录」页 */
+.records-shell { display:flex; flex-direction:column; gap:12px; }
+.records-summary-bar { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.records-summary-card { padding:10px 12px; border-radius:14px; background:var(--panel); border:1px solid var(--line-soft); display:flex; flex-direction:column; gap:2px; }
+.records-summary-card span { font-size:0.72rem; color:var(--muted); }
+.records-summary-card strong { font:700 1.0625rem/1.3 var(--digits); color:var(--text); font-variant-numeric:tabular-nums; }
+.records-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; }
+.records-filters { display:flex; flex-wrap:wrap; gap:6px; }
+.records-filter-btn { min-height:34px; min-width:0; padding:0 12px; border-radius:999px; border:1px solid var(--line-soft); background:var(--panel); color:var(--muted); font-size:0.78rem; font-weight:600; }
+.records-filter-btn[aria-pressed="true"] { background:var(--accent-fill); border-color:var(--accent-fill); color:var(--on-accent); }
+.records-tools-right { display:flex; align-items:center; gap:6px; margin-left:auto; }
+.records-grid { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; }
+.record-tile { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:76px; padding:10px 8px; border-radius:15px; border:1px solid var(--line-soft); background:var(--panel); color:var(--text); text-align:center; width:100%; }
+.record-tile:active { transform:scale(.97); }
+.record-tile-top { width:100%; display:flex; align-items:center; justify-content:space-between; font-size:0.68rem; color:var(--muted); }
+.record-tile-pb { padding:0 5px; border-radius:999px; background:linear-gradient(135deg,#f59e0b,#ea580c); color:#fff; font-size:0.62rem; font-weight:700; line-height:1.5; }
+.record-tile-time { font:700 1.2rem/1.25 var(--digits); font-variant-numeric:tabular-nums; color:var(--text); margin:2px 0; }
+.record-tile.is-plus .record-tile-time { color:var(--yellow); }
+.record-tile.is-dnf .record-tile-time { color:var(--red-text); }
+.record-tile-date { font-size:0.66rem; color:var(--muted); opacity:.82; }
+.records-empty { padding:40px 16px; text-align:center; color:var(--muted); border-radius:16px; background:var(--panel); border:1px dashed var(--line); font-size:0.875rem; }
+
+/* 独立「赛事」页（日赛 & 周赛） */
+.contest-shell { display:flex; flex-direction:column; gap:14px; }
+.contest-hero { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-radius:18px; background:var(--panel); border:1px solid var(--line-soft); }
+.contest-hero-left { display:flex; align-items:center; gap:12px; min-width:0; }
+.contest-hero-avatar { width:44px; height:44px; font-size:1rem; }
+.contest-hero-name { font-size:0.95rem; font-weight:700; color:var(--text); }
+.contest-hero-bio { font-size:0.75rem; color:var(--muted); margin-top:2px; }
+.contest-streak-pill { display:inline-flex; flex-direction:column; align-items:center; padding:6px 12px; border-radius:14px; background:var(--accent-soft); color:var(--accent); flex:none; }
+.contest-streak-pill strong { font:700 1.125rem/1.1 var(--digits); }
+.contest-streak-pill span { font-size:0.68rem; font-weight:600; }
+.contest-mode-bar { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; padding:4px; border-radius:14px; background:var(--control); }
+.contest-mode-btn { min-height:40px; border-radius:10px; font-size:0.875rem; font-weight:700; color:var(--muted); background:transparent; }
+.contest-mode-btn[aria-pressed="true"] { background:var(--panel); color:var(--text); box-shadow:0 1px 4px rgb(15 23 42 / .12); }
+.contest-card { padding:16px; border-radius:18px; background:var(--panel); border:1px solid var(--line-soft); display:flex; flex-direction:column; gap:12px; }
+.contest-card-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.contest-card-head h3 { margin:0; font-size:1rem; font-weight:700; }
+.contest-period-tag { font:600 0.75rem/1.4 var(--mono); color:var(--accent); padding:2px 8px; border-radius:999px; background:var(--accent-soft); }
+.contest-slots { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; }
+.contest-slots.is-weekly { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.contest-slot { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:54px; padding:6px 4px; border-radius:12px; border:1px solid var(--line-soft); background:var(--panel-subtle); font-variant-numeric:tabular-nums; }
+.contest-slot.is-next { border-color:var(--accent); background:var(--accent-soft); }
+.contest-slot.is-done { background:var(--panel); border-color:var(--line); }
+.contest-slot-idx { font-size:0.65rem; color:var(--muted); }
+.contest-slot-val { font:700 0.875rem/1.2 var(--digits); color:var(--text); }
+.contest-slot.is-dnf .contest-slot-val { color:var(--red-text); }
+.contest-result-row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.contest-metric { padding:10px; border-radius:12px; background:var(--panel-subtle); border:1px solid var(--line-soft); text-align:center; }
+.contest-metric span { display:block; font-size:0.7rem; color:var(--muted); }
+.contest-metric strong { display:block; margin-top:2px; font:700 1.05rem/1.2 var(--digits); color:var(--text); }
+.contest-cta { width:100%; min-height:46px; border-radius:14px; background:var(--accent-fill); color:var(--on-accent); font-size:0.9375rem; font-weight:700; }
+.contest-history-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.contest-history-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 14px; border-radius:14px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
+.contest-history-left { display:flex; flex-direction:column; gap:2px; }
+.contest-history-period { font-size:0.84rem; font-weight:700; color:var(--text); }
+.contest-history-sub { font-size:0.72rem; color:var(--muted); }
+.contest-history-score { font:700 1.05rem/1.2 var(--digits); color:var(--accent); font-variant-numeric:tabular-nums; }
+
+/* 个人账号资料弹窗 */
+.profile-dialog { width:min(440px,calc(100% - 24px)); }
+.profile-editor-head { display:flex; align-items:center; gap:14px; margin:12px 0 14px; }
+.profile-avatar-lg { width:68px; height:68px; font-size:1.65rem; border-width:2px; }
+.profile-avatar-actions { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+.profile-presets { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; margin:8px 0 14px; }
+.profile-preset-btn { min-height:42px; min-width:0; padding:0; border-radius:999px; border:2px solid transparent; display:inline-flex; align-items:center; justify-content:center; font-size:1.15rem; background:var(--panel-subtle); }
+.profile-preset-btn[aria-pressed="true"] { border-color:var(--accent); transform:scale(1.06); }
+.profile-fields { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+.profile-fields label { display:flex; flex-direction:column; gap:4px; font-size:0.78rem; font-weight:600; color:var(--muted); }
+.profile-fields input { min-height:42px; padding:8px 12px; border-radius:11px; border:1px solid var(--control-border); background:var(--panel-subtle); color:var(--text); font-size:0.9rem; }
+.profile-career-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:14px; }
+.profile-career-item { padding:10px 12px; border-radius:12px; background:var(--panel-subtle); border:1px solid var(--line-soft); }
+.profile-career-item span { display:block; font-size:0.72rem; color:var(--muted); }
+.profile-career-item strong { display:block; margin-top:2px; font:700 1.05rem/1.2 var(--digits); color:var(--text); }
+.profile-save-btn { width:100%; min-height:44px; border-radius:12px; background:var(--accent-fill); color:var(--on-accent); font-size:0.9rem; font-weight:700; }
+
+@media (max-width:720px) {
+  .profile-trigger { padding:0; width:36px; min-width:36px; min-height:36px; border:0; background:transparent; justify-content:center; }
+  .profile-name-short { display:none; }
+  .profile-avatar { width:30px; height:30px; }
+  .view-nav { left:12px; right:12px; transform:none; max-width:440px; width:auto; min-width:0; margin:0 auto; padding:4px; border-radius:20px; gap:2px; }
+  .nav-button { flex:1; flex-direction:column; min-height:46px; min-width:0; gap:2px; padding:4px 2px; border-radius:15px; font-size:0.68rem; }
+  .nav-button svg { width:18px; height:18px; }
+  .records-summary-bar { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .records-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  #app[data-focus="true"] .contest-banner { opacity:0; pointer-events:none; }
+}
+
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none !important; animation:none !important; scroll-behavior:auto !important; } }
 
 </style>
@@ -809,9 +1045,12 @@ button:active:not(:disabled) { background:var(--control-active); }
     <button id="mobileGroupBtn" class="mobile-group-btn" type="button" aria-label="切换项目或管理训练分组"><svg class="brand-symbol" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round" aria-hidden="true"><path class="cube-top" stroke="none" d="M16 2.4 28 9.2 16 16 4 9.2Z"/><path class="cube-left" stroke="none" d="M4 9.2 16 16v13.6L4 22.8Z"/><path class="cube-right" stroke="none" d="M16 16 28 9.2v13.6L16 29.6Z"/><path class="cube-grid" stroke-width=".65" stroke-linecap="round" d="M12 4.67 24 11.47M8 6.93 20 13.73M20 4.67 8 11.47M24 6.93 12 13.73M8 11.47v13.6M12 13.73v13.6M4 13.73 16 20.53M4 18.27 16 25.07M20 13.73v13.6M24 11.47v13.6M16 20.53 28 13.73M16 25.07 28 18.27"/><path d="M16 2.4 28 9.2v13.6L16 29.6 4 22.8V9.2ZM16 16 4 9.2M16 16l12-6.8M16 16v13.6"/><path class="cube-star-bg" stroke="none" d="M16 11.2Q16.3 15 20.6 16 16.3 17 16 20.8 15.7 17 11.4 16 15.7 15 16 11.2Z"/><path class="cube-star" stroke="none" d="M16 12.2Q16.25 15.25 19.6 16 16.25 16.75 16 19.8 15.75 16.75 12.4 16 15.75 15.25 16 12.2Z"/></svg><span id="mobileGroupName" class="mobile-group-name">默认训练</span><span id="mobilePuzzleBadge" class="mobile-puzzle-badge">3×3</span><svg class="mobile-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
     <nav class="view-nav" aria-label="主视图">
       <button id="navTimer" class="nav-button" type="button" aria-pressed="true" aria-controls="timerView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="14" r="8"/><path d="M9 2h6M12 2v4M12 10v5l3 2"/></svg>计时</button>
+      <button id="navRecords" class="nav-button" type="button" aria-pressed="false" aria-controls="recordsView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/></svg>记录</button>
+      <button id="navContest" class="nav-button" type="button" aria-pressed="false" aria-controls="contestView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>赛事</button>
       <button id="navReview" class="nav-button" type="button" aria-pressed="false" aria-controls="reviewView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 3v17h17M7 15l4-5 4 2 6-7"/></svg>复盘</button>
+      <button id="navFormulas" class="nav-button" type="button" aria-pressed="false" aria-controls="formulasView" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 9 8-4.5M12 12 4 7.5M12 12v9"/></svg>公式</button>
     </nav>
-    <div class="topbar-right"><button id="inspectionToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="15 秒观察" title="15 秒观察"><svg class="switch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6M19 5l1.5 1.5"/></svg><span class="switch-label">观察</span><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button><button id="themeToggle" class="theme-btn" type="button" data-theme="light" aria-label="切换主题，当前：纯净纸白，点击切换为复古暖纸" title="当前主题：纯净纸白（点击切换为复古暖纸）"><svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg><svg class="theme-icon theme-icon-warm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v18H7.5A2.5 2.5 0 0 0 5 22V4.5Z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19"/><path d="M9.5 7h5.5M9.5 11h4"/></svg><svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a6.7 6.7 0 0 0 11 11Z"/></svg><span id="themeLabel" class="theme-label">纸白</span></button><button id="mobileSettingsBtn" class="mobile-icon-btn" type="button" aria-label="练习设置与数据备份"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></button><span id="status" class="status" role="status">初始化中…</span></div>
+    <div class="topbar-right"><button id="inspectionToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="15 秒观察" title="15 秒观察"><svg class="switch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 2h6M19 5l1.5 1.5"/></svg><span class="switch-label">观察</span><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button><button id="themeToggle" class="theme-btn" type="button" data-theme="light" aria-label="切换主题，当前：纯净纸白，点击切换为复古暖纸" title="当前主题：纯净纸白（点击切换为复古暖纸）"><svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg><svg class="theme-icon theme-icon-warm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v18H7.5A2.5 2.5 0 0 0 5 22V4.5Z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19"/><path d="M9.5 7h5.5M9.5 11h4"/></svg><svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a6.7 6.7 0 0 0 11 11Z"/></svg><span id="themeLabel" class="theme-label">纸白</span></button><button id="profileTrigger" class="profile-trigger" type="button" aria-label="个人账号资料"><span id="topbarAvatar" class="profile-avatar" aria-hidden="true">🧊</span><span id="topbarProfileName" class="profile-name-short">魔方手</span></button><button id="mobileSettingsBtn" class="mobile-icon-btn" type="button" aria-label="练习设置与数据备份"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></button><span id="status" class="status" role="status">初始化中…</span></div>
   </header>
   <div id="storageBanner" class="banner" hidden>成绩不会被保存：浏览器存储不可用</div>
   <main>
@@ -845,6 +1084,7 @@ button:active:not(:disabled) { background:var(--control-active); }
 
     <aside id="undoNotice" class="undo-notice" aria-label="删除与撤销" hidden><p id="undoMessage" role="status"></p><button id="undoDelete" class="small-btn" type="button">撤销</button><button id="undoDismiss" class="undo-dismiss" type="button" aria-label="关闭提示">×</button></aside>
     <section id="timerView" aria-label="计时">
+      <div id="contestBanner" class="contest-banner" hidden><span id="contestBannerText">日赛 · 第 1 / 5 把</span><button id="contestBannerExit" class="small-btn" type="button">退出赛事</button></div>
       <div class="timer-layout"><div class="timer-stage">
     <section class="scramble" aria-label="打乱">
       <div class="scramble-main">
@@ -864,6 +1104,7 @@ button:active:not(:disabled) { background:var(--control-active); }
       <div class="timer-line">
         <div id="timer" class="timer" aria-live="off">0.000</div>
       </div>
+      <div id="pbCelebrateBanner" class="pb-celebrate" hidden>🎉 NEW PB</div>
       <div id="subStatus" class="sub-status"></div>
       <button id="cancelInspection" class="cancel" type="button" hidden>取消观察</button>
     </section>
@@ -895,6 +1136,74 @@ button:active:not(:disabled) { background:var(--control-active); }
         <section class="recent-section" aria-label="最近成绩"><div class="section-heading"><h2>最近成绩</h2><button id="recentReview" class="text-btn" type="button">完整复盘 ↗</button></div><ol id="recentList" class="recent-list"></ol><p id="recentEmpty" class="recent-empty">完成第一把后，这里会显示<br>本组最近 5 次成绩。</p></section>
       </aside></div>
     </section>
+    <section id="recordsView" aria-label="全部记录" tabindex="-1" hidden>
+      <div class="view-heading"><h2 id="recordsHeading">复原记录</h2><p>本组全部复原记录一目了然，点击任意成绩查看详情</p></div>
+      <div class="records-shell">
+        <div class="records-summary-bar">
+          <div class="records-summary-card"><span>总把数</span><strong id="recSumCount">0</strong></div>
+          <div class="records-summary-card"><span>单次 PB</span><strong id="recSumPb">—</strong></div>
+          <div class="records-summary-card"><span>Mean</span><strong id="recSumMean">—</strong></div>
+          <div class="records-summary-card"><span>Ao100</span><strong id="recSumAo100">—</strong></div>
+        </div>
+        <div class="records-toolbar">
+          <div id="recordsFilters" class="records-filters" role="group" aria-label="记录筛选">
+            <button class="records-filter-btn" type="button" data-filter="all" aria-pressed="true">全部</button>
+            <button class="records-filter-btn" type="button" data-filter="pb" aria-pressed="false">PB 里程碑</button>
+            <button class="records-filter-btn" type="button" data-filter="+2" aria-pressed="false">+2</button>
+            <button class="records-filter-btn" type="button" data-filter="dnf" aria-pressed="false">DNF</button>
+          </div>
+          <div class="records-tools-right">
+            <button id="recordsSortBtn" class="small-btn" type="button">最新在前</button>
+            <button id="recordsCsvBtn" class="small-btn" type="button">导出 CSV</button>
+          </div>
+        </div>
+        <ol id="recordsGrid" class="records-grid"></ol>
+        <div id="recordsEmpty" class="records-empty">当前筛选下还没有复原记录，去计时页拧几把吧！</div>
+        <button id="recordsMoreBtn" class="history-more" type="button" hidden>加载更多记录</button>
+      </div>
+    </section>
+
+    <section id="contestView" aria-label="个人日赛与周赛" tabindex="-1" hidden>
+      <div class="view-heading"><h2>个人赛事</h2><p>每日 5 把 / 每周 12 把固定赛题，自己和自己较量</p></div>
+      <div class="contest-shell">
+        <div class="contest-hero">
+          <div class="contest-hero-left">
+            <span id="contestAvatar" class="profile-avatar contest-hero-avatar" aria-hidden="true">🧊</span>
+            <div>
+              <div id="contestPlayerName" class="contest-hero-name">魔方手</div>
+              <div id="contestPlayerBio" class="contest-hero-bio">点击右上角头像可自定义昵称与头像</div>
+            </div>
+          </div>
+          <div class="contest-streak-pill"><strong id="contestStreakNum">0</strong><span>天连打 🔥</span></div>
+        </div>
+        <div id="contestModeBar" class="contest-mode-bar" role="group" aria-label="赛事类型">
+          <button class="contest-mode-btn" type="button" data-contest-type="daily" aria-pressed="true">日赛 · 5 把 Ao5</button>
+          <button class="contest-mode-btn" type="button" data-contest-type="weekly" aria-pressed="false">周赛 · 12 把 Ao12</button>
+        </div>
+        <div class="contest-card">
+          <div class="contest-card-head">
+            <h3 id="contestCardTitle">今日 3×3 日赛</h3>
+            <span id="contestPeriodTag" class="contest-period-tag">2026-11-21</span>
+          </div>
+          <div id="contestSlots" class="contest-slots"></div>
+          <div class="contest-result-row">
+            <div class="contest-metric"><span id="contestAvgLabel">本场 Ao5</span><strong id="contestCurrAvg">—</strong></div>
+            <div class="contest-metric"><span>本场最佳</span><strong id="contestCurrBest">—</strong></div>
+            <div class="contest-metric"><span>历史最佳</span><strong id="contestBestEver">—</strong></div>
+          </div>
+          <button id="contestStartBtn" class="contest-cta" type="button">开始今日第 1 把</button>
+        </div>
+        <div class="contest-card">
+          <div class="contest-card-head">
+            <h3>历史赛绩记录</h3>
+            <span id="contestHistoryCount" class="label">0 场</span>
+          </div>
+          <ol id="contestHistoryList" class="contest-history-list"></ol>
+          <div id="contestHistoryEmpty" class="records-empty">还没有完成过本项目的该项赛事，马上开打第一场吧！</div>
+        </div>
+      </div>
+    </section>
+
     <section id="reviewView" aria-label="复盘" tabindex="-1" hidden>
       <div class="view-heading"><h2>训练复盘</h2><p>当前训练的趋势、统计与每一把成绩</p></div>
       <div class="review-layout">
@@ -980,6 +1289,66 @@ button:active:not(:disabled) { background:var(--control-active); }
 
       </div>
     </section>
+    <section id="formulasView" aria-label="公式练习" hidden>
+      <div id="formulaSeriesIndex">
+        <header class="formula-heading">
+          <h2 id="formulaSeriesTitle" tabindex="-1">公式系列</h2>
+          <p>三阶魔方</p>
+        </header>
+        <div id="formulaSeriesList" class="formula-series-list"></div>
+      </div>
+      <div id="formulaLibrary" hidden>
+        <button id="formulaLibraryBack" class="text-btn formula-back-button" type="button">← 返回系列</button>
+        <header class="formula-heading">
+          <h2 id="formulaLibraryTitle" tabindex="-1"></h2>
+          <p id="formulaLibraryDescription"></p>
+        </header>
+        <div id="formulaCases" class="formula-cases"></div>
+      </div>
+      <div id="formulaDetail" hidden>
+        <button id="formulaBack" class="text-btn formula-back-button" type="button">← 返回公式库</button>
+        <header class="formula-heading">
+          <h2 id="formulaTitle" tabindex="-1"></h2>
+          <p id="formulaDescription" class="formula-case-description"></p>
+        </header>
+        <div class="formula-workspace">
+          <div class="formula-stage">
+            <div id="formulaOrbit" class="formula-orbit" tabindex="0" role="group" aria-label="3D 魔方视角" aria-describedby="formulaOrbitHelp"></div>
+            <div class="formula-stage-caption">
+              <span id="formulaOrbitHelp">顶黄 · 前绿<br>拖动或按方向键查看</span>
+              <button id="formulaCameraReset" class="text-btn" type="button">复位视角</button>
+            </div>
+          </div>
+          <div class="formula-panel">
+            <div id="formulaModes" class="formula-modes" role="group" aria-label="练习方式">
+              <button type="button" data-formula-mode="demo" aria-pressed="true">演示</button>
+              <button type="button" data-formula-mode="setup" aria-pressed="false">摆出局面</button>
+              <button type="button" data-formula-mode="practice" aria-pressed="false">实体跟练</button>
+            </div>
+            <p id="formulaModeHelp" class="formula-mode-help" hidden></p>
+            <p id="formulaStatus" class="formula-step-status" role="status"></p>
+            <p id="formulaStepDetail" class="formula-step-detail"></p>
+            <button id="formulaHint" class="small-btn formula-hint" type="button" hidden>提示下一步</button>
+            <div class="formula-controls">
+              <button id="formulaPrev" class="small-btn" type="button">上一步</button>
+              <button id="formulaPlay" class="small-btn formula-primary" type="button">播放</button>
+              <button id="formulaNext" class="small-btn" type="button">下一步</button>
+            </div>
+            <div id="formulaMoves" class="formula-moves" role="group" aria-label="公式步骤"></div>
+            <div class="formula-secondary">
+              <button id="formulaRestart" class="text-btn" type="button">回到开头</button>
+              <label id="formulaSpeedControl" class="formula-speed">速度
+                <select id="formulaSpeed">
+                  <option value="680">慢速</option>
+                  <option value="400" selected>标准</option>
+                  <option value="240">快速</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
     <div id="settingsPanel" class="footer-dock">
       <div class="sheet-head"><h3>练习设置</h3><button id="settingsSheetClose" class="small-btn" type="button">完成</button></div>
       <section class="settings-group desktop-hide-settings" aria-label="计时与触控设置">
@@ -1061,8 +1430,43 @@ button:active:not(:disabled) { background:var(--control-active); }
   </main>
 </div>
 
+<canvas id="confettiCanvas" class="confetti-canvas" aria-hidden="true"></canvas>
 <div id="mobileSheetBackdrop" class="mobile-sheet-backdrop" hidden></div>
 <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+
+<dialog id="profileDialog" class="record-dialog profile-dialog" aria-labelledby="profileDialogTitle">
+  <div class="record-heading"><h2 id="profileDialogTitle">我的魔方名片</h2><button id="profileClose" class="small-btn" type="button" autofocus>关闭</button></div>
+  <div class="profile-editor-head">
+    <span id="profilePreviewAvatar" class="profile-avatar profile-avatar-lg" aria-hidden="true">🧊</span>
+    <div class="profile-avatar-actions">
+      <button id="profileUploadBtn" class="small-btn" type="button">从相册选择头像</button>
+      <input id="profileAvatarFile" type="file" accept="image/*" hidden>
+      <span class="setting-desc">离线保存于本机，也可随 JSON 备份迁移</span>
+    </div>
+  </div>
+  <div class="label">快捷预设头像</div>
+  <div id="profilePresets" class="profile-presets" role="group" aria-label="选择预设头像">
+    <button class="profile-preset-btn" type="button" data-avatar="🧊" aria-pressed="true">🧊</button>
+    <button class="profile-preset-btn" type="button" data-avatar="⚡" aria-pressed="false">⚡</button>
+    <button class="profile-preset-btn" type="button" data-avatar="🚀" aria-pressed="false">🚀</button>
+    <button class="profile-preset-btn" type="button" data-avatar="🌟" aria-pressed="false">🌟</button>
+    <button class="profile-preset-btn" type="button" data-avatar="🦊" aria-pressed="false">🦊</button>
+    <button class="profile-preset-btn" type="button" data-avatar="🏆" aria-pressed="false">🏆</button>
+  </div>
+  <form id="profileForm">
+    <div class="profile-fields">
+      <label>昵称（1–20 字）<input id="profileNameInput" type="text" maxlength="20" placeholder="例如：星际魔方手" autocomplete="off"></label>
+      <label>个人目标 / 签名（可选）<input id="profileBioInput" type="text" maxlength="40" placeholder="例如：今年冲进 Sub-10！" autocomplete="off"></label>
+    </div>
+    <div class="profile-career-grid">
+      <div class="profile-career-item"><span>全项目总复原</span><strong id="profileTotalSolves">0</strong></div>
+      <div class="profile-career-item"><span>历史最快单次</span><strong id="profileBestSingle">—</strong></div>
+      <div class="profile-career-item"><span>完赛场次</span><strong id="profileTotalContests">0</strong></div>
+      <div class="profile-career-item"><span>连续日赛打卡</span><strong id="profileStreakDays">0 天</strong></div>
+    </div>
+    <button id="profileSaveBtn" class="profile-save-btn" type="submit">保存个人资料</button>
+  </form>
+</dialog>
 
 <dialog id="netPreviewDialog" class="record-dialog net-preview-dialog" aria-labelledby="netPreviewTitle">
   <div class="record-heading"><h2 id="netPreviewTitle">魔方打乱展开图</h2><button id="netPreviewClose" class="small-btn" type="button" autofocus>关闭</button></div>
@@ -2595,7 +2999,10 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     return PUZZLE_MAP[normalizePuzzle(id)];
   }
 
-  function randomInt(max) {
+  function randomInt(max, rng) {
+    if (typeof rng === 'function') {
+      return Math.floor(rng() * max) % max;
+    }
     if (typeof crypto !== 'undefined' && crypto && typeof crypto.getRandomValues === 'function') {
       var arr = new Uint32Array(1);
       var limit = Math.floor(0x100000000 / max) * max;
@@ -2725,18 +3132,36 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     return out;
   }
 
-  function generateNxNScramble(size) {
+  function generateNxNScramble(size, rng, puzzleIdOverride) {
     var mods = ['', "'", '2'];
     var moves = [];
     if (size === 2) {
       var faces2 = ['R', 'U', 'F'];
-      var len2 = 9 + randomInt(3);
+      var len2 = 9 + randomInt(3, rng);
       var last2 = '';
       for (var i = 0; i < len2; i++) {
         var f2;
-        do { f2 = faces2[randomInt(faces2.length)]; } while (f2 === last2);
+        do { f2 = faces2[randomInt(faces2.length, rng)]; } while (f2 === last2);
         last2 = f2;
-        moves.push(f2 + mods[randomInt(3)]);
+        moves.push(f2 + mods[randomInt(3, rng)]);
+      }
+    } else if (size === 3) {
+      var axes3 = [['U', 'D'], ['R', 'L'], ['F', 'B']];
+      var lastAxis3 = -1;
+      var used3 = {};
+      for (var m3 = 0; m3 < 20; m3++) {
+        var ax3, face3, tries3 = 0;
+        do {
+          ax3 = randomInt(3, rng);
+          face3 = axes3[ax3][randomInt(2, rng)];
+          tries3++;
+        } while (tries3 < 20 && ax3 === lastAxis3 && (used3[face3] || Object.keys(used3).length >= 2));
+        if (ax3 !== lastAxis3) {
+          lastAxis3 = ax3;
+          used3 = {};
+        }
+        used3[face3] = true;
+        moves.push(face3 + mods[randomInt(3, rng)]);
       }
     } else {
       // 4x4 (44 moves) / 5x5 (60 moves) 符合 WCA 轴向防冗余规则
@@ -2752,9 +3177,9 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
         var axis, pool, moveBase;
         var tries = 0;
         do {
-          axis = randomInt(3);
+          axis = randomInt(3, rng);
           pool = axes[axis];
-          moveBase = pool[randomInt(pool.length)];
+          moveBase = pool[randomInt(pool.length, rng)];
           tries++;
         } while (
           tries < 30 &&
@@ -2765,7 +3190,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
           usedInAxis = {};
         }
         usedInAxis[moveBase] = true;
-        moves.push(moveBase + mods[randomInt(3)]);
+        moves.push(moveBase + mods[randomInt(3, rng)]);
       }
     }
     var state = createNxN(size);
@@ -2773,7 +3198,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     return {
       algorithm: moves.join(' '),
       facelets: nxnToFacelets(state, size),
-      puzzle: size === 2 ? '222' : size === 4 ? '444' : '555'
+      puzzle: puzzleIdOverride || (size === 2 ? '222' : size === 3 ? '333' : size === 4 ? '444' : '555')
     };
   }
 
@@ -2833,19 +3258,19 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     }
   }
 
-  function generatePyraminxScramble() {
+  function generatePyraminxScramble(rng) {
     var axes = ['U', 'L', 'R', 'B'];
     var tips = ['u', 'l', 'r', 'b'];
     var moves = [];
     var last = '';
     for (var i = 0; i < 11; i++) {
       var a;
-      do { a = axes[randomInt(4)]; } while (a === last);
+      do { a = axes[randomInt(4, rng)]; } while (a === last);
       last = a;
-      moves.push(a + (randomInt(2) ? "'" : ''));
+      moves.push(a + (randomInt(2, rng) ? "'" : ''));
     }
     for (var j = 0; j < tips.length; j++) {
-      var r = randomInt(3);
+      var r = randomInt(3, rng);
       if (r === 1) moves.push(tips[j]);
       else if (r === 2) moves.push(tips[j] + "'");
     }
@@ -2906,15 +3331,15 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     for (var t = 0; t < turns; t++) rotateSkewbCW(s, base);
   }
 
-  function generateSkewbScramble() {
+  function generateSkewbScramble(rng) {
     var axes = ['U', 'L', 'R', 'B'];
     var moves = [];
     var last = '';
     for (var i = 0; i < 11; i++) {
       var a;
-      do { a = axes[randomInt(4)]; } while (a === last);
+      do { a = axes[randomInt(4, rng)]; } while (a === last);
       last = a;
-      moves.push(a + (randomInt(2) ? "'" : ''));
+      moves.push(a + (randomInt(2, rng) ? "'" : ''));
     }
     var state = createSkewb();
     moves.forEach(function (mv) { applySkewbMove(state, mv); });
@@ -2925,13 +3350,14 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     };
   }
 
-  function generateScramble(puzzleId) {
+  function generateScramble(puzzleId, rng) {
     var id = normalizePuzzle(puzzleId);
-    if (id === '222') return generateNxNScramble(2);
-    if (id === '444') return generateNxNScramble(4);
-    if (id === '555') return generateNxNScramble(5);
-    if (id === 'pyram') return generatePyraminxScramble();
-    if (id === 'skewb') return generateSkewbScramble();
+    if (id === '222') return generateNxNScramble(2, rng, '222');
+    if (id === '444') return generateNxNScramble(4, rng, '444');
+    if (id === '555') return generateNxNScramble(5, rng, '555');
+    if (id === 'pyram') return generatePyraminxScramble(rng);
+    if (id === 'skewb') return generateSkewbScramble(rng);
+    if (typeof rng === 'function') return generateNxNScramble(3, rng, id);
     return null;
   }
 
@@ -3093,6 +3519,806 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 
+(function (root) {
+  'use strict';
+
+  var STORAGE_KEY = 'starcube.challenges.v1';
+
+  function hashSeed(text) {
+    var h = 2166136261 >>> 0;
+    for (var i = 0; i < text.length; i++) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return h >>> 0;
+  }
+
+  function mulberry32(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  function localDayKey(nowMs) {
+    var d = new Date(nowMs === undefined ? Date.now() : nowMs);
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function isoWeekKey(nowMs) {
+    var d = new Date(nowMs === undefined ? Date.now() : nowMs);
+    var temp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    var dayNum = temp.getUTCDay() || 7;
+    temp.setUTCDate(temp.getUTCDate() + 4 - dayNum);
+    var yearStart = new Date(Date.UTC(temp.getUTCFullYear(), 0, 1));
+    var weekNo = Math.ceil((((temp - yearStart) / 86400000) + 1) / 7);
+    return temp.getUTCFullYear() + '-W' + pad2(weekNo);
+  }
+
+  function periodKey(type, nowMs) {
+    return type === 'weekly' ? isoWeekKey(nowMs) : localDayKey(nowMs);
+  }
+
+  function totalSolvesFor(type) {
+    return type === 'weekly' ? 12 : 5;
+  }
+
+  function challengeId(type, puzzleId, period) {
+    return type + ':' + puzzleId + ':' + period;
+  }
+
+  function generateScrambles(type, puzzleId, period, puzzlesApi) {
+    var api = puzzlesApi || root.StarCubePuzzles;
+    var count = totalSolvesFor(type);
+    var list = [];
+    for (var i = 0; i < count; i++) {
+      var rng = mulberry32(hashSeed('StarCube:' + type + ':' + puzzleId + ':' + period + ':solve-' + (i + 1)));
+      var generated = api ? api.generateScramble(puzzleId, rng) : null;
+      list.push(generated || { algorithm: "R U R' U'", facelets: '', puzzle: puzzleId });
+    }
+    return list;
+  }
+
+  function computeChallengeResult(solves, type, statsApi) {
+    var Stats = statsApi || root.StarCubeStats;
+    var count = totalSolvesFor(type);
+    var records = (solves || []).map(function (s, idx) {
+      return { id: idx + 1, ms: s.ms, penalty: s.penalty || 'ok', scramble: s.scramble || '', at: s.at || '' };
+    });
+    var best = Stats ? Stats.personalBest(records) : null;
+    var average = (records.length >= count && Stats) ? Stats.aoN(records, count) : null;
+    return {
+      completed: records.length >= count,
+      count: records.length,
+      total: count,
+      average: average,
+      best: best ? best.value : null
+    };
+  }
+
+  function computeDailyStreak(entries, nowMs) {
+    var days = Object.create(null);
+    Object.keys(entries || {}).forEach(function (id) {
+      var item = entries[id];
+      if (!item || item.type !== 'daily' || !item.completedAt || !item.period) return;
+      days[item.period] = true;
+    });
+    var today = new Date(nowMs === undefined ? Date.now() : nowMs);
+    today.setHours(12, 0, 0, 0);
+    var cursor = new Date(today.getTime());
+    if (!days[localDayKey(cursor.getTime())]) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    var streak = 0;
+    while (days[localDayKey(cursor.getTime())]) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  }
+
+  function create(options) {
+    options = options || {};
+    var storage = options.storage !== undefined ? options.storage : (typeof localStorage !== 'undefined' ? localStorage : null);
+    var statsApi = options.stats || root.StarCubeStats;
+    var puzzlesApi = options.puzzles || root.StarCubePuzzles;
+    var entries = Object.create(null);
+
+    function load() {
+      entries = Object.create(null);
+      if (!storage) return entries;
+      try {
+        var raw = storage.getItem(STORAGE_KEY);
+        var parsed = raw ? JSON.parse(raw) : null;
+        if (parsed && typeof parsed === 'object' && parsed.entries && typeof parsed.entries === 'object') {
+          Object.keys(parsed.entries).forEach(function (key) {
+            var e = parsed.entries[key];
+            if (!e || (e.type !== 'daily' && e.type !== 'weekly') || typeof e.puzzle !== 'string' || typeof e.period !== 'string' || !Array.isArray(e.solves)) return;
+            entries[key] = e;
+          });
+        }
+      } catch (err) {}
+      return entries;
+    }
+
+    function save() {
+      if (!storage) return false;
+      try {
+        storage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, entries: entries }));
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function getOrInit(type, puzzleId, nowMs) {
+      var period = periodKey(type, nowMs);
+      var id = challengeId(type, puzzleId, period);
+      var entry = entries[id];
+      if (!entry) {
+        entry = {
+          id: id,
+          type: type,
+          puzzle: puzzleId,
+          period: period,
+          solves: [],
+          average: null,
+          best: null,
+          completedAt: null
+        };
+      }
+      var scrambles = generateScrambles(type, puzzleId, period, puzzlesApi);
+      var summary = computeChallengeResult(entry.solves, type, statsApi);
+      return {
+        entry: entry,
+        scrambles: scrambles,
+        summary: summary
+      };
+    }
+
+    function recordSolve(type, puzzleId, period, solveIndex, record) {
+      var id = challengeId(type, puzzleId, period);
+      var total = totalSolvesFor(type);
+      var entry = entries[id] || {
+        id: id,
+        type: type,
+        puzzle: puzzleId,
+        period: period,
+        solves: [],
+        average: null,
+        best: null,
+        completedAt: null
+      };
+      if (entry.solves.length >= total || solveIndex !== entry.solves.length) {
+        return { entry: entry, summary: computeChallengeResult(entry.solves, type, statsApi), justCompleted: false, isNewBest: false };
+      }
+      var prevBestAvg = bestAverage(type, puzzleId);
+      entry.solves.push({
+        ms: record.ms,
+        penalty: record.penalty || 'ok',
+        scramble: record.scramble || '',
+        at: record.at || new Date().toISOString(),
+        uid: record.uid || ''
+      });
+      var summary = computeChallengeResult(entry.solves, type, statsApi);
+      entry.average = summary.average;
+      entry.best = summary.best;
+      var justCompleted = false;
+      var isNewBest = false;
+      if (summary.completed && !entry.completedAt) {
+        entry.completedAt = new Date().toISOString();
+        justCompleted = true;
+        if (typeof summary.average === 'number' && (prevBestAvg === null || summary.average < prevBestAvg)) {
+          isNewBest = true;
+        }
+      }
+      entries[id] = entry;
+      save();
+      return { entry: entry, summary: summary, justCompleted: justCompleted, isNewBest: isNewBest };
+    }
+
+    function updateSolvePenalty(uid, penalty) {
+      if (!uid) return false;
+      var changed = false;
+      Object.keys(entries).forEach(function (id) {
+        var entry = entries[id];
+        if (!entry || !Array.isArray(entry.solves)) return;
+        var hit = false;
+        entry.solves.forEach(function (s) {
+          if (s.uid === uid) {
+            s.penalty = penalty;
+            hit = true;
+          }
+        });
+        if (hit) {
+          var summary = computeChallengeResult(entry.solves, entry.type, statsApi);
+          entry.average = summary.average;
+          entry.best = summary.best;
+          changed = true;
+        }
+      });
+      if (changed) save();
+      return changed;
+    }
+
+    function history(type, puzzleId) {
+      return Object.keys(entries)
+        .map(function (id) { return entries[id]; })
+        .filter(function (e) {
+          return e && e.type === type && e.puzzle === puzzleId && e.solves && e.solves.length > 0;
+        })
+        .sort(function (a, b) { return a.period < b.period ? 1 : a.period > b.period ? -1 : 0; });
+    }
+
+    function bestAverage(type, puzzleId) {
+      var best = null;
+      history(type, puzzleId).forEach(function (e) {
+        if (e.completedAt && typeof e.average === 'number' && (best === null || e.average < best)) {
+          best = e.average;
+        }
+      });
+      return best;
+    }
+
+    function totalCompleted() {
+      var count = 0;
+      Object.keys(entries).forEach(function (id) {
+        if (entries[id] && entries[id].completedAt) count++;
+      });
+      return count;
+    }
+
+    function exportAll() {
+      return JSON.parse(JSON.stringify(entries));
+    }
+
+    function importAll(incoming) {
+      if (!incoming || typeof incoming !== 'object') return 0;
+      var merged = 0;
+      Object.keys(incoming).forEach(function (id) {
+        var item = incoming[id];
+        if (!item || (item.type !== 'daily' && item.type !== 'weekly') || typeof item.puzzle !== 'string' || typeof item.period !== 'string' || !Array.isArray(item.solves)) return;
+        var current = entries[id];
+        if (!current || item.solves.length > current.solves.length) {
+          entries[id] = JSON.parse(JSON.stringify(item));
+          merged++;
+        }
+      });
+      if (merged) save();
+      return merged;
+    }
+
+    load();
+    return {
+      load: load,
+      getOrInit: getOrInit,
+      recordSolve: recordSolve,
+      updateSolvePenalty: updateSolvePenalty,
+      history: history,
+      bestAverage: bestAverage,
+      dailyStreak: function (nowMs) { return computeDailyStreak(entries, nowMs); },
+      totalCompleted: totalCompleted,
+      exportAll: exportAll,
+      importAll: importAll
+    };
+  }
+
+  var api = {
+    create: create,
+    localDayKey: localDayKey,
+    isoWeekKey: isoWeekKey,
+    periodKey: periodKey,
+    generateScrambles: generateScrambles,
+    STORAGE_KEY: STORAGE_KEY
+  };
+
+  root.StarCubeChallenge = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+(function (root) {
+  'use strict';
+
+  const sune = "R U R' U R U2 R'";
+  const ua = "R U' R U R U R U' R' U' R2";
+
+  // PLL notation: cubeskills.com/uploads/pdf/tutorials/pll-algorithms.pdf and jperm.net/algs/pll.
+  const pllCases = [
+    {
+      name: 'T Perm',
+      summary: '相邻角块换位',
+      recognize: '先找左侧顶层两端的同色角。这个局面会互换右侧的两个角块，以及一对棱块。',
+      algorithm: "R U R' U' R' F R2 U' R' U' R U R' F'"
+    },
+    {
+      name: 'Jb Perm',
+      summary: '相邻角块换位',
+      recognize: '先找左侧顶层的整条同色色带，正面右边还有一对同色块。',
+      algorithm: "R U R' F' R U R' U' R' F R2 U' R' U'"
+    },
+    {
+      name: 'Y Perm',
+      summary: '对角角块换位',
+      recognize: '四个侧面的顶层都找不到同色角对。这个局面要互换两个对角位置的角块。',
+      algorithm: "F R U' R' U' R U R' F' R U R' U' R' F R F'"
+    },
+    {
+      name: 'Ua Perm',
+      summary: '三个棱块循环换位',
+      recognize: '后侧顶层已经对齐，四个角块也都在正确位置。留意其余三个侧面的顶层中间块。',
+      algorithm: ua
+    }
+  ];
+
+  const complete = '顶层已完成，魔方已复原。';
+  const series = [
+    {
+      name: 'F2L', title: '前两层', description: '把角块和棱块配成一对，再插进目标槽位。',
+      completion: '前两层已完成，可以接着做 OLL。',
+      cases: [{
+        name: '右前槽插入', summary: '已配对角棱',
+        recognize: '先找顶层已经配对的角块和棱块，再把这一对插进右前槽。',
+        algorithm: "U R U' R'", target: sune // CubeSkills, F2L Algorithms – All Four Slot Angles
+      }]
+    },
+    {
+      name: 'OLL', title: '顶层定向', description: '翻正顶层块，使顶面统一成同一种颜色。',
+      completion: '顶面颜色已统一，可以接着做 PLL。',
+      cases: [{
+        name: 'OLL 27 · 小鱼', summary: '顶层黄十字，只有一个黄角朝上',
+        recognize: '顶面已有黄十字，观察左前角朝上的黄色和另外三个角的朝向。',
+        algorithm: sune, target: ua // J Perm, 3×3 OLL
+      }]
+    },
+    {
+      name: 'PLL', title: '顶层换位', description: '顶面同色后，调整顶层块的位置。',
+      completion: complete, cases: pllCases
+    },
+    {
+      name: 'COLL', title: '顶层角块归位', description: '顶层棱块已定向时，同时翻正并归位四个角块。',
+      completion: '顶层四个角块已归位，接下来只需调整棱块位置。',
+      cases: [{
+        name: 'COLL · H 型', summary: '黄十字已成，四角都未翻正',
+        recognize: '顶面是黄十字，四个顶角的黄色都在侧面。观察侧面两端角块的配色。',
+        algorithm: "R U R' U R U' R' U R U2 R'", target: ua // J Perm, COLL
+      }]
+    },
+    {
+      name: 'ZBLL', title: '一步还原顶层', description: '顶层棱块已定向时，用一条公式完成整个顶层。',
+      completion: complete,
+      cases: [{
+        name: 'ZBLL U 1', summary: '相邻两个黄角朝上',
+        recognize: '在顶面黄十字之外，靠前的两个角也朝上。再用侧面配色确认顶层块的位置。',
+        algorithm: "R U' R' U' R U2 R' U' R' D' R U2 R' D R" // SpeedCubeDB, ZBLL U 1
+      }]
+    }
+  ];
+
+  // Screen coordinates: x right, y down, z toward the viewer. Sticker order matches URFDLB.
+  const faces = {
+    U: { name: '上层', axis: 'Y', side: -1, turn: -1, tilt: 'rotateX(90deg)', position: (r, c) => [c - 1, -1, r - 1] },
+    R: { name: '右层', axis: 'X', side: 1, turn: 1, tilt: 'rotateY(90deg)', position: (r, c) => [1, r - 1, 1 - c] },
+    F: { name: '前层', axis: 'Z', side: 1, turn: 1, tilt: 'rotateY(0deg)', position: (r, c) => [c - 1, r - 1, 1] },
+    D: { name: '下层', axis: 'Y', side: 1, turn: 1, tilt: 'rotateX(-90deg)', position: (r, c) => [c - 1, 1, 1 - r] },
+    L: { name: '左层', axis: 'X', side: -1, turn: -1, tilt: 'rotateY(-90deg)', position: (r, c) => [-1, r - 1, c - 1] },
+    B: { name: '后层', axis: 'Z', side: -1, turn: -1, tilt: 'rotateY(180deg)', position: (r, c) => [1 - c, r - 1, -1] }
+  };
+
+  function element(doc, tag, className, content) {
+    const node = doc.createElement(tag);
+    node.className = className;
+    if (content) node.textContent = content;
+    return node;
+  }
+
+  function inverse(move) {
+    if (move.endsWith('2')) return move;
+    return move.endsWith("'") ? move[0] : move + "'";
+  }
+
+  function moveDescription(move) {
+    const direction = move.endsWith('2') ? '转 180°' : move.endsWith("'") ? '逆时针转 90°' : '顺时针转 90°';
+    return faces[move[0]].name + direction;
+  }
+
+  function pattern(doc, facelets, showSlot) {
+    const grid = element(doc, 'span', 'formula-case-pattern');
+    grid.setAttribute('aria-hidden', 'true');
+    function sticker(index, row, col) {
+      const tile = doc.createElement('i');
+      tile.dataset.formulaColor = facelets[index];
+      tile.style.gridArea = row + ' / ' + col;
+      grid.append(tile);
+    }
+    if (showSlot) {
+      grid.classList.add('formula-slot-pattern');
+      for (let i = 0; i < 9; i++) {
+        const row = 1 + Math.floor(i / 3);
+        const col = 1 + i % 3;
+        sticker(i, row, col);
+        sticker(18 + i, row + 3, col);  // Front
+        sticker(9 + i, row + 3, col + 3); // Right
+      }
+      return grid;
+    }
+    for (let i = 0; i < 9; i++) sticker(i, 2 + Math.floor(i / 3), 2 + i % 3);
+    for (let i = 0; i < 3; i++) {
+      sticker(47 - i, 1, 2 + i);       // Back
+      sticker(11 - i, 2 + i, 5);       // Right
+      sticker(18 + i, 5, 2 + i);       // Front
+      sticker(36 + i, 2 + i, 1);       // Left
+    }
+    return grid;
+  }
+
+  function createScene(host) {
+    const doc = host.ownerDocument;
+    const cube = element(doc, 'div', 'formula-cube');
+    const layer = element(doc, 'div', 'formula-rotating-layer');
+    const pieces = [];
+    const surfaces = [];
+    cube.setAttribute('aria-hidden', 'true');
+    cube.append(layer);
+    host.append(cube);
+
+    for (let x = -1; x <= 1; x++) {
+      for (let y = -1; y <= 1; y++) {
+        for (let z = -1; z <= 1; z++) {
+          if (x === 0 && y === 0 && z === 0) continue;
+          const node = element(doc, 'div', 'formula-piece');
+          const coords = [x, y, z].map(value => 'calc(var(--cube-unit) * ' + value + ')');
+          node.style.transform = 'translate3d(' + coords.join(',') + ')';
+          const sides = {};
+          for (const [letter, face] of Object.entries(faces)) {
+            const side = element(doc, 'div', 'formula-face');
+            side.style.setProperty('--face-tilt', face.tilt);
+            sides[letter] = side;
+            node.append(side);
+          }
+          pieces.push({ x, y, z, node, sides });
+          cube.append(node);
+        }
+      }
+    }
+    for (const [letter, face] of Object.entries(faces)) {
+      for (let i = 0; i < 9; i++) {
+        const [x, y, z] = face.position(Math.floor(i / 3), i % 3);
+        const piece = pieces.find(candidate => candidate.x === x && candidate.y === y && candidate.z === z);
+        const sticker = element(doc, 'span', 'formula-sticker');
+        piece.sides[letter].append(sticker);
+        surfaces.push(sticker);
+      }
+    }
+
+    let pitch, yaw, drag;
+    function orbit() {
+      pitch = Math.max(-78, Math.min(78, pitch));
+      cube.style.transform = 'rotateX(' + pitch + 'deg) rotateY(' + yaw + 'deg)';
+    }
+    function resetCamera() {
+      pitch = -27;
+      yaw = -34;
+      orbit();
+    }
+    resetCamera();
+    host.addEventListener('pointerdown', event => {
+      if (event.button !== 0 || drag) return;
+      drag = { id: event.pointerId, x: event.clientX, y: event.clientY, pitch, yaw };
+      host.setPointerCapture(event.pointerId);
+    });
+    host.addEventListener('pointermove', event => {
+      if (drag?.id !== event.pointerId) return;
+      yaw = drag.yaw + (event.clientX - drag.x) * 0.55;
+      pitch = drag.pitch - (event.clientY - drag.y) * 0.55;
+      orbit();
+    });
+    function stopDrag(event) {
+      if (drag?.id === event.pointerId) drag = null;
+    }
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => host.addEventListener(type, stopDrag));
+    host.addEventListener('keydown', event => {
+      const turns = { ArrowLeft: [0, -12], ArrowRight: [0, 12], ArrowUp: [-12, 0], ArrowDown: [12, 0] };
+      const turn = turns[event.key];
+      if (!turn) return;
+      event.preventDefault();
+      pitch += turn[0];
+      yaw += turn[1];
+      orbit();
+    });
+
+    function show(facelets) {
+      for (const piece of pieces) {
+        if (piece.node.parentNode === layer) cube.append(piece.node);
+      }
+      layer.style.transform = '';
+      surfaces.forEach((node, index) => { node.dataset.formulaColor = facelets[index]; });
+    }
+
+    function rotate(move, progress) {
+      const face = faces[move[0]];
+      if (!layer.firstChild) {
+        for (const piece of pieces) {
+          if (piece[face.axis.toLowerCase()] === face.side) layer.append(piece.node);
+        }
+      }
+      const degrees = move.endsWith('2') ? 180 : move.endsWith("'") ? -90 : 90;
+      layer.style.transform = 'rotate' + face.axis + '(' + (degrees * face.turn * progress) + 'deg)';
+    }
+
+    return { show, rotate, resetCamera };
+  }
+
+  function create(view, computeFacelets) {
+    const doc = view.ownerDocument;
+    const byId = id => view.querySelector('#formula' + id);
+    const seriesIndex = byId('SeriesIndex');
+    const seriesTitle = byId('SeriesTitle');
+    const library = byId('Library');
+    const libraryTitle = byId('LibraryTitle');
+    const detail = byId('Detail');
+    const pages = [seriesIndex, library, detail];
+    const title = byId('Title');
+    const description = byId('Description');
+    const status = byId('Status');
+    const instruction = byId('StepDetail');
+    const movesList = byId('Moves');
+    const prev = byId('Prev');
+    const next = byId('Next');
+    const play = byId('Play');
+    const hint = byId('Hint');
+    const speed = byId('Speed');
+    const speedControl = byId('SpeedControl');
+    const modeHelp = byId('ModeHelp');
+    const restart = byId('Restart');
+    const modes = Array.from(byId('Modes').querySelectorAll('button'));
+    const reducedMotion = root.matchMedia('(prefers-reduced-motion: reduce)');
+    let selectedSeriesButton, selected, scene, mode, moves, states, buttons, step;
+    let turn = null;
+    let playing = false;
+    let delay = 0;
+    let hintVisible = false;
+
+    function render() {
+      const practicing = mode === 'practice';
+      const current = turn ? turn.to : step;
+      const highlighted = turn ? turn.moveIndex : step;
+      const forward = current < moves.length;
+      status.textContent = '第 ' + current + ' / ' + moves.length + ' 步';
+      if (turn && !practicing) {
+        instruction.textContent = turn.move + ' · ' + moveDescription(turn.move);
+      } else if (forward) {
+        const upcoming = moves[current];
+        instruction.textContent = practicing && !hintVisible
+          ? '做完一步后点「下一步」，对照魔方的状态。'
+          : '下一步 ' + upcoming + ' · ' + moveDescription(upcoming);
+      } else {
+        instruction.textContent = mode === 'setup' ? '已摆好局面，可以切换到「实体跟练」。' : selected.completion;
+      }
+      buttons.forEach((button, index) => {
+        if (index + 1 === highlighted) button.setAttribute('aria-current', 'step');
+        else button.removeAttribute('aria-current');
+      });
+      prev.disabled = current === 0;
+      next.disabled = !forward;
+      play.hidden = practicing;
+      play.textContent = playing ? '暂停' : forward ? '播放' : '重播';
+      hint.hidden = !practicing || !forward;
+      movesList.hidden = practicing;
+      speedControl.hidden = practicing;
+      restart.disabled = current === 0 && !playing;
+    }
+
+    function showStep(index) {
+      step = index;
+      hintVisible = false;
+      scene.show(states[index]);
+      render();
+    }
+
+    function finishTurn() {
+      if (!turn) return;
+      cancelAnimationFrame(turn.frame);
+      const to = turn.to;
+      turn = null;
+      showStep(to);
+    }
+
+    function pause() {
+      clearTimeout(delay);
+      playing = false;
+      if (moves) render();
+    }
+
+    function scheduleNext() {
+      if (step === moves.length) {
+        pause();
+        return;
+      }
+      delay = setTimeout(() => animateStep(step + 1), reducedMotion.matches ? Number(speed.value) : 140);
+    }
+
+    function animateStep(to) {
+      const backwards = to < step;
+      const move = moves[Math.min(step, to)];
+      if (reducedMotion.matches) {
+        showStep(to);
+        if (playing) scheduleNext();
+        return;
+      }
+      const started = performance.now();
+      const duration = Number(speed.value);
+      const motion = { to, move: backwards ? inverse(move) : move, moveIndex: Math.max(step, to), frame: 0 };
+      turn = motion;
+      render();
+      function frame(now) {
+        const progress = Math.min(1, Math.max(0, (now - started) / duration));
+        if (progress >= 1) {
+          finishTurn();
+          if (playing) scheduleNext();
+        } else {
+          const eased = progress * progress * (3 - 2 * progress);
+          scene.rotate(move, backwards ? -eased : eased);
+          motion.frame = requestAnimationFrame(frame);
+        }
+      }
+      motion.frame = requestAnimationFrame(frame);
+    }
+
+    function navigate(index) {
+      pause();
+      finishTurn();
+      showStep(index);
+    }
+
+    function stepBy(offset) {
+      pause();
+      finishTurn();
+      const index = step + offset;
+      if (index >= 0 && index <= moves.length) animateStep(index);
+    }
+
+    function changeMode(nextMode) {
+      pause();
+      finishTurn();
+      mode = nextMode;
+      const setup = mode === 'setup';
+      modeHelp.hidden = mode === 'demo';
+      modeHelp.textContent = setup
+        ? '从已复原的实体魔方开始，黄面朝上、绿面朝前。'
+        : '把实体魔方摆成这个局面，然后凭记忆练习。';
+      moves = setup ? selected.setup : selected.moves;
+      const prefix = setup ? [] : selected.setup;
+      states = Array.from({ length: moves.length + 1 }, (_, index) =>
+        computeFacelets(prefix.concat(moves.slice(0, index)).join(' ')));
+      buttons = moves.map((move, index) => {
+        const button = element(doc, 'button', 'formula-move', move);
+        button.type = 'button';
+        button.setAttribute('aria-label', '第 ' + (index + 1) + ' 步 ' + move);
+        button.addEventListener('click', () => navigate(index + 1));
+        return button;
+      });
+      movesList.replaceChildren(...buttons);
+      modes.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.formulaMode === mode)));
+      showStep(0);
+    }
+
+    function showPage(page, focus) {
+      pages.forEach(panel => { panel.hidden = panel !== page; });
+      root.scrollTo(0, 0);
+      focus.focus();
+    }
+
+    function openCase(entry, collection) {
+      if (!scene) scene = createScene(byId('Orbit'));
+      scene.resetCamera();
+      title.textContent = entry.name;
+      description.textContent = entry.recognize;
+      byId('Back').textContent = '← 返回 ' + collection.name;
+      selected = entry;
+      changeMode('demo');
+      showPage(detail, title);
+    }
+
+    function caseCard(entry, collection) {
+      const moves = entry.algorithm.split(' ');
+      // F2L, OLL and COLL deliberately end at the next practice stage.
+      const target = entry.target ? entry.target.split(' ') : [];
+      const setup = target.concat(moves.slice().reverse().map(inverse));
+      const button = element(doc, 'button', 'formula-case');
+      const label = doc.createElement('span');
+      const arrow = element(doc, 'span', '', '›');
+      arrow.setAttribute('aria-hidden', 'true');
+      label.append(
+        element(doc, 'strong', 'formula-case-name', entry.name),
+        element(doc, 'span', 'formula-case-meta', entry.summary + ' · ' + moves.length + ' 步')
+      );
+      button.type = 'button';
+      button.append(pattern(doc, computeFacelets(setup.join(' ')), collection.name === 'F2L'), label, arrow);
+      const exercise = { ...entry, moves, setup, button, completion: collection.completion };
+      button.addEventListener('click', () => openCase(exercise, collection));
+      return button;
+    }
+
+    function openSeries(collection, button) {
+      selectedSeriesButton = button;
+      libraryTitle.textContent = collection.name + ' · ' + collection.title;
+      byId('LibraryDescription').textContent = collection.description;
+      byId('Cases').replaceChildren(...collection.cases.map(entry => caseCard(entry, collection)));
+      showPage(library, libraryTitle);
+    }
+
+    for (const collection of series) {
+      const button = element(doc, 'button', 'formula-series-card');
+      const text = doc.createElement('span');
+      text.append(
+        element(doc, 'strong', 'formula-series-name', collection.title),
+        element(doc, 'span', 'formula-series-description', collection.description)
+      );
+      const meta = element(doc, 'span', 'formula-series-meta', collection.cases.length + ' 条');
+      const arrow = element(doc, 'span', 'formula-series-arrow', '›');
+      arrow.setAttribute('aria-hidden', 'true');
+      meta.append(arrow);
+      button.type = 'button';
+      button.append(element(doc, 'span', 'formula-series-code', collection.name), text, meta);
+      button.addEventListener('click', () => openSeries(collection, button));
+      byId('SeriesList').append(button);
+    }
+
+    byId('LibraryBack').addEventListener('click', () => showPage(seriesIndex, selectedSeriesButton));
+    byId('Back').addEventListener('click', () => {
+      pause();
+      finishTurn();
+      showPage(library, selected.button);
+    });
+    const cameraReset = byId('CameraReset');
+    cameraReset.addEventListener('click', () => scene.resetCamera());
+    cameraReset.addEventListener('pointerup', event => {
+      // A touch immediately after orbiting may deliver pointer events without a click.
+      if (event.pointerType === 'touch' && doc.elementFromPoint(event.clientX, event.clientY) === cameraReset) {
+        scene.resetCamera();
+      }
+    });
+    modes.forEach(button => button.addEventListener('click', () => {
+      if (button.dataset.formulaMode !== mode) changeMode(button.dataset.formulaMode);
+    }));
+    prev.addEventListener('click', () => stepBy(-1));
+    next.addEventListener('click', () => stepBy(1));
+    restart.addEventListener('click', () => navigate(0));
+    hint.addEventListener('click', () => { hintVisible = true; render(); });
+    play.addEventListener('click', () => {
+      if (playing) {
+        pause();
+        return;
+      }
+      finishTurn();
+      if (step === moves.length) showStep(0);
+      playing = true;
+      animateStep(step + 1);
+    });
+    doc.addEventListener('visibilitychange', () => {
+      if (doc.hidden) {
+        pause();
+        finishTurn();
+      }
+    });
+
+    return {
+      pause() { pause(); finishTurn(); },
+      focus() {
+        const heading = !seriesIndex.hidden ? seriesTitle : !library.hidden ? libraryTitle : title;
+        heading.focus({ preventScroll: true });
+      }
+    };
+  }
+
+  root.StarCubeFormulas = { create };
+})(window);
+
 (function () {
   'use strict';
 
@@ -3104,6 +4330,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   var INIT_TIMEOUT = 30000;
   var RECORDS_KEY = 'starcube.records.v1';
   var SETTINGS_KEY = 'starcube.settings.v1';
+  var PROFILE_KEY = 'starcube.profile.v1';
   var SELECTION_KEY = 'starcube.currentGroup.v1';
   var THEMES = ['light', 'warm', 'dark'];
   var THEME_META = {
@@ -3143,8 +4370,26 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   function $(id) { return document.getElementById(id); }
 
   var el = {
-    app: $('app'), navTimer: $('navTimer'), navReview: $('navReview'),
-    timerView: $('timerView'), reviewView: $('reviewView'), recentReview: $('recentReview'),
+    app: $('app'), navTimer: $('navTimer'), navRecords: $('navRecords'), navContest: $('navContest'), navReview: $('navReview'),
+    navFormulas: $('navFormulas'), formulasView: $('formulasView'),
+    timerView: $('timerView'), recordsView: $('recordsView'), contestView: $('contestView'), reviewView: $('reviewView'), recentReview: $('recentReview'),
+    confettiCanvas: $('confettiCanvas'), pbCelebrateBanner: $('pbCelebrateBanner'),
+    contestBanner: $('contestBanner'), contestBannerText: $('contestBannerText'), contestBannerExit: $('contestBannerExit'),
+    profileTrigger: $('profileTrigger'), topbarAvatar: $('topbarAvatar'), topbarProfileName: $('topbarProfileName'),
+    profileDialog: $('profileDialog'), profileClose: $('profileClose'), profilePreviewAvatar: $('profilePreviewAvatar'),
+    profileUploadBtn: $('profileUploadBtn'), profileAvatarFile: $('profileAvatarFile'), profilePresets: $('profilePresets'),
+    profileForm: $('profileForm'), profileNameInput: $('profileNameInput'), profileBioInput: $('profileBioInput'),
+    profileTotalSolves: $('profileTotalSolves'), profileBestSingle: $('profileBestSingle'),
+    profileTotalContests: $('profileTotalContests'), profileStreakDays: $('profileStreakDays'),
+    recordsHeading: $('recordsHeading'), recSumCount: $('recSumCount'), recSumPb: $('recSumPb'), recSumMean: $('recSumMean'), recSumAo100: $('recSumAo100'),
+    recordsFilters: $('recordsFilters'), recordsSortBtn: $('recordsSortBtn'), recordsCsvBtn: $('recordsCsvBtn'),
+    recordsGrid: $('recordsGrid'), recordsEmpty: $('recordsEmpty'), recordsMoreBtn: $('recordsMoreBtn'),
+    contestAvatar: $('contestAvatar'), contestPlayerName: $('contestPlayerName'), contestPlayerBio: $('contestPlayerBio'),
+    contestStreakNum: $('contestStreakNum'), contestModeBar: $('contestModeBar'), contestCardTitle: $('contestCardTitle'),
+    contestPeriodTag: $('contestPeriodTag'), contestSlots: $('contestSlots'), contestAvgLabel: $('contestAvgLabel'),
+    contestCurrAvg: $('contestCurrAvg'), contestCurrBest: $('contestCurrBest'), contestBestEver: $('contestBestEver'),
+    contestStartBtn: $('contestStartBtn'), contestHistoryCount: $('contestHistoryCount'),
+    contestHistoryList: $('contestHistoryList'), contestHistoryEmpty: $('contestHistoryEmpty'),
     timerGroupName: $('timerGroupName'), coreAo5: $('coreAo5'), coreAo12: $('coreAo12'),
     coreAo100: $('coreAo100'), coreMean: $('coreMean'),
     corePb: $('corePb'), coreCount: $('coreCount'), coreGlobalPb: $('coreGlobalPb'),
@@ -3253,6 +4498,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
 
   var state = 'BOOT';
   var currentView = 'timer';
+  var formulaPractice = null;
   var records = [];
   var allRecords = [];
   var groups = [];
@@ -3284,6 +4530,17 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     showNet: true
   };
   var VALID_HOLD_MS = [0, 200, 300, 500];
+  var profile = { name: '魔方手', bio: '', avatarType: 'emoji', avatar: '🧊' };
+  var profileDraftAvatar = { avatarType: 'emoji', avatar: '🧊' };
+  var profileOpen = false;
+  var challengeStore = null;
+  var contestMode = 'daily';
+  var activeContest = null;
+  var recordsFilter = 'all';
+  var recordsSort = 'latest';
+  var recordsPageLimit = 60;
+  var pbCelebrateTimer = 0;
+  var confettiRaf = 0;
   var toastLeaveTimer = 0;
   var toastHideTimer = 0;
   var backup = null;
@@ -3448,6 +4705,10 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       try { initBridge.setKeepScreenOn(settings.keepScreenOn); } catch (err) {}
     }
     store = window.StarCubeStore.create({ storage: storage });
+    if (window.StarCubeChallenge) {
+      challengeStore = window.StarCubeChallenge.create({ storage: storage, stats: Stats, puzzles: window.StarCubePuzzles });
+    }
+    loadProfile(storage);
     reviewLimit = settings.reviewRange === '100' ? 100 : settings.reviewRange === '50' ? 50 : settings.reviewRange;
     el.reviewRange.value = String(reviewLimit);
     backup = window.StarCubeBackup.create({ storage: storage, threshold: 100 });
@@ -3578,6 +4839,10 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     renderControls();
     renderGroups();
     renderReview();
+    renderRecordsView();
+    renderContestView();
+    renderContestBanner();
+    renderProfileUi();
     renderRecordDialog();
     renderAverageDialog();
     renderBackup();
@@ -3589,23 +4854,41 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   function renderViews() {
     el.app.dataset.view = currentView;
     el.timerView.hidden = currentView !== 'timer';
+    if (el.recordsView) el.recordsView.hidden = currentView !== 'records';
+    if (el.contestView) el.contestView.hidden = currentView !== 'contest';
     el.reviewView.hidden = currentView !== 'review';
     el.navTimer.setAttribute('aria-pressed', String(currentView === 'timer'));
+    if (el.navRecords) el.navRecords.setAttribute('aria-pressed', String(currentView === 'records'));
+    if (el.navContest) el.navContest.setAttribute('aria-pressed', String(currentView === 'contest'));
     el.navReview.setAttribute('aria-pressed', String(currentView === 'review'));
+    el.formulasView.hidden = currentView !== 'formulas';
+    el.navFormulas.setAttribute('aria-pressed', String(currentView === 'formulas'));
   }
 
   function switchView(view) {
-    if (!canChangeGroup() || editingGroup !== null || (view !== 'timer' && view !== 'review')) return;
+    if (!canChangeGroup() || editingGroup !== null || !['timer', 'records', 'contest', 'review', 'formulas'].includes(view)) return;
+    if (view === 'formulas') {
+      if (el.navFormulas.hidden || !window.StarCubeFormulas) return;
+      if (!formulaPractice) {
+        formulaPractice = window.StarCubeFormulas.create(el.formulasView, function (algorithm) {
+          return algorithm ? computeFacelets(algorithm) : SOLVED_FACELETS;
+        });
+      }
+    }
     closeMobileSheet();
     if (currentView !== view) {
+      if (currentView === 'formulas') formulaPractice.pause();
       currentView = view;
+      if (view === 'records') recordsPageLimit = 60;
       if (!undoDeletions.length) undoMessage = '';
-      // Showing the panel precedes chart measurement. Hidden panels release their
-      // expensive DOM through their normal render paths; model state stays live.
       render();
       window.scrollTo(0, 0);
     }
-    if (view === 'timer') el.pad.focus({ preventScroll: true }); else el.reviewView.focus({ preventScroll: true });
+    if (view === 'formulas') formulaPractice.focus();
+    else if (view === 'timer') el.pad.focus({ preventScroll: true });
+    else if (view === 'records' && el.recordsView) el.recordsView.focus({ preventScroll: true });
+    else if (view === 'contest' && el.contestView) el.contestView.focus({ preventScroll: true });
+    else el.reviewView.focus({ preventScroll: true });
   }
 
   function returnTimerFocus(event) {
@@ -4239,10 +5522,12 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     var canToggle = canChangeGroup() && editingGroup === null;
     historyDetailButtons.forEach(function (button) { button.disabled = !canToggle; });
     recentDetailButtons.forEach(function (button) { button.disabled = !canToggle; });
-    [el.navTimer, el.navReview, el.recentReview].forEach(function (button) {
+    [el.navTimer, el.navRecords, el.navContest, el.navReview, el.navFormulas, el.recentReview].forEach(function (button) {
+      if (!button) return;
       button.disabled = !canToggle;
       button.title = canToggle ? '' : '请先完成当前操作';
     });
+    if (el.profileTrigger) el.profileTrigger.disabled = !canToggle;
     el.switchBtn.disabled = !canToggle;
     if (el.themeToggle) el.themeToggle.disabled = detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
     if (el.mobileGroupBtn) el.mobileGroupBtn.disabled = !canToggle;
@@ -4317,7 +5602,481 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     return (state === 'IDLE' || state === 'STOPPED') && !press && !activeScramble && !importing && !detailsOpen();
   }
 
-  function detailsOpen() { return !!selectedRecordUid || selectedAverage !== null || deletingGroupId !== null; }
+  function hidePbCelebration() {
+    if (pbCelebrateTimer) { clearTimeout(pbCelebrateTimer); pbCelebrateTimer = 0; }
+    if (el.pbCelebrateBanner) el.pbCelebrateBanner.hidden = true;
+    if (el.timer && el.timer.classList) el.timer.classList.remove('is-pb-pop');
+  }
+
+  function launchConfetti() {
+    var canvas = el.confettiCanvas;
+    if (!canvas || typeof canvas.getContext !== 'function') return;
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (err) {}
+    }
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    cancelAnimationFrame(confettiRaf);
+    var dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+    var width = (typeof window !== 'undefined' && window.innerWidth) || 390;
+    var height = (typeof window !== 'undefined' && window.innerHeight) || 800;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    var palette = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
+    var particles = [];
+    for (var i = 0; i < 68; i++) {
+      var angle = (-Math.PI / 2) + (Math.random() - 0.5) * 1.4;
+      var speed = 5 + Math.random() * 7;
+      particles.push({
+        x: width * (0.2 + Math.random() * 0.6),
+        y: height * 0.28 + (Math.random() - 0.5) * 30,
+        vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 3,
+        vy: Math.sin(angle) * speed - 2,
+        w: 6 + Math.random() * 6,
+        h: 4 + Math.random() * 4,
+        rot: Math.random() * Math.PI * 2,
+        vrot: (Math.random() - 0.5) * 0.24,
+        color: palette[i % palette.length],
+        alpha: 1
+      });
+    }
+    var startAt = performance.now();
+    function frame(now) {
+      var elapsed = now - startAt;
+      ctx.clearRect(0, 0, width, height);
+      var alive = false;
+      for (var k = 0; k < particles.length; k++) {
+        var p = particles[k];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.24;
+        p.vx *= 0.99;
+        p.rot += p.vrot;
+        if (elapsed > 1100) p.alpha = Math.max(0, 1 - (elapsed - 1100) / 700);
+        if (p.alpha > 0.02 && p.y < height + 30) {
+          alive = true;
+          ctx.save();
+          ctx.globalAlpha = p.alpha;
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          ctx.restore();
+        }
+      }
+      if (alive && elapsed < 1900) {
+        confettiRaf = requestAnimationFrame(frame);
+      } else {
+        ctx.clearRect(0, 0, width, height);
+        confettiRaf = 0;
+      }
+    }
+    confettiRaf = requestAnimationFrame(frame);
+  }
+
+  function celebrateMilestone(label) {
+    hidePbCelebration();
+    if (el.pbCelebrateBanner) {
+      el.pbCelebrateBanner.textContent = label;
+      el.pbCelebrateBanner.hidden = false;
+    }
+    if (el.timer && el.timer.classList) {
+      el.timer.classList.remove('is-pb-pop');
+      el.timer.classList.add('is-pb-pop');
+    }
+    launchConfetti();
+    triggerNativeHaptic('ready');
+    setTimeout(function () { triggerNativeHaptic('stop'); }, 110);
+    pbCelebrateTimer = setTimeout(function () {
+      pbCelebrateTimer = 0;
+      if (el.timer && el.timer.classList) el.timer.classList.remove('is-pb-pop');
+    }, 650);
+  }
+
+  function loadProfile(storage) {
+    try {
+      var raw = storage ? storage.getItem(PROFILE_KEY) : null;
+      var parsed = raw ? JSON.parse(raw) : null;
+      if (parsed && typeof parsed === 'object') {
+        if (typeof parsed.name === 'string' && parsed.name.trim()) profile.name = parsed.name.trim().slice(0, 20);
+        if (typeof parsed.bio === 'string') profile.bio = parsed.bio.trim().slice(0, 40);
+        if (parsed.avatarType === 'image' && typeof parsed.avatar === 'string' && parsed.avatar.indexOf('data:image/') === 0) {
+          profile.avatarType = 'image';
+          profile.avatar = parsed.avatar;
+        } else if (typeof parsed.avatar === 'string' && parsed.avatar) {
+          profile.avatarType = 'emoji';
+          profile.avatar = parsed.avatar;
+        }
+      }
+    } catch (err) {}
+  }
+
+  function persistProfile() {
+    if (memoryMode) return;
+    try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); }
+    catch (err) { showToast('头像或资料保存失败，可能超出存储限制'); }
+  }
+
+  function renderAvatarInto(node, data) {
+    if (!node) return;
+    var info = data || profile;
+    if (info.avatarType === 'image' && info.avatar && info.avatar.indexOf('data:image/') === 0) {
+      var img = document.createElement('img');
+      img.src = info.avatar;
+      img.alt = '';
+      node.replaceChildren(img);
+    } else {
+      node.textContent = info.avatar || '🧊';
+    }
+  }
+
+  function renderProfileUi() {
+    renderAvatarInto(el.topbarAvatar, profile);
+    if (el.topbarProfileName) el.topbarProfileName.textContent = profile.name || '魔方手';
+    renderAvatarInto(el.contestAvatar, profile);
+    if (el.contestPlayerName) el.contestPlayerName.textContent = profile.name || '魔方手';
+    if (el.contestPlayerBio) {
+      el.contestPlayerBio.textContent = profile.bio || '点击右上角头像可自定义昵称与头像';
+    }
+    if (el.profileTotalSolves) el.profileTotalSolves.textContent = String(allRecords.length);
+    if (el.profileBestSingle) {
+      var bestAll = Stats.personalBest(allRecords);
+      el.profileBestSingle.textContent = bestAll ? formatDisplayMs(bestAll.value) : '—';
+    }
+    if (el.profileTotalContests && challengeStore) {
+      el.profileTotalContests.textContent = String(challengeStore.totalCompleted());
+    }
+    if (el.profileStreakDays && challengeStore) {
+      el.profileStreakDays.textContent = challengeStore.dailyStreak() + ' 天';
+    }
+  }
+
+  function openProfileDialog() {
+    if (!el.profileDialog || detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
+    closeMobileSheet();
+    profileOpen = true;
+    profileDraftAvatar = { avatarType: profile.avatarType, avatar: profile.avatar };
+    renderAvatarInto(el.profilePreviewAvatar, profileDraftAvatar);
+    if (el.profileNameInput) el.profileNameInput.value = profile.name || '';
+    if (el.profileBioInput) el.profileBioInput.value = profile.bio || '';
+    if (el.profilePresets && el.profilePresets.querySelectorAll) {
+      el.profilePresets.querySelectorAll('button').forEach(function (btn) {
+        var emoji = btn.getAttribute('data-avatar');
+        btn.setAttribute('aria-pressed', String(profileDraftAvatar.avatarType === 'emoji' && profileDraftAvatar.avatar === emoji));
+      });
+    }
+    renderProfileUi();
+    if (!el.profileDialog.open && typeof el.profileDialog.showModal === 'function') {
+      el.profileDialog.showModal();
+    }
+  }
+
+  function closeProfileDialog() {
+    if (!profileOpen && (!el.profileDialog || !el.profileDialog.open)) return;
+    profileOpen = false;
+    if (el.profileDialog && el.profileDialog.open) el.profileDialog.close();
+  }
+
+  function handleAvatarFile() {
+    var file = el.profileAvatarFile && el.profileAvatarFile.files && el.profileAvatarFile.files[0];
+    if (!file) return;
+    el.profileAvatarFile.value = '';
+    if (typeof FileReader !== 'function' || typeof Image !== 'function') {
+      showToast('当前环境不支持读取图片');
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var canvas = document.createElement('canvas');
+          var size = 160;
+          canvas.width = size;
+          canvas.height = size;
+          var ctx = canvas.getContext('2d');
+          var minSide = Math.min(img.width, img.height);
+          var sx = (img.width - minSide) / 2;
+          var sy = (img.height - minSide) / 2;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          profileDraftAvatar = { avatarType: 'image', avatar: dataUrl };
+          renderAvatarInto(el.profilePreviewAvatar, profileDraftAvatar);
+          if (el.profilePresets && el.profilePresets.querySelectorAll) {
+            el.profilePresets.querySelectorAll('button').forEach(function (btn) { btn.setAttribute('aria-pressed', 'false'); });
+          }
+          showToast('已载入新头像，点击保存生效');
+        } catch (err) {
+          showToast('头像裁剪失败，请换一张图片');
+        }
+      };
+      img.onerror = function () { showToast('无法解析该图片文件'); };
+      img.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function saveProfile(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    var nextName = el.profileNameInput ? el.profileNameInput.value.trim().slice(0, 20) : '';
+    var nextBio = el.profileBioInput ? el.profileBioInput.value.trim().slice(0, 40) : '';
+    profile.name = nextName || '魔方手';
+    profile.bio = nextBio;
+    profile.avatarType = profileDraftAvatar.avatarType;
+    profile.avatar = profileDraftAvatar.avatar;
+    persistProfile();
+    renderProfileUi();
+    closeProfileDialog();
+    showToast('已保存个人名片');
+  }
+
+  function computePbUidSet(list) {
+    var pbUids = new Set();
+    var best = Infinity;
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      if (!r || r.penalty === 'dnf') continue;
+      var eff = Stats.effectiveMs(r);
+      if (eff < best) {
+        best = eff;
+        pbUids.add(r.uid);
+      }
+    }
+    return pbUids;
+  }
+
+  function renderRecordsView() {
+    if (currentView !== 'records' || !el.recordsGrid) return;
+    var selected = groups.find(function (g) { return g.id === currentGroupId; });
+    var puzzle = currentPuzzle();
+    if (el.recordsHeading) el.recordsHeading.textContent = (selected ? selected.name : '默认训练') + ' · ' + puzzle.name;
+    if (el.recSumCount) el.recSumCount.textContent = String(records.length);
+    var pb = Stats.personalBest(records);
+    if (el.recSumPb) el.recSumPb.textContent = pb ? formatDisplayMs(pb.value) + (pb.record.penalty === '+2' ? '+' : '') : '—';
+    var mean = Stats.overallAverage(records);
+    if (el.recSumMean) el.recSumMean.textContent = mean === null ? '—' : mean === 'DNF' ? 'DNF' : formatDisplayMs(mean);
+    var ao100 = Stats.aoN(records, 100);
+    if (el.recSumAo100) el.recSumAo100.textContent = ao100 === null ? '—' : ao100 === 'DNF' ? 'DNF' : formatDisplayMs(ao100);
+
+    if (el.recordsFilters && el.recordsFilters.querySelectorAll) {
+      el.recordsFilters.querySelectorAll('button').forEach(function (btn) {
+        btn.setAttribute('aria-pressed', String(btn.getAttribute('data-filter') === recordsFilter));
+      });
+    }
+    if (el.recordsSortBtn) el.recordsSortBtn.textContent = recordsSort === 'fastest' ? '最快在前' : '最新在前';
+    if (el.recordsCsvBtn) el.recordsCsvBtn.disabled = !records.length;
+
+    var pbUids = computePbUidSet(records);
+    var indexed = records.map(function (r, idx) { return { record: r, index: idx, isPb: pbUids.has(r.uid) }; });
+    var filtered = indexed.filter(function (entry) {
+      if (recordsFilter === 'pb') return entry.isPb;
+      if (recordsFilter === '+2') return entry.record.penalty === '+2';
+      if (recordsFilter === 'dnf') return entry.record.penalty === 'dnf';
+      return true;
+    });
+    if (recordsSort === 'fastest') {
+      filtered.sort(function (a, b) {
+        var av = a.record.penalty === 'dnf' ? Infinity : Stats.effectiveMs(a.record);
+        var bv = b.record.penalty === 'dnf' ? Infinity : Stats.effectiveMs(b.record);
+        return av !== bv ? av - bv : a.index - b.index;
+      });
+    } else {
+      filtered.reverse();
+    }
+
+    var total = filtered.length;
+    if (el.recordsEmpty) el.recordsEmpty.hidden = total > 0;
+    if (el.recordsMoreBtn) {
+      el.recordsMoreBtn.hidden = total <= recordsPageLimit;
+      el.recordsMoreBtn.textContent = '再显示 60 条 · 已显示 ' + Math.min(recordsPageLimit, total) + ' / ' + total;
+    }
+
+    var fragment = document.createDocumentFragment();
+    var slice = filtered.slice(0, recordsPageLimit);
+    slice.forEach(function (entry) {
+      var li = document.createElement('li');
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'record-tile' + (entry.record.penalty === 'dnf' ? ' is-dnf' : entry.record.penalty === '+2' ? ' is-plus' : '');
+      btn.setAttribute('data-record-uid', entry.record.uid);
+
+      var top = document.createElement('span');
+      top.className = 'record-tile-top';
+      var num = document.createElement('span');
+      num.textContent = '#' + (entry.index + 1);
+      top.appendChild(num);
+      if (entry.isPb) {
+        var badge = document.createElement('span');
+        badge.className = 'record-tile-pb';
+        badge.textContent = 'PB';
+        top.appendChild(badge);
+      }
+
+      var time = document.createElement('span');
+      time.className = 'record-tile-time';
+      time.textContent = formatDisplayResult(entry.record);
+
+      var date = document.createElement('span');
+      date.className = 'record-tile-date';
+      date.textContent = formatAt(entry.record.at);
+
+      btn.appendChild(top);
+      btn.appendChild(time);
+      btn.appendChild(date);
+      li.appendChild(btn);
+      fragment.appendChild(li);
+    });
+    el.recordsGrid.replaceChildren(fragment);
+  }
+
+  function renderContestBanner() {
+    if (!el.contestBanner) return;
+    if (!activeContest) {
+      el.contestBanner.hidden = true;
+      return;
+    }
+    var label = activeContest.type === 'weekly' ? '周赛' : '日赛';
+    var total = activeContest.scrambles.length;
+    el.contestBannerText.textContent = currentPuzzle().name + ' ' + label + ' · 第 ' + (activeContest.index + 1) + ' / ' + total + ' 把';
+    el.contestBanner.hidden = false;
+  }
+
+  function renderContestView() {
+    if (currentView !== 'contest' || !challengeStore || !el.contestSlots) return;
+    var puzzle = currentPuzzle();
+    var data = challengeStore.getOrInit(contestMode, puzzle.id);
+    var entry = data.entry;
+    var summary = data.summary;
+    var isWeekly = contestMode === 'weekly';
+
+    if (el.contestStreakNum) el.contestStreakNum.textContent = String(challengeStore.dailyStreak());
+    if (el.contestModeBar && el.contestModeBar.querySelectorAll) {
+      el.contestModeBar.querySelectorAll('button').forEach(function (btn) {
+        btn.setAttribute('aria-pressed', String(btn.getAttribute('data-contest-type') === contestMode));
+      });
+    }
+    if (el.contestCardTitle) el.contestCardTitle.textContent = (isWeekly ? '本周 ' : '今日 ') + puzzle.name + (isWeekly ? ' 周赛' : ' 日赛');
+    if (el.contestPeriodTag) el.contestPeriodTag.textContent = entry.period;
+    if (el.contestAvgLabel) el.contestAvgLabel.textContent = isWeekly ? '本场 Ao12' : '本场 Ao5';
+
+    el.contestSlots.classList.toggle('is-weekly', isWeekly);
+    var slotFrag = document.createDocumentFragment();
+    for (var i = 0; i < summary.total; i++) {
+      var solve = entry.solves[i];
+      var slot = document.createElement('div');
+      slot.className = 'contest-slot' + (solve ? ' is-done' : i === entry.solves.length ? ' is-next' : '') + (solve && solve.penalty === 'dnf' ? ' is-dnf' : '');
+      var idxEl = document.createElement('span');
+      idxEl.className = 'contest-slot-idx';
+      idxEl.textContent = '#' + (i + 1);
+      var valEl = document.createElement('span');
+      valEl.className = 'contest-slot-val';
+      valEl.textContent = solve ? formatDisplayResult(solve) : (i === entry.solves.length ? '待打' : '—');
+      slot.appendChild(idxEl);
+      slot.appendChild(valEl);
+      slotFrag.appendChild(slot);
+    }
+    el.contestSlots.replaceChildren(slotFrag);
+
+    if (el.contestCurrAvg) {
+      el.contestCurrAvg.textContent = summary.average === null ? '—' : summary.average === 'DNF' ? 'DNF' : formatDisplayMs(summary.average);
+    }
+    if (el.contestCurrBest) {
+      el.contestCurrBest.textContent = summary.best === null ? '—' : formatDisplayMs(summary.best);
+    }
+    var bestEver = challengeStore.bestAverage(contestMode, puzzle.id);
+    if (el.contestBestEver) {
+      el.contestBestEver.textContent = bestEver === null ? '—' : formatDisplayMs(bestEver);
+    }
+    if (el.contestStartBtn) {
+      if (summary.completed) {
+        el.contestStartBtn.textContent = (isWeekly ? '本周' : '今日') + '已完赛 ✓';
+        el.contestStartBtn.disabled = true;
+      } else {
+        el.contestStartBtn.disabled = false;
+        el.contestStartBtn.textContent = entry.solves.length === 0
+          ? ('开始' + (isWeekly ? '本周' : '今日') + '第 1 把')
+          : ('继续第 ' + (entry.solves.length + 1) + ' / ' + summary.total + ' 把');
+      }
+    }
+
+    var historyList = challengeStore.history(contestMode, puzzle.id);
+    if (el.contestHistoryCount) el.contestHistoryCount.textContent = historyList.length + ' 场';
+    if (el.contestHistoryEmpty) el.contestHistoryEmpty.hidden = historyList.length > 0;
+    if (el.contestHistoryList) {
+      var histFrag = document.createDocumentFragment();
+      historyList.slice(0, 30).forEach(function (item) {
+        var li = document.createElement('li');
+        li.className = 'contest-history-item';
+        var left = document.createElement('div');
+        left.className = 'contest-history-left';
+        var p = document.createElement('span');
+        p.className = 'contest-history-period';
+        p.textContent = item.period + (item.completedAt ? '' : '（进行中 ' + item.solves.length + '/' + (item.type === 'weekly' ? 12 : 5) + '）');
+        var sub = document.createElement('span');
+        sub.className = 'contest-history-sub';
+        sub.textContent = '单次最佳：' + (item.best !== null ? formatDisplayMs(item.best) : '—');
+        left.appendChild(p);
+        left.appendChild(sub);
+
+        var score = document.createElement('span');
+        score.className = 'contest-history-score';
+        score.textContent = item.average === null ? '进行中' : item.average === 'DNF' ? 'DNF' : formatDisplayMs(item.average);
+
+        li.appendChild(left);
+        li.appendChild(score);
+        histFrag.appendChild(li);
+      });
+      el.contestHistoryList.replaceChildren(histFrag);
+    }
+  }
+
+  function loadActiveContestScramble() {
+    if (!activeContest) return;
+    var scr = activeContest.scrambles[activeContest.index];
+    if (!scr) return;
+    if (genTimer) { clearTimeout(genTimer); genTimer = 0; }
+    generating = false;
+    pendingRequestId = null;
+    genFailed = false;
+    currentScramble = {
+      algorithm: scr.algorithm,
+      facelets: scr.facelets,
+      puzzle: activeContest.puzzle,
+      requestId: ++requestSerial,
+      contest: true
+    };
+    scrambleUsed = false;
+    if (state === 'BOOT' || state === 'STOPPED') state = 'IDLE';
+  }
+
+  function startContestSession() {
+    if (!challengeStore || !canChangeGroup() || editingGroup !== null) return;
+    var puzzle = currentPuzzle();
+    var data = challengeStore.getOrInit(contestMode, puzzle.id);
+    if (data.summary.completed) return;
+    activeContest = {
+      type: contestMode,
+      puzzle: puzzle.id,
+      period: data.entry.period,
+      scrambles: data.scrambles,
+      index: data.entry.solves.length
+    };
+    loadActiveContestScramble();
+    switchView('timer');
+    showToast((contestMode === 'weekly' ? '周赛' : '日赛') + '第 ' + (activeContest.index + 1) + ' 把准备就绪');
+  }
+
+  function exitContestSession(silent) {
+    if (!activeContest) return;
+    activeContest = null;
+    renderContestBanner();
+    requestScramble(true);
+    if (!silent) showToast('已退出赛事模式');
+  }
+
+  function detailsOpen() { return !!selectedRecordUid || selectedAverage !== null || deletingGroupId !== null || profileOpen; }
 
   function renderBackup() {
     var status = backup.status();
@@ -4528,6 +6287,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     reviewSelectedUid = null;
     el.historyBody.scrollTop = 0;
     if (activeMobileSheet === 'groups') closeMobileSheet();
+    if (activeContest && currentPuzzleId() !== activeContest.puzzle) activeContest = null;
     dataChanged();
     var nextPuzzle = currentPuzzleId();
     if (nextPuzzle !== prevPuzzle) {
@@ -4985,6 +6745,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     var record = allRecords.find(function (item) { return item.uid === uid; });
     if (!record) { render(); return; }
     saveRecord(Object.assign({}, record, { penalty: penalty }));
+    if (challengeStore) challengeStore.updateSolvePenalty(uid, penalty);
     render();
     if (selectedRecordUid) el.recordFeedback.textContent = memoryMode ? '已在本页修改；请导出备份保存。' : '已保存，统计与曲线已更新。';
   }
@@ -5045,6 +6806,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     }
     if (state === 'IDLE' || state === 'STOPPED') {
       if (!canStart()) return;
+      hidePbCelebration();
       audio.stop();
       if (settings.inspectionSound && settings.inspection) audio.unlock();
       freezeScramble();
@@ -5164,6 +6926,9 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     var ms = Math.max(0, Math.round(performance.now() - runStart));
     cancelAnimationFrame(runRaf);
     runRaf = 0;
+    var prevGroupRecords = groupRecords(activeScramble.groupId);
+    var prevPb = Stats.personalBest(prevGroupRecords);
+    var prevBestAo5 = Stats.bestAo5(prevGroupRecords);
     var record = {
       id: nextId++,
       groupId: activeScramble.groupId,
@@ -5180,6 +6945,43 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     usedScramble = '';
     activeScramble = null;
     if (engineDead) currentScramble = null;
+
+    var celebrated = false;
+    if (record.penalty !== 'dnf' && prevGroupRecords.length >= 1) {
+      var newEff = Stats.effectiveMs(record);
+      if (prevPb && newEff < prevPb.value) {
+        var diffSec = ((prevPb.value - newEff) / 1000).toFixed(2);
+        celebrateMilestone('🎉 NEW PB · 快 ' + diffSec + 's');
+        celebrated = true;
+      } else {
+        var currAo5 = Stats.aoN(records, 5);
+        if (typeof currAo5 === 'number' && records.length >= 6 && (prevBestAo5 === null || currAo5 < prevBestAo5)) {
+          celebrateMilestone('🏆 NEW BEST Ao5 · ' + formatDisplayMs(currAo5));
+          celebrated = true;
+        }
+      }
+    }
+
+    if (activeContest && challengeStore) {
+      var contestRes = challengeStore.recordSolve(activeContest.type, activeContest.puzzle, activeContest.period, activeContest.index, record);
+      if (contestRes.justCompleted) {
+        var modeName = activeContest.type === 'weekly' ? '周赛' : '日赛';
+        var avgText = contestRes.summary.average === 'DNF' ? 'DNF' : contestRes.summary.average !== null ? formatDisplayMs(contestRes.summary.average) : '—';
+        activeContest = null;
+        if (!celebrated) {
+          celebrateMilestone(contestRes.isNewBest ? ('🏆 新' + modeName + '纪录 · ' + avgText) : ('🎉 完成' + modeName + ' · ' + avgText));
+        }
+        render();
+        requestScramble(true);
+        showToast(modeName + '完赛！成绩：' + avgText);
+        return;
+      }
+      activeContest.index = contestRes.entry.solves.length;
+      loadActiveContestScramble();
+      render();
+      return;
+    }
+
     render();
     requestScramble(true);
   }
@@ -5440,6 +7242,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       record.penalty = record.penalty === 'dnf' ? 'ok' : 'dnf';
     }
     saveRecord(record);
+    if (challengeStore) challengeStore.updateSolvePenalty(record.uid, record.penalty);
     render();
   }
 
@@ -5948,6 +7751,12 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     if (!memoryMode) readStore();
     var payload = { format: 'starcube', version: 3, exportedAt: new Date().toISOString(),
       groups: groups, records: allRecords, backups: store.backups() };
+    var hasCustomProfile = profile.name !== '魔方手' || !!profile.bio || profile.avatarType !== 'emoji' || profile.avatar !== '🧊';
+    if (hasCustomProfile) payload.profile = profile;
+    if (challengeStore) {
+      var exportedChallenges = challengeStore.exportAll();
+      if (Object.keys(exportedChallenges).length > 0) payload.challenges = exportedChallenges;
+    }
     var jsonText = JSON.stringify(payload, null, 2);
     var filename = 'starcube-backup-' + new Date().toISOString().slice(0, 10) + '.json';
     var groupCount = groups.length;
@@ -6035,6 +7844,24 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     render();
     file.text().then(function (raw) {
       var result = store.importRecords(raw);
+      try {
+        var extra = JSON.parse(raw);
+        if (extra && typeof extra === 'object') {
+          if (extra.challenges && challengeStore) challengeStore.importAll(extra.challenges);
+          if (extra.profile && typeof extra.profile === 'object' && typeof extra.profile.name === 'string' && extra.profile.name.trim()) {
+            profile.name = extra.profile.name.trim().slice(0, 20);
+            if (typeof extra.profile.bio === 'string') profile.bio = extra.profile.bio.trim().slice(0, 40);
+            if (extra.profile.avatarType === 'image' && typeof extra.profile.avatar === 'string' && extra.profile.avatar.indexOf('data:image/') === 0) {
+              profile.avatarType = 'image';
+              profile.avatar = extra.profile.avatar;
+            } else if (typeof extra.profile.avatar === 'string' && extra.profile.avatar) {
+              profile.avatarType = 'emoji';
+              profile.avatar = extra.profile.avatar;
+            }
+            persistProfile();
+          }
+        }
+      } catch (err) {}
       readStore();
       el.feedback.textContent = '已导入 ' + result.added + ' 条，跳过 ' + result.skipped + ' 条重复或已删除成绩' +
         (result.conflicts ? '，保留 ' + result.conflicts + ' 条编号冲突成绩' : '') +
@@ -6121,7 +7948,73 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     window.addEventListener('pointercancel', cancelPointer);
 
     el.navTimer.addEventListener('click', function () { switchView('timer'); });
+    if (el.navRecords) el.navRecords.addEventListener('click', function () { switchView('records'); });
+    if (el.navContest) el.navContest.addEventListener('click', function () { switchView('contest'); });
     el.navReview.addEventListener('click', function () { switchView('review'); });
+    if (el.contestBannerExit) el.contestBannerExit.addEventListener('click', function () { exitContestSession(false); });
+    if (el.profileTrigger) el.profileTrigger.addEventListener('click', openProfileDialog);
+    if (el.profileClose) el.profileClose.addEventListener('click', closeProfileDialog);
+    if (el.profileDialog) {
+      el.profileDialog.addEventListener('cancel', function (event) { event.preventDefault(); closeProfileDialog(); });
+      el.profileDialog.addEventListener('close', function () { if (!el.profileDialog.open && profileOpen) closeProfileDialog(); });
+      el.profileDialog.addEventListener('click', function (event) { if (event.target === el.profileDialog) closeProfileDialog(); });
+    }
+    if (el.profileUploadBtn && el.profileAvatarFile) {
+      el.profileUploadBtn.addEventListener('click', function () { el.profileAvatarFile.click(); });
+      el.profileAvatarFile.addEventListener('change', handleAvatarFile);
+    }
+    if (el.profilePresets && el.profilePresets.querySelectorAll) {
+      el.profilePresets.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var emoji = btn.getAttribute('data-avatar') || '🧊';
+          profileDraftAvatar = { avatarType: 'emoji', avatar: emoji };
+          renderAvatarInto(el.profilePreviewAvatar, profileDraftAvatar);
+          el.profilePresets.querySelectorAll('button').forEach(function (other) {
+            other.setAttribute('aria-pressed', String(other === btn));
+          });
+        });
+      });
+    }
+    if (el.profileForm) el.profileForm.addEventListener('submit', saveProfile);
+    if (el.recordsFilters && el.recordsFilters.querySelectorAll) {
+      el.recordsFilters.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var f = btn.getAttribute('data-filter');
+          if (!f) return;
+          recordsFilter = f;
+          recordsPageLimit = 60;
+          renderRecordsView();
+        });
+      });
+    }
+    if (el.recordsSortBtn) el.recordsSortBtn.addEventListener('click', function () {
+      recordsSort = recordsSort === 'latest' ? 'fastest' : 'latest';
+      recordsPageLimit = 60;
+      renderRecordsView();
+    });
+    if (el.recordsCsvBtn) el.recordsCsvBtn.addEventListener('click', exportHistoryCsv);
+    if (el.recordsMoreBtn) el.recordsMoreBtn.addEventListener('click', function () {
+      recordsPageLimit += 60;
+      renderRecordsView();
+    });
+    if (el.recordsGrid) el.recordsGrid.addEventListener('click', function (event) {
+      if (currentView !== 'records') return;
+      var button = event.target.closest('[data-record-uid]');
+      if (button) openRecord(button.getAttribute('data-record-uid'), button);
+    });
+    if (el.contestModeBar && el.contestModeBar.querySelectorAll) {
+      el.contestModeBar.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var type = btn.getAttribute('data-contest-type');
+          if (type !== 'daily' && type !== 'weekly') return;
+          contestMode = type;
+          renderContestView();
+        });
+      });
+    }
+    if (el.contestStartBtn) el.contestStartBtn.addEventListener('click', startContestSession);
+    el.navFormulas.hidden = !!getNativeBridge() || !window.StarCubeFormulas;
+    el.navFormulas.addEventListener('click', function () { switchView('formulas'); });
     el.recentReview.addEventListener('click', function () { switchView('review'); });
     el.recentList.addEventListener('click', function (event) {
       if (currentView !== 'timer') return;
@@ -6452,6 +8345,10 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   }
 
   function handleNativeBack() {
+    if (profileOpen || (el.profileDialog && el.profileDialog.open)) {
+      closeProfileDialog();
+      return true;
+    }
     if (netPreviewOpen || (el.netPreviewDialog && el.netPreviewDialog.open)) {
       closeNetPreview();
       return true;
@@ -6480,7 +8377,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       if (state === 'RUNNING') showToast('计时中，请先停表');
       return true;
     }
-    if (currentView === 'review') {
+    if (currentView !== 'timer') {
       switchView('timer');
       return true;
     }
