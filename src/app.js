@@ -79,7 +79,7 @@
     feedback: $('dataFeedback'),
     soundToggle: $('soundToggle'), soundPreview: $('soundPreview'), soundFeedback: $('soundFeedback'),
     backupReminder: $('backupReminder'), backupMessage: $('backupMessage'), backupLater: $('backupLater'), backupExport: $('backupExport'), backupStatus: $('backupStatus'),
-    aboutVersion: $('aboutVersion'), aboutActions: $('aboutActions'), checkUpdateBtn: $('checkUpdateBtn'), downloadUpdateBtn: $('downloadUpdateBtn'), updateStatus: $('updateStatus'), updateNotes: $('updateNotes'),
+    aboutVersion: $('aboutVersion'), aboutActions: $('aboutActions'), checkUpdateBtn: $('checkUpdateBtn'), downloadUpdateBtn: $('downloadUpdateBtn'), openReleaseBtn: $('openReleaseBtn'), updateProgressWrap: $('updateProgressWrap'), updateProgressFill: $('updateProgressFill'), updateStatus: $('updateStatus'), updateNotes: $('updateNotes'),
     coreAo5Detail: $('coreAo5Detail'), coreAo12Detail: $('coreAo12Detail'), ao5Detail: $('ao5Detail'), ao12Detail: $('ao12Detail'),
     averageDialog: $('averageDialog'), averageClose: $('averageClose'), averageContinue: $('averageContinue'), averageTitle: $('averageTitle'), averageGroup: $('averageGroup'),
     averageResult: $('averageResult'), averageFormula: $('averageFormula'), averageRows: $('averageRows'),
@@ -164,7 +164,12 @@
   var activeMobileSheet = null;
   var netPreviewOpen = false;
   var checkingUpdate = false;
+  var downloadingUpdate = false;
   var pendingUpdateUrl = '';
+  var pendingReleaseHtmlUrl = '';
+  var pendingUpdateAssetName = '';
+  var pendingUpdateIsApk = false;
+  var pendingUpdateLabel = '';
   var currentAppVersion = '';
   var groupsVersion = -1;
   var settings = { inspection: true, inspectionSound: false, reviewRange: '50', theme: 'light' };
@@ -2377,16 +2382,31 @@
     }
   }
 
+  function formatMegabytes(bytes) {
+    return (Math.max(0, Number(bytes) || 0) / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function resetUpdateProgress() {
+    if (el.updateProgressWrap) el.updateProgressWrap.hidden = true;
+    if (el.updateProgressFill && el.updateProgressFill.style) el.updateProgressFill.style.width = '0%';
+  }
+
   function checkForAppUpdate() {
     var nativeBridge = getNativeBridge();
-    if (!nativeBridge || typeof nativeBridge.checkUpdate !== 'function' || checkingUpdate) return;
+    if (!nativeBridge || typeof nativeBridge.checkUpdate !== 'function' || checkingUpdate || downloadingUpdate) return;
     checkingUpdate = true;
     pendingUpdateUrl = '';
+    pendingReleaseHtmlUrl = '';
+    pendingUpdateAssetName = '';
+    pendingUpdateIsApk = false;
+    pendingUpdateLabel = '';
+    resetUpdateProgress();
     if (el.checkUpdateBtn) {
       el.checkUpdateBtn.disabled = true;
       el.checkUpdateBtn.textContent = '检查中…';
     }
-    if (el.downloadUpdateBtn) el.downloadUpdateBtn.hidden = true;
+    if (el.downloadUpdateBtn) { el.downloadUpdateBtn.hidden = true; el.downloadUpdateBtn.disabled = false; }
+    if (el.openReleaseBtn) el.openReleaseBtn.hidden = true;
     if (el.updateNotes) { el.updateNotes.hidden = true; el.updateNotes.textContent = ''; }
     if (el.updateStatus) el.updateStatus.textContent = '正在连接 GitHub 检查最新版本…';
 
@@ -2409,6 +2429,8 @@
         if (el.updateStatus) el.updateStatus.textContent = errMsg;
         if (result.htmlUrl && el.downloadUpdateBtn) {
           pendingUpdateUrl = result.htmlUrl;
+          pendingReleaseHtmlUrl = result.htmlUrl;
+          pendingUpdateIsApk = false;
           el.downloadUpdateBtn.textContent = '查看 Releases';
           el.downloadUpdateBtn.hidden = false;
         }
@@ -2421,11 +2443,16 @@
       var currentLabel = normalizeVersionLabel(currentAppVersion || '1.0.0');
       if (latestTag && compareVersionTags(currentAppVersion || '0.0.0', latestTag) > 0) {
         pendingUpdateUrl = result.downloadUrl || result.htmlUrl || '';
+        pendingReleaseHtmlUrl = result.htmlUrl || pendingUpdateUrl;
+        pendingUpdateAssetName = String(result.assetName || ('StarCube-' + latestLabel + '.apk'));
+        pendingUpdateIsApk = !!(result.isApk || /\.apk(?:$|\?)/i.test(pendingUpdateUrl));
+        pendingUpdateLabel = latestLabel;
+        var canInAppDownload = pendingUpdateIsApk && typeof nativeBridge.downloadUpdate === 'function';
         if (el.updateStatus) {
           el.updateStatus.textContent = '发现新版本 ' + latestLabel + '（当前 ' + currentLabel + '）。更新前建议先导出备份。';
         }
         if (el.downloadUpdateBtn && pendingUpdateUrl) {
-          el.downloadUpdateBtn.textContent = '下载 ' + latestLabel;
+          el.downloadUpdateBtn.textContent = canInAppDownload ? ('下载并安装 ' + latestLabel) : ('下载 ' + latestLabel);
           el.downloadUpdateBtn.hidden = false;
         }
         var notes = String(result.notes || '').trim();
@@ -2449,6 +2476,85 @@
       if (el.updateStatus) el.updateStatus.textContent = '检查更新失败，请稍后再试';
       showToast('检查更新失败');
     });
+  }
+
+  function startAppUpdateDownload() {
+    var nativeBridge = getNativeBridge();
+    if (!pendingUpdateUrl || !nativeBridge || downloadingUpdate) return;
+    if (pendingUpdateIsApk && typeof nativeBridge.downloadUpdate === 'function') {
+      downloadingUpdate = true;
+      if (el.checkUpdateBtn) el.checkUpdateBtn.disabled = true;
+      if (el.downloadUpdateBtn) {
+        el.downloadUpdateBtn.disabled = true;
+        el.downloadUpdateBtn.textContent = '下载中…';
+      }
+      if (el.openReleaseBtn) el.openReleaseBtn.hidden = true;
+      if (el.updateProgressWrap) el.updateProgressWrap.hidden = false;
+      if (el.updateProgressFill && el.updateProgressFill.style) el.updateProgressFill.style.width = '4%';
+      if (el.updateStatus) el.updateStatus.textContent = '正在下载 ' + (pendingUpdateLabel || '新版') + ' 安装包…';
+
+      Promise.resolve().then(function () {
+        return nativeBridge.downloadUpdate({
+          url: pendingUpdateUrl,
+          filename: pendingUpdateAssetName || 'StarCube-update.apk',
+          onProgress: function (info) {
+            if (!info) return;
+            var pct = info.percent;
+            if (pct >= 0 && el.updateProgressFill && el.updateProgressFill.style) {
+              el.updateProgressFill.style.width = Math.max(4, Math.min(100, pct)) + '%';
+            }
+            if (el.updateStatus) {
+              if (info.total > 0 && pct >= 0) {
+                el.updateStatus.textContent = '正在下载：' + formatMegabytes(info.loaded) + ' / ' + formatMegabytes(info.total) + '（' + pct + '%）';
+              } else {
+                el.updateStatus.textContent = '正在下载：已下载 ' + formatMegabytes(info.loaded) + '…';
+              }
+            }
+          }
+        });
+      }).then(function (result) {
+        downloadingUpdate = false;
+        if (el.checkUpdateBtn) el.checkUpdateBtn.disabled = false;
+        if (el.downloadUpdateBtn) {
+          el.downloadUpdateBtn.disabled = false;
+          el.downloadUpdateBtn.textContent = '重新下载 ' + (pendingUpdateLabel || '更新');
+        }
+        if (result && result.status === 'installing') {
+          if (el.updateProgressFill && el.updateProgressFill.style) el.updateProgressFill.style.width = '100%';
+          if (el.updateStatus) el.updateStatus.textContent = '下载完成，正在拉起系统安装界面…';
+          showToast('已下载，正在打开安装器');
+        } else if (result && result.status === 'need_permission') {
+          if (el.updateProgressFill && el.updateProgressFill.style) el.updateProgressFill.style.width = '100%';
+          if (el.updateStatus) el.updateStatus.textContent = result.message || '请先在系统设置中允许 StarCube 安装应用，返回后将自动继续';
+          showToast('请允许安装未知应用');
+        } else {
+          resetUpdateProgress();
+          if (el.updateStatus) el.updateStatus.textContent = (result && result.message) || '应用内下载失败，可重试或改用浏览器打开下载。';
+          if (el.openReleaseBtn && pendingReleaseHtmlUrl) el.openReleaseBtn.hidden = false;
+          showToast('下载失败');
+        }
+      }, function () {
+        downloadingUpdate = false;
+        resetUpdateProgress();
+        if (el.checkUpdateBtn) el.checkUpdateBtn.disabled = false;
+        if (el.downloadUpdateBtn) {
+          el.downloadUpdateBtn.disabled = false;
+          el.downloadUpdateBtn.textContent = '重新下载 ' + (pendingUpdateLabel || '更新');
+        }
+        if (el.updateStatus) el.updateStatus.textContent = '应用内下载失败，可重试或改用浏览器打开下载。';
+        if (el.openReleaseBtn && pendingReleaseHtmlUrl) el.openReleaseBtn.hidden = false;
+        showToast('下载失败');
+      });
+      return;
+    }
+
+    if (typeof nativeBridge.openUrl === 'function') {
+      if (nativeBridge.openUrl(pendingUpdateUrl)) {
+        showToast('正在打开下载页面…');
+      } else {
+        showToast('无法打开下载链接');
+      }
+    }
   }
 
   function exportHistoryCsv() {
@@ -2892,14 +2998,11 @@
     if (el.netPreviewTrigger) el.netPreviewTrigger.addEventListener('click', openNetPreview);
     if (el.netPreviewClose) el.netPreviewClose.addEventListener('click', closeNetPreview);
     if (el.checkUpdateBtn) el.checkUpdateBtn.addEventListener('click', checkForAppUpdate);
-    if (el.downloadUpdateBtn) el.downloadUpdateBtn.addEventListener('click', function () {
+    if (el.downloadUpdateBtn) el.downloadUpdateBtn.addEventListener('click', startAppUpdateDownload);
+    if (el.openReleaseBtn) el.openReleaseBtn.addEventListener('click', function () {
       var nativeBridge = getNativeBridge();
-      if (!pendingUpdateUrl || !nativeBridge || typeof nativeBridge.openUrl !== 'function') return;
-      if (nativeBridge.openUrl(pendingUpdateUrl)) {
-        showToast('正在打开下载页面…');
-      } else {
-        showToast('无法打开下载链接');
-      }
+      if (!pendingReleaseHtmlUrl || !nativeBridge || typeof nativeBridge.openUrl !== 'function') return;
+      if (nativeBridge.openUrl(pendingReleaseHtmlUrl)) showToast('正在打开 Releases 页面…');
     });
     if (el.netPreviewDialog) {
       el.netPreviewDialog.addEventListener('cancel', function (event) { event.preventDefault(); closeNetPreview(); });

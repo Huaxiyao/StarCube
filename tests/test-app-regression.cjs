@@ -1959,6 +1959,60 @@ test('About section displays native version and handles up-to-date, new release,
   assert.equal(h.document.getElementById('downloadUpdateBtn').hidden,true);
 });
 
+test('In-app APK download tracks progress, invokes installer, and falls back to browser on error',async ()=>{
+  const downloads=[];
+  let finishDownload=null;
+  const h=harness({
+    width:390,
+    nativeBridge:{
+      setTheme(){},
+      getVersion(){return '1.3.0';},
+      checkUpdate(){
+        return Promise.resolve({
+          status:'ok',
+          tag:'v1.4.0',
+          isApk:true,
+          assetName:'StarCube-v1.4.0-android.apk',
+          htmlUrl:'https://github.com/Huaxiyao/StarCube/releases/tag/v1.4.0',
+          downloadUrl:'https://github.com/Huaxiyao/StarCube/releases/download/v1.4.0/StarCube-v1.4.0-android.apk'
+        });
+      },
+      downloadUpdate(options){
+        downloads.push(options);
+        return new Promise(resolve=>{finishDownload=resolve;});
+      },
+      openUrl(){return true;}
+    }
+  });
+
+  h.click('checkUpdateBtn');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.text('downloadUpdateBtn'),'下载并安装 v1.4.0');
+
+  // 开始应用内下载并收到进度回调
+  h.click('downloadUpdateBtn');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(downloads.length,1);
+  assert.equal(h.document.getElementById('updateProgressWrap').hidden,false);
+  downloads[0].onProgress({loaded:2*1024*1024,total:4*1024*1024,percent:50});
+  assert.equal(h.document.getElementById('updateProgressFill').style.width,'50%');
+  assert.match(h.text('updateStatus'),/50%/);
+
+  // 下载完成自动拉起系统安装界面
+  finishDownload({status:'installing'});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.document.getElementById('updateProgressFill').style.width,'100%');
+  assert.match(h.text('updateStatus'),/系统安装界面/);
+
+  // 若下载失败则展示「浏览器打开」兜底按钮
+  h.click('downloadUpdateBtn');
+  await new Promise(resolve=>setImmediate(resolve));
+  finishDownload({status:'error',message:'下载超时'});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.match(h.text('updateStatus'),/下载超时/);
+  assert.equal(h.document.getElementById('openReleaseBtn').hidden,false);
+});
+
 Promise.all(pendingTests).then(()=>{
   console.log('\n'+passed+' passed, '+failures+' failed');
   if(failures)process.exitCode=1;

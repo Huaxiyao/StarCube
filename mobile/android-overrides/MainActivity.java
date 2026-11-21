@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
@@ -33,6 +34,7 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -45,6 +47,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -70,9 +74,23 @@ public class MainActivity extends BridgeActivity {
     private long splashShownAtMs = 0L;
     private String pendingExportRequestId = null;
     private String pendingExportContent = null;
+    private volatile boolean isDownloadingUpdate = false;
+    private File pendingInstallApk = null;
     private ViewGroup rootContentView = null;
     private FrameLayout splashOverlay = null;
     private LinearLayout splashBrandBox = null;
+
+    private final ActivityResultLauncher<Intent> unknownSourcesLauncher =
+        registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+            File apk = pendingInstallApk;
+            if (apk == null || !apk.exists()) {
+                return;
+            }
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getPackageManager().canRequestPackageInstalls()) {
+                pendingInstallApk = null;
+                launchApkInstaller(apk);
+            }
+        });
 
     private final ActivityResultLauncher<Intent> exportDocumentLauncher =
         registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -394,10 +412,191 @@ public class MainActivity extends BridgeActivity {
         }
         return url.startsWith("https://github.com/Huaxiyao/StarCube")
             || url.startsWith("https://objects.githubusercontent.com/")
-            || url.startsWith("https://release-assets.githubusercontent.com/");
+            || url.startsWith("https://release-assets.githubusercontent.com/")
+            || url.startsWith("https://github-releases.githubusercontent.com/");
+    }
+
+    private void notifyDownloadProgress(String requestId, long loaded, long total, int percent) {
+        runOnUiThread(() -> {
+            WebView webView = getBridge() != null ? getBridge().getWebView() : null;
+            if (webView == null) {
+                return;
+            }
+            String js = "if (window.__starCubeOnUpdateProgress) { window.__starCubeOnUpdateProgress("
+                + JSONObject.quote(requestId) + ", "
+                + loaded + ", "
+                + total + ", "
+                + percent
+                + "); }";
+            webView.evaluateJavascript(js, null);
+        });
+    }
+
+    private void notifyDownloadResult(String requestId, String status, String message) {
+        runOnUiThread(() -> {
+            WebView webView = getBridge() != null ? getBridge().getWebView() : null;
+            if (webView == null) {
+                return;
+            }
+            String js = "if (window.__starCubeOnDownloadResult) { window.__starCubeOnDownloadResult("
+                + JSONObject.quote(requestId) + ", "
+                + JSONObject.quote(status) + ", "
+                + JSONObject.quote(message != null ? message : "")
+                + "); }";
+            webView.evaluateJavascript(js, null);
+        });
+    }
+
+    private void launchApkInstaller(File apkFile) {
+        try {
+            Uri apkUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", apkFile);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception err) {
+            Toast.makeText(this, "无法拉起系统安装界面，请改用浏览器下载", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void installOrRequestPermission(String requestId, File apkFile) {
+        runOnUiThread(() -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getPackageManager().canRequestPackageInstalls()) {
+                pendingInstallApk = apkFile;
+                notifyDownloadResult(requestId, "need_permission", "安装包已就绪，请先允许 StarCube 安装应用，返回后将自动继续");
+                try {
+                    Intent permIntent = new Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + getPackageName())
+                    );
+                    unknownSourcesLauncher.launch(permIntent);
+                } catch (Exception err) {
+                    notifyDownloadResult(requestId, "error", "无法打开系统安装权限设置页");
+                }
+                return;
+            }
+            notifyDownloadResult(requestId, "installing", "");
+            launchApkInstaller(apkFile);
+        });
+    }
+
+    private HttpURLConnection openAllowedDownloadConnection(String startUrl) throws Exception {
+        String currentUrl = startUrl;
+        for (int hops = 0; hops < 6; hops++) {
+            if (!isAllowedExternalUrl(currentUrl)) {
+                throw new SecurityException("不支持的下载地址");
+            }
+            HttpURLConnection conn = (HttpURLConnection) new URL(currentUrl).openConnection();
+            conn.setInstanceFollowRedirects(false);
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(20000);
+            conn.setRequestProperty("User-Agent", "StarCube-Android/" + readAppVersionName());
+            int code = conn.getResponseCode();
+            if (code == HttpURLConnection.HTTP_MOVED_PERM
+                || code == HttpURLConnection.HTTP_MOVED_TEMP
+                || code == HttpURLConnection.HTTP_SEE_OTHER
+                || code == 307
+                || code == 308) {
+                String location = conn.getHeaderField("Location");
+                conn.disconnect();
+                if (location == null || location.isEmpty()) {
+                    throw new Exception("下载重定向缺少目标地址");
+                }
+                currentUrl = new URL(new URL(currentUrl), location).toString();
+                continue;
+            }
+            return conn;
+        }
+        throw new Exception("下载重定向次数过多");
     }
 
     private final class StarCubeAndroidBridge {
+        @JavascriptInterface
+        public void downloadAndInstallUpdate(final String requestId, final String url, final String filename) {
+            if (!isAllowedExternalUrl(url)) {
+                notifyDownloadResult(requestId, "error", "仅支持从 StarCube 官方 GitHub Releases 下载安装包");
+                return;
+            }
+            if (isDownloadingUpdate) {
+                notifyDownloadResult(requestId, "error", "正在下载更新包，请稍候");
+                return;
+            }
+            isDownloadingUpdate = true;
+
+            new Thread(() -> {
+                HttpURLConnection conn = null;
+                File partFile = null;
+                try {
+                    File updatesDir = new File(getCacheDir(), "updates");
+                    if (!updatesDir.exists() && !updatesDir.mkdirs()) {
+                        throw new Exception("无法创建更新缓存目录");
+                    }
+                    String safeName = (filename != null ? filename.replaceAll("[^a-zA-Z0-9._-]", "_") : "");
+                    if (safeName.isEmpty() || !safeName.endsWith(".apk")) {
+                        safeName = "StarCube-update.apk";
+                    }
+                    File targetFile = new File(updatesDir, safeName);
+                    partFile = new File(updatesDir, safeName + ".part");
+                    if (partFile.exists()) {
+                        partFile.delete();
+                    }
+
+                    conn = openAllowedDownloadConnection(url);
+                    int code = conn.getResponseCode();
+                    if (code != HttpURLConnection.HTTP_OK) {
+                        throw new Exception("下载失败（HTTP " + code + "）");
+                    }
+
+                    long total = conn.getContentLengthLong();
+                    long downloaded = 0L;
+                    long lastEmitMs = 0L;
+                    byte[] buffer = new byte[16384];
+
+                    try (InputStream in = conn.getInputStream();
+                         FileOutputStream out = new FileOutputStream(partFile)) {
+                        int read;
+                        while ((read = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, read);
+                            downloaded += read;
+                            long now = SystemClock.elapsedRealtime();
+                            if (now - lastEmitMs >= 120L) {
+                                int pct = total > 0 ? (int) Math.min(99L, (downloaded * 100L) / total) : -1;
+                                notifyDownloadProgress(requestId, downloaded, total, pct);
+                                lastEmitMs = now;
+                            }
+                        }
+                        out.flush();
+                    }
+
+                    if (targetFile.exists()) {
+                        targetFile.delete();
+                    }
+                    if (!partFile.renameTo(targetFile)) {
+                        throw new Exception("保存安装包文件失败");
+                    }
+                    partFile = null;
+
+                    notifyDownloadProgress(requestId, downloaded, total > 0 ? total : downloaded, 100);
+                    installOrRequestPermission(requestId, targetFile);
+                } catch (UnknownHostException | ConnectException err) {
+                    notifyDownloadResult(requestId, "offline", "网络已断开，下载失败，请检查网络后重试");
+                } catch (SocketTimeoutException err) {
+                    notifyDownloadResult(requestId, "error", "下载超时，可重试或改用浏览器下载");
+                } catch (Exception err) {
+                    String msg = err.getMessage();
+                    notifyDownloadResult(requestId, "error", msg != null && !msg.isEmpty() ? msg : "下载失败，请稍后重试");
+                } finally {
+                    if (partFile != null && partFile.exists()) {
+                        partFile.delete();
+                    }
+                    if (conn != null) {
+                        conn.disconnect();
+                    }
+                    isDownloadingUpdate = false;
+                }
+            }).start();
+        }
+
         @JavascriptInterface
         public String getAppVersion() {
             return readAppVersionName();
@@ -439,6 +638,8 @@ public class MainActivity extends BridgeActivity {
                     String htmlUrl = release.optString("html_url", RELEASES_PAGE_URL);
                     String body = release.optString("body", "");
                     String downloadUrl = htmlUrl;
+                    String assetName = "";
+                    boolean isApk = false;
 
                     JSONArray assets = release.optJSONArray("assets");
                     if (assets != null) {
@@ -449,6 +650,8 @@ public class MainActivity extends BridgeActivity {
                             String url = asset.optString("browser_download_url", "");
                             if (name.toLowerCase().endsWith(".apk") && !url.isEmpty()) {
                                 downloadUrl = url;
+                                assetName = name;
+                                isApk = true;
                                 break;
                             }
                         }
@@ -459,6 +662,8 @@ public class MainActivity extends BridgeActivity {
                     result.put("notes", body);
                     result.put("htmlUrl", htmlUrl);
                     result.put("downloadUrl", downloadUrl);
+                    result.put("assetName", assetName);
+                    result.put("isApk", isApk);
                     notifyUpdateResult(requestId, result);
                 } catch (UnknownHostException | ConnectException err) {
                     try {

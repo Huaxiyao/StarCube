@@ -37,7 +37,7 @@ function test(name, fn) {
 
 test('android-bridge.js bridges exportFile promises, theme sync, haptics, splash ready, json accept and double-back exit', async () => {
   let now = 10000;
-  const calls = { themes: [], exports: [], updates: [], urls: [], toasts: [], exits: 0, haptics: [], ready: 0 };
+  const calls = { themes: [], exports: [], updates: [], downloads: [], urls: [], toasts: [], exits: 0, haptics: [], ready: 0 };
   const attrs = {};
   const importInput = {
     setAttribute(k, v) { attrs[k] = String(v); },
@@ -53,6 +53,7 @@ test('android-bridge.js bridges exportFile promises, theme sync, haptics, splash
     StarCubeAndroid: {
       getAppVersion() { return '1.2.0'; },
       checkUpdate(reqId) { calls.updates.push(reqId); },
+      downloadAndInstallUpdate(reqId, url, filename) { calls.downloads.push({ reqId, url, filename }); },
       openExternalUrl(url) { calls.urls.push(url); return true; },
       onAppReady() { calls.ready++; },
       haptic(kind) { calls.haptics.push(kind); },
@@ -73,7 +74,7 @@ test('android-bridge.js bridges exportFile promises, theme sync, haptics, splash
     addEventListener() {}
   };
   const FakeDate = { now: () => now };
-  const context = { window, document, Date: FakeDate, Promise, Object, String, JSON };
+  const context = { window, document, Date: FakeDate, Promise, Object, String, Number, JSON };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(mobileRoot, 'src', 'android-bridge.js'), 'utf8'), context, {
     filename: 'android-bridge.js'
@@ -95,6 +96,20 @@ test('android-bridge.js bridges exportFile promises, theme sync, haptics, splash
   assert.equal(updRes.tag, 'v1.3.0');
   assert.equal(window.StarCubeNative.openUrl('https://github.com/Huaxiyao/StarCube/releases'), true);
   assert.equal(calls.urls.length, 1);
+
+  const progressEvents = [];
+  const dlPromise = window.StarCubeNative.downloadUpdate({
+    url: 'https://github.com/Huaxiyao/StarCube/releases/download/v1.4.0/StarCube-v1.4.0-android.apk',
+    filename: 'StarCube-v1.4.0-android.apk',
+    onProgress(info) { progressEvents.push(info); }
+  });
+  assert.equal(calls.downloads.length, 1);
+  window.__starCubeOnUpdateProgress(calls.downloads[0].reqId, 1024, 2048, 50);
+  window.__starCubeOnDownloadResult(calls.downloads[0].reqId, 'installing', '');
+  const dlRes = await dlPromise;
+  assert.equal(progressEvents.length, 1);
+  assert.equal(progressEvents[0].percent, 50);
+  assert.equal(dlRes.status, 'installing');
 
   // 原生导出 Promise 配对回调
   const exportPromise = window.StarCubeNative.exportFile({
@@ -199,6 +214,12 @@ test('configure-android.cjs patches MainActivity, adaptive icons, manifest, vers
     const manifest = fs.readFileSync(path.join(appMain, 'AndroidManifest.xml'), 'utf8');
     assert.match(manifest, /density\|fontScale/);
     assert.equal((manifest.match(/density/g) || []).length, 1, 'Manifest patch must be idempotent');
+    assert.match(manifest, /REQUEST_INSTALL_PACKAGES/);
+    assert.equal((manifest.match(/REQUEST_INSTALL_PACKAGES/g) || []).length, 1, 'Install permission patch must be idempotent');
+
+    const filePaths = fs.readFileSync(path.join(appMain, 'res', 'xml', 'file_paths.xml'), 'utf8');
+    assert.match(filePaths, /path="updates\/"/);
+    assert.equal((filePaths.match(/path="updates\/"/g) || []).length, 1, 'FileProvider updates path must be idempotent');
 
     const gradle = fs.readFileSync(path.join(tempMobile, 'android', 'app', 'build.gradle'), 'utf8');
     assert.match(gradle, /versionCode 42/);

@@ -63,7 +63,7 @@ if (fs.existsSync(stylesPath)) {
   fs.writeFileSync(stylesPath, styles, 'utf8');
 }
 
-// 4. 更新 AndroidManifest.xml：确保屏幕旋转不重载 WebView（保留正在进行的计时状态），且不强行依赖相机等无关特性
+// 4. 更新 AndroidManifest.xml：屏幕旋转不重载 WebView，且声明应用内更新安装权限
 const manifestPath = path.join(appMainDir, 'AndroidManifest.xml');
 let manifest = fs.readFileSync(manifestPath, 'utf8');
 if (manifest.includes('android:configChanges=') && !manifest.includes('density')) {
@@ -71,7 +71,33 @@ if (manifest.includes('android:configChanges=') && !manifest.includes('density')
     /android:configChanges="([^"]+)"/,
     'android:configChanges="$1|density|fontScale"'
   );
-  fs.writeFileSync(manifestPath, manifest, 'utf8');
+}
+if (!manifest.includes('android.permission.REQUEST_INSTALL_PACKAGES')) {
+  manifest = manifest.replace(
+    /<\/manifest>/,
+    '    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n</manifest>'
+  );
+}
+fs.writeFileSync(manifestPath, manifest, 'utf8');
+
+// 4.5 确保 FileProvider 暴露私有缓存 updates/ 目录用于拉起应用内安装包
+const filePathsPath = path.join(resDir, 'xml', 'file_paths.xml');
+fs.mkdirSync(path.dirname(filePathsPath), { recursive: true });
+if (fs.existsSync(filePathsPath)) {
+  let filePaths = fs.readFileSync(filePathsPath, 'utf8');
+  if (!filePaths.includes('path="updates/"')) {
+    filePaths = filePaths.replace(
+      /<\/paths>/,
+      '    <cache-path name="starcube_updates" path="updates/" />\n</paths>'
+    );
+    fs.writeFileSync(filePathsPath, filePaths, 'utf8');
+  }
+} else {
+  fs.writeFileSync(
+    filePathsPath,
+    '<?xml version="1.0" encoding="utf-8"?>\n<paths xmlns:android="http://schemas.android.com/apk/res/android">\n    <cache-path name="starcube_updates" path="updates/" />\n</paths>\n',
+    'utf8'
+  );
 }
 
 // 5. 为 app/build.gradle 注入可选版本号与 Release 签名支持（幂等）

@@ -3,8 +3,10 @@
 
   var pendingExports = Object.create(null);
   var pendingUpdates = Object.create(null);
+  var pendingDownloads = Object.create(null);
   var exportSeq = 0;
   var updateSeq = 0;
+  var downloadSeq = 0;
   var lastBackPressAt = 0;
   var readyNotified = false;
 
@@ -48,6 +50,28 @@
     } catch (err) {
       resolver({ status: 'error', message: '解析更新信息失败' });
     }
+  };
+
+  window.__starCubeOnUpdateProgress = function (requestId, loaded, total, percent) {
+    var entry = pendingDownloads[requestId];
+    if (!entry || typeof entry.onProgress !== 'function') return;
+    try {
+      entry.onProgress({
+        loaded: Number(loaded) || 0,
+        total: Number(total) || 0,
+        percent: typeof percent === 'number' ? percent : -1
+      });
+    } catch (err) {}
+  };
+
+  window.__starCubeOnDownloadResult = function (requestId, status, message) {
+    var entry = pendingDownloads[requestId];
+    if (!entry) return;
+    delete pendingDownloads[requestId];
+    entry.resolve({
+      status: status || 'error',
+      message: message || ''
+    });
   };
 
   window.__starCubeOnBackPressed = function () {
@@ -135,6 +159,30 @@
         } catch (err) {}
       }
       return false;
+    },
+    downloadUpdate: function (options) {
+      return new Promise(function (resolve) {
+        var android = getAndroid();
+        if (!options || !options.url || !android || typeof android.downloadAndInstallUpdate !== 'function') {
+          resolve({ status: 'error', message: '当前环境不支持应用内直接下载' });
+          return;
+        }
+        var requestId = 'dl-' + (++downloadSeq);
+        pendingDownloads[requestId] = {
+          resolve: resolve,
+          onProgress: typeof options.onProgress === 'function' ? options.onProgress : null
+        };
+        try {
+          android.downloadAndInstallUpdate(
+            requestId,
+            String(options.url),
+            String(options.filename || 'StarCube-update.apk')
+          );
+        } catch (err) {
+          delete pendingDownloads[requestId];
+          resolve({ status: 'error', message: (err && err.message) || '启动应用内下载失败' });
+        }
+      });
     },
     haptic: function (kind) {
       var android = getAndroid();
