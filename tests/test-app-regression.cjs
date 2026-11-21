@@ -44,9 +44,9 @@ function harness(options = {}) {
   }
   function element(tag='div',id='') {
     let content = '', className = '';
-    const captured = new Set();
-    const node=Object.assign(eventTarget(),{tagName:tag.toUpperCase(),id,hidden:false,disabled:false,open:false,style:{},dataset:{},children:[],attributes:{},scrollTop:0,textWrites:0,replacements:0,focusCalls:[],scrollIntoViewCalls:[],
-      classList:{toggle(){},add(){},remove(){},contains(){return false;}},
+    const captured = new Set(), classes = new Set();
+    const node=Object.assign(eventTarget(),{tagName:tag.toUpperCase(),id,hidden:id==='toast',disabled:false,open:false,style:{},dataset:{},children:[],attributes:{},scrollTop:0,textWrites:0,replacements:0,focusCalls:[],scrollIntoViewCalls:[],
+      classList:{toggle(name,force){const has=classes.has(name),next=force===undefined?!has:!!force;if(next)classes.add(name);else classes.delete(name);return next;},add(...names){for(const name of names)classes.add(name);},remove(...names){for(const name of names)classes.delete(name);},contains(name){return classes.has(name);}},
       appendChild(child){this.children.push(child);child.parentNode=this;return child;},
       append(...children){for(const child of children)this.appendChild(child);},
       replaceChildren(...children){this.replacements++;for(const child of this.children)child.parentNode=null;this.children=[];for(const child of children){if(child.tagName==='#FRAGMENT')for(const item of child.children)this.appendChild(item);else this.appendChild(child);}},
@@ -66,9 +66,13 @@ function harness(options = {}) {
   function descendants(node){return node.children.flatMap(child=>[child,...descendants(child)]);}
   const document=Object.assign(eventTarget(),{hidden:false,
     getElementById(id){if(!nodes.has(id))nodes.set(id,element('div',id));return nodes.get(id);},
-    createElement:tag=>element(tag),createElementNS:(ns,tag)=>element(tag),createDocumentFragment:()=>element('#fragment')});
+    createElement:tag=>element(tag),createElementNS:(ns,tag)=>element(tag),createDocumentFragment:()=>element('#fragment'),
+    execCommand:options.execCommand});
+  document.documentElement=element('html');
   document.body=element('body');
-  const window=Object.assign(eventTarget(),{innerWidth:options.width || 1440,scrollX:0,scrollY:0,scrollCalls:[],scrollTo(x,y){this.scrollX=x;this.scrollY=y;this.scrollCalls.push({x,y});},localStorage:storage,sessionStorage:{getItem:k=>sessionEntries.get(k)||null,setItem:(k,v)=>sessionEntries.set(k,v)},location:{protocol:'file:',href:'file:///test/starcube.html'},confirm:()=>true});
+  const navigator=options.navigator !== undefined ? options.navigator : (options.clipboard ? {clipboard:options.clipboard} : {});
+  const window=Object.assign(eventTarget(),{innerWidth:options.width || 1440,scrollX:0,scrollY:0,scrollCalls:[],scrollTo(x,y){this.scrollX=x;this.scrollY=y;this.scrollCalls.push({x,y});},localStorage:storage,sessionStorage:{getItem:k=>sessionEntries.get(k)||null,setItem:(k,v)=>sessionEntries.set(k,v)},location:{protocol:'file:',href:'file:///test/starcube.html'},confirm:()=>true,navigator});
+  if(options.nativeBridge)window.StarCubeNative=options.nativeBridge;
   class Worker {
     constructor(){this.requests=[];workers.push(this);}
     postMessage(message){this.requests.push(JSON.parse(JSON.stringify(message)));}
@@ -76,7 +80,7 @@ function harness(options = {}) {
     deliver(data){this.onmessage({data});}
   }
   const quietConsole={warn(...args){warnings.push(args.join(' '));},error(...args){warnings.push(args.join(' '));},log(){}};
-  const context={window,self:window,document,localStorage:storage,Worker,performance:{now:()=>now},console:quietConsole,
+  const context={window,self:window,document,navigator,localStorage:storage,Worker,performance:{now:()=>now},console:quietConsole,
     setTimeout(callback,delay){const id=sequence++;timers.set(id,{callback,at:now+(delay||0)});return id;},clearTimeout(id){timers.delete(id);},
     setInterval(callback,delay){const id=sequence++,interval=Math.max(1,Number(delay)||0);timers.set(id,{callback,at:now+interval,interval});return id;},clearInterval(id){timers.delete(id);},
     requestAnimationFrame(callback){const id=sequence++;rafs.set(id,callback);return id;},cancelAnimationFrame(id){rafs.delete(id);},
@@ -107,7 +111,17 @@ function harness(options = {}) {
 }
 
 let failures=0,passed=0;
-function test(name,callback){try{callback();passed++;console.log('PASS '+name);}catch(error){failures++;console.error('FAIL '+name+'\n'+error.stack);}}
+const pendingTests=[];
+function test(name,callback){
+  try{
+    const result=callback();
+    if(result&&typeof result.then==='function'){
+      pendingTests.push(result.then(()=>{passed++;console.log('PASS '+name);},error=>{failures++;console.error('FAIL '+name+'\n'+error.stack);}));
+      return;
+    }
+    passed++;console.log('PASS '+name);
+  }catch(error){failures++;console.error('FAIL '+name+'\n'+error.stack);}
+}
 function status(h){return h.text('status');}
 function hold(h){h.key('keydown');h.advance(300);assert.equal(status(h),'按住');h.key('keyup');assert.equal(status(h),'计时中');}
 function finish(h,elapsed=1000){h.advance(elapsed);h.key('keydown');h.key('keyup');assert.equal(h.text('count'),'1');}
@@ -1416,5 +1430,440 @@ test('history CSV export includes all filtered rows beyond pagination and disabl
   assert.equal(empty.document.getElementById('exportHistoryCsv').disabled,false);
 });
 
-console.log('\n'+passed+' passed, '+failures+' failed');
-if(failures)process.exitCode=1;
+test('theme toggle cycles through light, warm and dark, syncs metadata and persists without altering other settings',()=>{
+  const initial={inspection:true,inspectionSound:true,reviewRange:'7days'};
+  const h=harness({storageEntries:[['starcube.settings.v1',JSON.stringify(initial)]]});
+  const html=h.document.documentElement;
+  const colorScheme=h.document.getElementById('metaColorScheme');
+  const themeColor=h.document.getElementById('metaThemeColor');
+  const toggle=h.document.getElementById('themeToggle');
+  assert.equal(html.dataset.theme,'light');
+  assert.equal(html.style.colorScheme,'light');
+  assert.equal(colorScheme.getAttribute('content'),'light');
+  assert.equal(themeColor.getAttribute('content'),'#f3f4f6');
+  assert.equal(h.text('themeLabel'),'纸白');
+
+  const expected=[
+    ['warm','暖纸','复古暖纸','light','#efe6d5'],
+    ['dark','曜黑','极简曜黑','dark','#0c0f14'],
+    ['light','纸白','纯净纸白','light','#f3f4f6']
+  ];
+  for(const [theme,shortLabel,fullLabel,scheme,color] of expected) {
+    h.click('themeToggle');
+    assert.equal(html.dataset.theme,theme);
+    assert.equal(html.style.colorScheme,scheme);
+    assert.equal(colorScheme.getAttribute('content'),scheme);
+    assert.equal(themeColor.getAttribute('content'),color);
+    assert.equal(toggle.dataset.theme,theme);
+    assert.equal(h.text('themeLabel'),shortLabel);
+    assert.match(toggle.getAttribute('aria-label'),new RegExp(fullLabel));
+    const saved=JSON.parse(h.storage.getItem('starcube.settings.v1'));
+    assert.equal(saved.theme,theme);
+    assert.equal(saved.inspection,true);
+    assert.equal(saved.inspectionSound,true);
+    assert.equal(saved.reviewRange,'7days');
+    const reloaded=harness({sharedEntries:h.entries});
+    assert.equal(reloaded.document.documentElement.dataset.theme,theme);
+    assert.equal(reloaded.document.getElementById('metaColorScheme').getAttribute('content'),scheme);
+    assert.equal(reloaded.document.getElementById('metaThemeColor').getAttribute('content'),color);
+    assert.equal(reloaded.document.getElementById('inspectionToggle').getAttribute('aria-checked'),'true');
+    assert.equal(reloaded.document.getElementById('soundToggle').getAttribute('aria-checked'),'true');
+    assert.equal(reloaded.document.getElementById('reviewRange').value,'7days');
+  }
+});
+
+test('malformed, missing or unsupported saved themes safely fall back to light',()=>{
+  for(const raw of [JSON.stringify({inspection:false}),'{broken',JSON.stringify({inspection:true,theme:'neon'}),
+    JSON.stringify({inspection:true,theme:123}),JSON.stringify({inspection:true,theme:null}),JSON.stringify({inspection:true,theme:{name:'dark'}})]) {
+    const h=harness({storageEntries:[['starcube.settings.v1',raw]]});
+    assert.equal(h.document.documentElement.dataset.theme,'light');
+    assert.equal(h.document.getElementById('metaColorScheme').getAttribute('content'),'light');
+    assert.equal(h.document.getElementById('metaThemeColor').getAttribute('content'),'#f3f4f6');
+    assert.equal(h.text('themeLabel'),'纸白');
+  }
+});
+
+test('theme toggle locks during timing and open details, syncs across tabs and survives write failure',()=>{
+  const h=harness({records:[record(0,12000)]});
+  hold(h);
+  assert.equal(h.document.getElementById('themeToggle').disabled,true);
+  h.click('themeToggle');
+  assert.equal(h.document.documentElement.dataset.theme,'light');
+  h.advance(1000);h.key('keydown');h.key('keyup');
+  assert.equal(h.text('count'),'2');
+  assert.equal(h.document.getElementById('themeToggle').disabled,false);
+
+  h.click('corePbDetail');
+  assert.equal(h.document.getElementById('themeToggle').disabled,true);
+  h.click('themeToggle');
+  assert.equal(h.document.documentElement.dataset.theme,'light');
+  h.click('recordClose');
+  assert.equal(h.document.getElementById('themeToggle').disabled,false);
+
+  h.storage.setItem('starcube.settings.v1',JSON.stringify({inspection:false,inspectionSound:false,reviewRange:'50',theme:'dark'}));
+  h.window.dispatch('storage',{key:'starcube.settings.v1',newValue:h.storage.getItem('starcube.settings.v1')});
+  assert.equal(h.document.documentElement.dataset.theme,'dark');
+  assert.equal(h.document.getElementById('metaColorScheme').getAttribute('content'),'dark');
+
+  h.failWrites(key=>key==='starcube.settings.v1');
+  h.click('themeToggle');
+  assert.equal(h.document.documentElement.dataset.theme,'light');
+  assert.equal(h.document.getElementById('storageBanner').hidden,false);
+});
+
+test('toast appears for group save, backup export and CSV export, preserves feedback text and auto-hides after 2s',()=>{
+  const h=harness({now:REVIEW_NOW,importedRecords:[dateRecord(0,0,12345)]});
+  const toast=h.document.getElementById('toast');
+  assert.equal(toast.hidden,true);
+
+  createGroup(h,'夜训');
+  assert.match(h.text('dataFeedback'),/已保存训练「夜训」/);
+  assert.equal(toast.hidden,false);
+  assert.match(toast.textContent,/已保存训练「夜训」/);
+  h.advance(1800);
+  assert.equal(toast.hidden,false);
+  h.advance(200);
+  assert.equal(toast.hidden,true);
+  assert.equal(toast.textContent,'');
+
+  select(h,'default');
+  h.click('exportData');
+  assert.match(h.text('dataFeedback'),/已发起下载/);
+  assert.equal(toast.hidden,false);
+  assert.match(toast.textContent,/已导出备份/);
+  h.advance(1500);
+  assert.equal(toast.hidden,false);
+
+  // Triggering CSV export before the first toast finishes must reset the 2-second hide timer.
+  h.click('navReview');
+  h.click('exportHistoryCsv');
+  assert.match(h.text('dataFeedback'),/已发起 CSV 导出/);
+  assert.equal(toast.hidden,false);
+  assert.match(toast.textContent,/已导出 CSV/);
+  h.advance(1000);
+  assert.equal(toast.hidden,false,'Reset timer keeps the newer toast visible past the prior deadline');
+  h.advance(1000);
+  assert.equal(toast.hidden,true);
+});
+
+test('group deletion blocks default, deletes empty groups directly, confirms non-empty groups with backup and cleans stale undo',()=>{
+  const payload={format:'starcube',version:3,
+    groups:[{id:'empty-g',origin:'oe',name:'空训练'},{id:'busy-g',origin:'ob',name:'专项训练'}],
+    records:[
+      {...record(0,15000),uid:'def-1',groupId:'default'},
+      {...record(1,8000),uid:'busy-1',groupId:'busy-g'},
+      {...record(2,9000),uid:'busy-2',groupId:'busy-g'},
+      {...record(3,10000),uid:'busy-3',groupId:'busy-g'}
+    ]};
+  const h=harness({importedRecords:payload});
+  // 默认训练组不可删除
+  assert.equal(h.document.getElementById('groupDelete').disabled,true);
+  h.click('groupDelete');
+  assert.equal(h.document.getElementById('groupDeleteDialog').open,false);
+  assert.equal(h.document.getElementById('groupSelect').value,'default');
+
+  // 空非默认训练组直接删除并切回默认训练组
+  select(h,'empty-g');
+  assert.equal(h.document.getElementById('groupDelete').disabled,false);
+  h.click('groupDelete');
+  assert.equal(h.document.getElementById('groupDeleteDialog').open,false);
+  assert.equal(h.document.getElementById('groupSelect').value,'default');
+  assert.equal(h.text('count'),'1');
+  assert.match(h.text('dataFeedback'),/已删除训练「空训练」/);
+
+  // 含成绩的训练组：先删除其中一条成绩产生待撤销记录，再删除该训练组
+  select(h,'busy-g');
+  assert.equal(h.text('count'),'3');
+  assert.equal(h.text('globalPb'),'8.000');
+  h.click('deleteLatest');
+  assert.equal(h.text('count'),'2');
+  assert.equal(h.document.getElementById('undoNotice').hidden,false);
+
+  h.click('groupDelete');
+  assert.equal(h.document.getElementById('groupDeleteDialog').open,true);
+  assert.match(h.text('groupDeleteMessage'),/2 条成绩/);
+  assert.match(h.text('groupDeleteMessage'),/备份/);
+
+  // 确认弹窗打开时拦截计时快捷键和切换分组
+  h.key('keydown');h.advance(400);h.key('keyup');
+  assert.equal(status(h),'就绪');
+  select(h,'default');
+  assert.equal(h.document.getElementById('groupSelect').value,'busy-g');
+
+  // 弹窗内可先导出备份，不关闭弹窗
+  const beforeExports=h.downloads.length;
+  h.click('groupDeleteExport');
+  assert.equal(h.downloads.length,beforeExports+1);
+  assert.equal(h.document.getElementById('groupDeleteDialog').open,true);
+  assert.match(h.text('groupDeleteFeedback'),/备份/);
+
+  // 取消后数据完整保留
+  h.click('groupDeleteClose');
+  assert.equal(h.document.getElementById('groupDeleteDialog').open,false);
+  assert.equal(h.document.getElementById('groupSelect').value,'busy-g');
+  assert.equal(h.text('count'),'2');
+
+  // 确认删除：安全切回默认训练组，更新统计、历史、趋势图与全局 PB，并清除已删组的待撤销项
+  h.click('navReview');
+  assert.equal(h.text('historyCount'),'2');
+  h.click('groupDelete');
+  h.click('groupDeleteConfirm');
+  assert.equal(h.document.getElementById('groupDeleteDialog').open,false);
+  assert.equal(h.document.getElementById('groupSelect').value,'default');
+  assert.equal(h.sessionEntries.get('starcube.currentGroup.v1'),'default');
+  assert.equal(h.text('count'),'1');
+  assert.equal(h.text('historyCount'),'1');
+  assert.equal(h.text('globalPb'),'15.000');
+  assert.equal(h.document.getElementById('reviewRecord').children.length,1);
+  assert.equal(h.document.getElementById('undoNotice').hidden,true,'Undo entry for deleted group must be cleared');
+  assert.equal(h.readRecords().length,1);
+  assert.equal(h.storage.getItem('starcube.groups.v1.item.busy-g'),null);
+  assert.match(h.text('dataFeedback'),/已删除训练「专项训练」.*已移除 2 条成绩/);
+  assert.equal(h.document.getElementById('toast').hidden,false);
+});
+
+test('cross-tab group deletion syncs selection back to default and refreshes stats, history and chart',()=>{
+  const shared=new Map();
+  const payload={format:'starcube',version:3,
+    groups:[{id:'shared-g',origin:'os',name:'跨标签训练'}],
+    records:[
+      {...record(0,16000),uid:'d-0',groupId:'default'},
+      {...record(1,9500),uid:'s-1',groupId:'shared-g'},
+      {...record(2,10500),uid:'s-2',groupId:'shared-g'}
+    ]};
+  const a=harness({sharedEntries:shared,importedRecords:payload});
+  const b=harness({sharedEntries:shared});
+  select(a,'shared-g');
+  select(b,'shared-g');
+  b.click('navReview');
+  openHistoryRecord(b,'s-1');
+  assert.equal(b.document.getElementById('recordDialog').open,true);
+
+  a.click('groupDelete');
+  a.click('groupDeleteConfirm');
+  assert.equal(a.document.getElementById('groupSelect').value,'default');
+
+  b.window.dispatch('storage',{key:'starcube.groups.v1.item.shared-g'});
+  b.advance(40);
+  assert.equal(b.document.getElementById('groupSelect').value,'default');
+  assert.equal(b.sessionEntries.get('starcube.currentGroup.v1'),'default');
+  assert.equal(b.document.getElementById('recordDialog').open,false);
+  assert.equal(b.text('count'),'1');
+  assert.equal(b.text('historyCount'),'1');
+  assert.equal(b.text('globalPb'),'16.000');
+  assert.equal(b.document.getElementById('reviewRecord').children.length,1);
+});
+
+test('group deletion degrades safely to memory-only mode on write failure without corrupting storage',()=>{
+  const payload={format:'starcube',version:3,
+    groups:[{id:'mem-g',origin:'om',name:'只读训练'}],
+    records:[{...record(0,14000),uid:'d-0',groupId:'default'},{...record(1,11000),uid:'m-1',groupId:'mem-g'}]};
+  const h=harness({importedRecords:payload});
+  const storedBefore=new Map(h.entries);
+  select(h,'mem-g');
+  h.failWrites(()=>true);
+  h.click('groupDelete');
+  assert.equal(h.document.getElementById('groupDeleteDialog').open,true);
+  h.click('groupDeleteConfirm');
+  assert.equal(h.document.getElementById('groupSelect').value,'default');
+  assert.equal(h.text('count'),'1');
+  assert.equal(h.text('globalPb'),'14.000');
+  assert.equal(h.document.getElementById('storageBanner').hidden,false);
+  assert.match(h.text('storageBanner'),/不会被保存|删除失败/);
+  assert.match(h.text('dataFeedback'),/仅在本页删除/);
+  assert.deepEqual(h.entries,storedBefore,'Read-only storage bytes must remain intact');
+  h.click('exportData');
+  const exported=h.exportedPayloads().at(-1);
+  assert.equal(exported.groups.some(g=>g.id==='mem-g'),false);
+  assert.equal(exported.records.some(r=>r.groupId==='mem-g'),false);
+});
+
+test('copy scramble works via Clipboard API, falls back to execCommand, and shows clear guidance when unsupported',()=>{
+  const copied=[];
+  const h1=harness({
+    records:[{...record(0,12000),scramble:"R U R' U' F2"},{...record(1,13000),scramble:'—'}],
+    clipboard:{writeText(text){copied.push(text);return Promise.resolve();}}
+  });
+  const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
+  h1.click('copyScramble');
+  return tick().then(()=>{
+    assert.equal(copied.at(-1),ALGORITHMS[0]);
+    assert.match(h1.text('dataFeedback'),/已复制打乱/);
+    assert.equal(h1.document.getElementById('toast').hidden,false);
+
+    h1.click('navReview');
+    const saved=h1.readRecords();
+    openHistoryRecord(h1,saved[0].uid);
+    assert.equal(h1.document.getElementById('recordCopyScramble').disabled,false);
+    h1.click('recordCopyScramble');
+    return tick().then(()=>{
+      assert.equal(copied.at(-1),"R U R' U' F2");
+      assert.match(h1.text('recordFeedback'),/已复制打乱/);
+      h1.click('recordClose');
+
+      // 无打乱（'—'）时禁用复制与重测按钮
+      openHistoryRecord(h1,saved[1].uid);
+      assert.equal(h1.document.getElementById('recordCopyScramble').disabled,true);
+      assert.equal(h1.document.getElementById('recordReplayScramble').disabled,true);
+      h1.click('recordClose');
+
+      // Clipboard API 被拒绝且无 execCommand 时也给出清晰降级提示
+      const hReject=harness({clipboard:{writeText(){return Promise.reject(new Error('NotAllowedError'));}}});
+      hReject.click('copyScramble');
+      return tick().then(()=>{
+        assert.match(hReject.text('dataFeedback'),/不支持自动复制.*手动选中/);
+        assert.equal(hReject.document.getElementById('toast').hidden,false);
+
+        // 无 Clipboard API 但支持 execCommand 降级复制
+        let execCalls=0;
+        const h2=harness({execCommand(cmd){if(cmd==='copy'){execCalls++;return true;}return false;}});
+        h2.click('copyScramble');
+        assert.equal(execCalls,1);
+        assert.match(h2.text('dataFeedback'),/已复制打乱/);
+
+        // 既不支持 Clipboard API 也不支持 execCommand 时给出明确降级提示
+        const h3=harness({records:[{...record(0,12000),scramble:"L2 D' B"}]});
+        h3.click('copyScramble');
+        assert.match(h3.text('dataFeedback'),/不支持自动复制.*手动选中/);
+        assert.equal(h3.document.getElementById('toast').hidden,false);
+        h3.click('navReview');
+        openHistoryRecord(h3,h3.readRecords()[0].uid);
+        h3.click('recordCopyScramble');
+        assert.match(h3.text('recordFeedback'),/不支持自动复制.*手动选中/);
+      });
+    });
+  });
+});
+
+test('replay scramble from history detail closes nested dialogs, returns to timer without auto-starting and updates net',()=>{
+  const replayAlg="R U R' U'";
+  const rows=Array.from({length:5},(_,i)=>({...record(i,10000+i*1000),scramble:i===2?replayAlg:ALGORITHMS[0]}));
+  const h=harness({inspection:true,records:rows});
+  const targetUid=h.readRecords()[2].uid;
+
+  // 从复盘页 Ao5 明细进入单次详情（测试嵌套弹窗栈也能一次干净关闭）
+  h.click('navReview');
+  h.click('ao5Detail');
+  assert.equal(h.document.getElementById('averageDialog').open,true);
+  const rowBtn=h.descendants(h.document.getElementById('averageRows')).find(node=>node.getAttribute('data-record-uid')===targetUid);
+  h.document.getElementById('averageRows').dispatch('click',{target:rowBtn});
+  assert.equal(h.document.getElementById('recordDialog').open,true);
+
+  const solvedRects=h.descendants(h.document.getElementById('net')).filter(n=>n.tagName==='RECT').map(n=>n.getAttribute('fill'));
+  h.click('recordReplayScramble');
+
+  assert.equal(h.document.getElementById('recordDialog').open,false);
+  assert.equal(h.document.getElementById('averageDialog').open,false);
+  assert.equal(h.document.getElementById('app').dataset.view,'timer');
+  assert.equal(h.text('scrambleText'),replayAlg);
+  assert.match(h.text('scrambleHint'),/重测历史打乱 · 4 步/);
+  assert.equal(status(h),'就绪','Must not auto-start timer or inspection');
+  assert.equal(h.document.activeElement,h.document.getElementById('pad'));
+
+  // 魔方展开图已根据该条打乱重新渲染（不同于全还原状态）
+  const replayedRects=h.descendants(h.document.getElementById('net')).filter(n=>n.tagName==='RECT').map(n=>n.getAttribute('fill'));
+  assert.equal(replayedRects.length,54);
+  assert.notDeepEqual(replayedRects,solvedRects);
+
+  // 保持原有观察 + 0.3s 按住起表边界，完成后保存的成绩带该条打乱并请求下一条随机打乱
+  const reqCountBefore=h.requests().length;
+  h.key('keydown');h.key('keyup');
+  assert.equal(status(h),'观察中');
+  hold(h);
+  h.advance(1234);
+  h.key('keydown');h.key('keyup');
+  const latest=h.readRecords().at(-1);
+  assert.equal(latest.ms,1234);
+  assert.equal(latest.scramble,replayAlg);
+  assert.equal(h.requests().length,reqCountBefore+1,'Automatically requests next random scramble after finishing replay');
+});
+
+test('Native bridge syncs theme colors and routes JSON/CSV export with saved and cancelled outcomes',async ()=>{
+  const themes=[];
+  const exported=[];
+  let nextExportResult={status:'saved'};
+  const h=harness({
+    records:[record(0,11230),record(1,10450)],
+    nativeBridge:{
+      setTheme(color,isDark){themes.push({color,isDark});},
+      exportFile(options){
+        exported.push(options);
+        return Promise.resolve(nextExportResult);
+      }
+    }
+  });
+  assert.ok(themes.length>=1,'Initial theme synced to native host');
+  assert.deepEqual(themes.at(-1),{color:'#f3f4f6',isDark:false});
+
+  h.click('themeToggle');
+  assert.deepEqual(themes.at(-1),{color:'#efe6d5',isDark:false});
+  h.click('themeToggle');
+  assert.deepEqual(themes.at(-1),{color:'#0c0f14',isDark:true});
+
+  // 备份导出取消：不应走 browser download，也不应标记备份已完成
+  nextExportResult={status:'cancelled'};
+  h.click('exportData');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.downloads.length,0,'Native export bypasses anchor blob download');
+  assert.equal(exported.length,1);
+  assert.equal(exported[0].mimeType,'application/json');
+  assert.match(exported[0].filename,/^starcube-backup-\d{4}-\d{2}-\d{2}\.json$/);
+  assert.match(h.text('dataFeedback'),/已取消备份导出/);
+
+  // 备份导出成功
+  nextExportResult={status:'saved'};
+  h.click('exportData');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(exported.length,2);
+  const parsed=JSON.parse(exported[1].content);
+  assert.equal(parsed.format,'starcube');
+  assert.equal(parsed.records.length,2);
+  assert.match(h.text('dataFeedback'),/已保存备份/);
+
+  // CSV 原生导出成功
+  h.click('navReview');
+  nextExportResult={status:'saved'};
+  h.click('exportHistoryCsv');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(exported.length,3);
+  assert.equal(exported[2].mimeType,'text/csv');
+  assert.match(exported[2].filename,/\.csv$/);
+  assert.match(h.text('dataFeedback'),/已保存 CSV/);
+});
+
+test('Native back handler unwinds modal, view, inspection, and blocks accidental exit while running',()=>{
+  const h=harness({inspection:true,records:[record(0,10800)]});
+  assert.equal(typeof h.window.StarCubeApp.handleBack,'function');
+
+  // 1. 复盘页按返回 -> 切回计时页
+  h.click('navReview');
+  assert.equal(h.document.getElementById('app').dataset.view,'review');
+  assert.equal(h.window.StarCubeApp.handleBack(),true);
+  assert.equal(h.document.getElementById('app').dataset.view,'timer');
+
+  // 2. 观察中按返回 -> 取消观察
+  h.key('keydown');h.key('keyup');
+  assert.equal(status(h),'观察中');
+  assert.equal(h.window.StarCubeApp.handleBack(),true);
+  assert.equal(status(h),'就绪');
+
+  // 3. 计时中按返回 -> 吞掉返回键不中断计时，并弹轻提示
+  h.key('keydown');h.key('keyup');
+  hold(h);
+  assert.equal(status(h),'计时中');
+  assert.equal(h.window.StarCubeApp.handleBack(),true);
+  assert.equal(status(h),'计时中');
+  assert.match(h.text('toast'),/计时中，请先停表/);
+  h.advance(1500);
+  h.key('keydown');h.key('keyup');
+  assert.equal(h.readRecords().length,2);
+  assert.equal(h.readRecords().at(-1).ms,1500);
+
+  // 4. 计时页空闲状态按返回 -> 返回 false 交由安卓原生处理双击退出
+  assert.equal(h.window.StarCubeApp.handleBack(),false);
+});
+
+Promise.all(pendingTests).then(()=>{
+  console.log('\n'+passed+' passed, '+failures+' failed');
+  if(failures)process.exitCode=1;
+});

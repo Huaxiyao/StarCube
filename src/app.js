@@ -10,6 +10,14 @@
   var RECORDS_KEY = 'starcube.records.v1';
   var SETTINGS_KEY = 'starcube.settings.v1';
   var SELECTION_KEY = 'starcube.currentGroup.v1';
+  var THEMES = ['light', 'warm', 'dark'];
+  var THEME_META = {
+    light: { label: '纯净纸白', shortLabel: '纸白', colorScheme: 'light', themeColor: '#f3f4f6' },
+    warm: { label: '复古暖纸', shortLabel: '暖纸', colorScheme: 'light', themeColor: '#efe6d5' },
+    dark: { label: '极简曜黑', shortLabel: '曜黑', colorScheme: 'dark', themeColor: '#0c0f14' }
+  };
+  var TOAST_MS = 2000;
+  var TOAST_LEAVE_MS = 160;
   var SOLVED_COLORS = { U: '#F2F2F2', R: '#C62828', F: '#2E7D32', D: '#F2C230', L: '#E06C00', B: '#1565C0' };
   var FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
   var SVG_NS = 'http://www.w3.org/2000/svg';
@@ -27,6 +35,15 @@
     bad: 'var(--red-text)'
   };
   var ALG_RE = /^[URFDLB](2|')?$/;
+  var SOLVED_FACELETS = 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB';
+  var MOVE_CYCLES = {
+    U: [[0, 2, 8, 6], [1, 5, 7, 3], [18, 36, 45, 9], [19, 37, 46, 10], [20, 38, 47, 11]],
+    R: [[9, 11, 17, 15], [10, 14, 16, 12], [20, 2, 51, 29], [23, 5, 48, 32], [26, 8, 45, 35]],
+    F: [[18, 20, 26, 24], [19, 23, 25, 21], [6, 9, 29, 44], [7, 12, 28, 41], [8, 15, 27, 38]],
+    D: [[27, 29, 35, 33], [28, 32, 34, 30], [24, 15, 51, 42], [25, 16, 52, 43], [26, 17, 53, 44]],
+    L: [[36, 38, 44, 42], [37, 41, 43, 39], [0, 18, 27, 53], [3, 21, 30, 50], [6, 24, 33, 47]],
+    B: [[45, 47, 53, 51], [46, 50, 52, 48], [2, 36, 33, 17], [1, 39, 34, 14], [0, 42, 35, 11]]
+  };
 
   function $(id) { return document.getElementById(id); }
 
@@ -36,12 +53,16 @@
     timerGroupName: $('timerGroupName'), coreAo5: $('coreAo5'), coreAo12: $('coreAo12'),
     corePb: $('corePb'), coreCount: $('coreCount'), coreGlobalPb: $('coreGlobalPb'),
     recentList: $('recentList'), recentEmpty: $('recentEmpty'),
+    themeToggle: $('themeToggle'), themeLabel: $('themeLabel'),
+    metaColorScheme: $('metaColorScheme'), metaThemeColor: $('metaThemeColor'),
+    toast: $('toast'),
     status: $('status'),
     switchBtn: $('inspectionToggle'),
     storageBanner: $('storageBanner'),
     scrambleText: $('scrambleText'),
     scrambleHint: $('scrambleHint'),
     retryBtn: $('retryBtn'),
+    copyScrambleBtn: $('copyScramble'),
     newScrambleBtn: $('newScramble'),
     exportBtn: $('exportData'),
     importBtn: $('importData'),
@@ -75,12 +96,21 @@
     groupSelect: $('groupSelect'),
     groupNew: $('groupNew'),
     groupRename: $('groupRename'),
+    groupDelete: $('groupDelete'),
     groupForm: $('groupForm'),
     groupName: $('groupName'),
     groupSave: $('groupSave'),
     groupCancel: $('groupCancel'),
     groupError: $('groupError'),
     groupLabel: $('groupNameLabel'),
+    groupDeleteDialog: $('groupDeleteDialog'),
+    groupDeleteTitle: $('groupDeleteTitle'),
+    groupDeleteClose: $('groupDeleteClose'),
+    groupDeleteMessage: $('groupDeleteMessage'),
+    groupDeleteTip: $('groupDeleteTip'),
+    groupDeleteFeedback: $('groupDeleteFeedback'),
+    groupDeleteExport: $('groupDeleteExport'),
+    groupDeleteConfirm: $('groupDeleteConfirm'),
     bestAo5: $('bestAo5'),
     actions: $('actions'),
     plusBtn: $('penaltyPlus'),
@@ -105,7 +135,8 @@
     reviewRecord: $('reviewRecord'), reviewInspect: $('reviewInspect'), reviewSelected: $('reviewSelected'),
     recordDialog: $('recordDialog'), recordClose: $('recordClose'), recordContinue: $('recordContinue'), recordTitle: $('recordTitle'),
     recordResult: $('recordResult'), recordRaw: $('recordRaw'), recordDate: $('recordDate'),
-    recordScramble: $('recordScramble'), recordGroup: $('recordGroup'), recordAo5: $('recordAo5'),
+    recordScramble: $('recordScramble'), recordCopyScramble: $('recordCopyScramble'), recordReplayScramble: $('recordReplayScramble'),
+    recordGroup: $('recordGroup'), recordAo5: $('recordAo5'),
     recordAo5Detail: $('recordAo5Detail'), recordDelete: $('recordDelete'),
     recordOk: $('recordOk'), recordPlus: $('recordPlus'), recordDnf: $('recordDnf'), recordFeedback: $('recordFeedback'),
     solverSrc: $('solver-src')
@@ -118,8 +149,12 @@
   var groups = [];
   var currentGroupId = window.StarCubeStore.defaultGroupId;
   var editingGroup = null;
+  var deletingGroupId = null;
+  var deleteGroupFocus = null;
   var groupsVersion = -1;
-  var settings = { inspection: true, inspectionSound: false, reviewRange: '50' };
+  var settings = { inspection: true, inspectionSound: false, reviewRange: '50', theme: 'light' };
+  var toastLeaveTimer = 0;
+  var toastHideTimer = 0;
   var backup = null;
   function showAudioStatus(status) {
     el.soundFeedback.textContent = status.message || '8 秒一声，12 秒两声';
@@ -196,6 +231,66 @@
   var usedScramble = '';
   var runRaf = 0;
 
+  function normalizeTheme(value) {
+    return typeof value === 'string' && THEMES.includes(value) ? value : 'light';
+  }
+
+  function applyTheme(theme) {
+    var normalized = normalizeTheme(theme);
+    settings.theme = normalized;
+    var meta = THEME_META[normalized];
+    var next = THEMES[(THEMES.indexOf(normalized) + 1) % THEMES.length];
+    if (document.documentElement) {
+      document.documentElement.dataset.theme = normalized;
+      if (document.documentElement.style) document.documentElement.style.colorScheme = meta.colorScheme;
+    }
+    var colorSchemeMeta = el.metaColorScheme || (document.querySelector ? document.querySelector('meta[name="color-scheme"]') : null);
+    if (colorSchemeMeta) colorSchemeMeta.setAttribute('content', meta.colorScheme);
+    var themeColorMeta = el.metaThemeColor || (document.querySelector ? document.querySelector('meta[name="theme-color"]') : null);
+    if (themeColorMeta) themeColorMeta.setAttribute('content', meta.themeColor);
+    if (el.themeToggle) {
+      el.themeToggle.dataset.theme = normalized;
+      el.themeToggle.setAttribute('aria-label', '切换主题，当前：' + meta.label + '，点击切换为' + THEME_META[next].label);
+      el.themeToggle.title = '当前主题：' + meta.label + '（点击切换为' + THEME_META[next].label + '）';
+    }
+    if (el.themeLabel) el.themeLabel.textContent = meta.shortLabel;
+    var nativeBridge = typeof window !== 'undefined' && window.StarCubeNative;
+    if (nativeBridge && typeof nativeBridge.setTheme === 'function') {
+      try { nativeBridge.setTheme(meta.themeColor, meta.colorScheme === 'dark'); } catch (err) {}
+    }
+  }
+
+  function clearToastTimers() {
+    if (toastLeaveTimer) { clearTimeout(toastLeaveTimer); toastLeaveTimer = 0; }
+    if (toastHideTimer) { clearTimeout(toastHideTimer); toastHideTimer = 0; }
+  }
+
+  function hideToast() {
+    clearToastTimers();
+    if (!el.toast) return;
+    el.toast.classList.remove('is-leaving');
+    el.toast.hidden = true;
+    el.toast.textContent = '';
+  }
+
+  function showToast(message) {
+    if (!el.toast || !message) return;
+    clearToastTimers();
+    el.toast.classList.remove('is-leaving');
+    el.toast.hidden = true;
+    el.toast.textContent = String(message);
+    if (typeof el.toast.offsetWidth === 'number') void el.toast.offsetWidth;
+    el.toast.hidden = false;
+    toastLeaveTimer = setTimeout(function () {
+      toastLeaveTimer = 0;
+      if (el.toast && !el.toast.hidden) el.toast.classList.add('is-leaving');
+    }, Math.max(0, TOAST_MS - TOAST_LEAVE_MS));
+    toastHideTimer = setTimeout(function () {
+      toastHideTimer = 0;
+      hideToast();
+    }, TOAST_MS);
+  }
+
   function loadData() {
     var storage = null;
     try {
@@ -205,9 +300,12 @@
       if (parsedSettings && typeof parsedSettings.inspection === 'boolean') settings.inspection = parsedSettings.inspection;
       if (parsedSettings && typeof parsedSettings.inspectionSound === 'boolean') settings.inspectionSound = parsedSettings.inspectionSound;
       if (parsedSettings && ['50', '100', 'today', '7days'].includes(parsedSettings.reviewRange)) settings.reviewRange = parsedSettings.reviewRange;
+      settings.theme = normalizeTheme(parsedSettings && parsedSettings.theme);
     } catch (err) {
+      settings.theme = 'light';
       console.warn('设置读取失败，使用默认设置', err);
     }
+    applyTheme(settings.theme);
     store = window.StarCubeStore.create({ storage: storage });
     reviewLimit = settings.reviewRange === '100' ? 100 : settings.reviewRange === '50' ? 50 : settings.reviewRange;
     el.reviewRange.value = String(reviewLimit);
@@ -235,10 +333,35 @@
   }
 
   function readStore() {
+    var previousGroupId = currentGroupId;
     var loaded = store.load();
     allRecords = loaded.records;
     groups = loaded.groups;
-    if (!groups.some(function (group) { return group.id === currentGroupId; })) currentGroupId = window.StarCubeStore.defaultGroupId;
+    var groupIds = new Set(groups.map(function (group) { return group.id; }));
+    if (!groupIds.has(currentGroupId)) {
+      currentGroupId = window.StarCubeStore.defaultGroupId;
+      try { window.sessionStorage.setItem(SELECTION_KEY, currentGroupId); } catch (err) {}
+    }
+    if (currentGroupId !== previousGroupId) {
+      historyLimit = 50;
+      reviewSelectedUid = null;
+      if (el.historyBody) el.historyBody.scrollTop = 0;
+    }
+    if (editingGroup && !groupIds.has(editingGroup)) {
+      editingGroup = null;
+      el.groupForm.hidden = true;
+    }
+    if (deletingGroupId && !groupIds.has(deletingGroupId)) {
+      deletingGroupId = null;
+      deleteGroupFocus = null;
+      if (el.groupDeleteDialog && el.groupDeleteDialog.open) el.groupDeleteDialog.close();
+      el.feedback.textContent = '该训练已在另一页面删除，已切回默认训练。';
+    }
+    var hadUndo = undoDeletions.length;
+    undoDeletions = undoDeletions.filter(function (entry) {
+      return entry.record.groupId === window.StarCubeStore.defaultGroupId || groupIds.has(entry.record.groupId);
+    });
+    if (hadUndo && !undoDeletions.length) undoMessage = '';
     memoryMode = !loaded.writable;
     dataNotice = loaded.notice || '';
     pendingStorageRefresh = false;
@@ -384,6 +507,104 @@
     el.status.dataset.tone = tone;
   }
 
+  function normalizeScrambleText(text) {
+    var cleaned = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!cleaned || cleaned === '—') return '';
+    return cleaned;
+  }
+
+  function computeFacelets(algorithm) {
+    var cleaned = normalizeScrambleText(algorithm);
+    if (!cleaned) return null;
+    var moves = cleaned.split(' ');
+    var stickers = SOLVED_FACELETS.split('');
+    for (var i = 0; i < moves.length; i++) {
+      var move = moves[i];
+      if (!ALG_RE.test(move)) return null;
+      var turns = move.charAt(1) === '2' ? 2 : move.charAt(1) === "'" ? 3 : 1;
+      var cycles = MOVE_CYCLES[move.charAt(0)];
+      for (var t = 0; t < turns; t++) {
+        for (var c = 0; c < cycles.length; c++) {
+          var cycle = cycles[c];
+          var last = stickers[cycle[3]];
+          stickers[cycle[3]] = stickers[cycle[2]];
+          stickers[cycle[2]] = stickers[cycle[1]];
+          stickers[cycle[1]] = stickers[cycle[0]];
+          stickers[cycle[0]] = last;
+        }
+      }
+    }
+    return stickers.join('');
+  }
+
+  function currentCopyableScramble() {
+    if (activeScramble) return normalizeScrambleText(activeScramble.algorithm);
+    if (generating || genFailed || !currentScramble) return '';
+    return normalizeScrambleText(currentScramble.algorithm);
+  }
+
+  function fallbackCopyText(text, container) {
+    if (typeof document.execCommand !== 'function' || typeof document.createElement !== 'function') return false;
+    var host = container && container.isConnected ? container : document.body;
+    if (!host || typeof host.appendChild !== 'function') return false;
+    var active = document.activeElement;
+    var area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.top = '-9999px';
+    area.style.left = '-9999px';
+    area.style.opacity = '0';
+    host.appendChild(area);
+    var copied = false;
+    try {
+      if (typeof area.focus === 'function') area.focus({ preventScroll: true });
+      if (typeof area.select === 'function') area.select();
+      if (typeof area.setSelectionRange === 'function') area.setSelectionRange(0, text.length);
+      copied = !!document.execCommand('copy');
+    } catch (err) {
+      copied = false;
+    } finally {
+      area.remove();
+      if (active && active.isConnected && typeof active.focus === 'function') {
+        try { active.focus({ preventScroll: true }); } catch (err) {}
+      }
+    }
+    return copied;
+  }
+
+  function copyScramble(text, options) {
+    options = options || {};
+    var normalized = normalizeScrambleText(text);
+    if (!normalized) return;
+    var inDialog = !!options.inDialog;
+    function onSuccess() {
+      if (inDialog && selectedRecordUid) el.recordFeedback.textContent = '已复制打乱公式。';
+      else el.feedback.textContent = '已复制打乱公式。';
+      showToast('已复制打乱');
+    }
+    function onFailure() {
+      var message = '当前浏览器不支持自动复制，请手动选中上方打乱公式复制。';
+      if (inDialog && selectedRecordUid) el.recordFeedback.textContent = message;
+      else el.feedback.textContent = message;
+      showToast('不支持自动复制，请手动选中复制');
+    }
+    var clipboard = typeof navigator !== 'undefined' && navigator && navigator.clipboard;
+    if (clipboard && typeof clipboard.writeText === 'function') {
+      try {
+        Promise.resolve(clipboard.writeText(normalized)).then(onSuccess, function () {
+          if (fallbackCopyText(normalized, inDialog ? el.recordDialog : document.body)) onSuccess();
+          else onFailure();
+        });
+        return;
+      } catch (err) {
+        // 同步异常时继续走降级逻辑
+      }
+    }
+    if (fallbackCopyText(normalized, inDialog ? el.recordDialog : document.body)) onSuccess();
+    else onFailure();
+  }
+
   function renderScramblePanel() {
     var text = '—';
     var message = false;
@@ -395,14 +616,6 @@
       text = activeScramble.algorithm;
       facelets = activeScramble.facelets;
       hint = '本次打乱 · 已固定';
-    } else if (engineDead) {
-      text = '打乱不可用';
-      message = true;
-      hint = '仍可计时，记录中打乱显示 —';
-    } else if (!engineReady || state === 'BOOT') {
-      text = '打乱引擎初始化中…';
-      message = true;
-      hint = engineFallback ? '主线程初始化，可能卡顿数秒' : '首次初始化约需数秒';
     } else if (generating) {
       text = '生成中…';
       message = true;
@@ -415,14 +628,22 @@
     } else if (currentScramble) {
       text = currentScramble.algorithm;
       facelets = currentScramble.facelets;
-      var canN = (state === 'IDLE' || state === 'STOPPED') && !scrambleUsed && !generating;
-      hint = '随机状态 · ' + currentScramble.algorithm.split(' ').length + ' 步';
+      hint = (currentScramble.replayed ? '重测历史打乱 · ' : '随机状态 · ') + currentScramble.algorithm.split(' ').length + ' 步';
+    } else if (engineDead) {
+      text = '打乱不可用';
+      message = true;
+      hint = '仍可计时，记录中打乱显示 —';
+    } else if (!engineReady || state === 'BOOT') {
+      text = '打乱引擎初始化中…';
+      message = true;
+      hint = engineFallback ? '主线程初始化，可能卡顿数秒' : '首次初始化约需数秒';
     }
 
     el.scrambleText.textContent = text;
     el.scrambleText.classList.toggle('is-message', message);
     el.scrambleHint.textContent = hint;
     el.retryBtn.hidden = !showRetry;
+    el.copyScrambleBtn.disabled = !currentCopyableScramble() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
     el.newScrambleBtn.disabled = !!press || !!activeScramble || !engineReady || engineDead || generating ||
       (state !== 'IDLE' && state !== 'STOPPED');
     renderNet(facelets);
@@ -765,6 +986,7 @@
       button.title = canToggle ? '' : '请先完成当前操作';
     });
     el.switchBtn.disabled = !canToggle;
+    if (el.themeToggle) el.themeToggle.disabled = detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
     el.soundToggle.disabled = !canToggle;
     el.soundToggle.setAttribute('aria-checked', String(settings.inspectionSound));
     el.soundPreview.disabled = !canToggle;
@@ -785,7 +1007,7 @@
     return (state === 'IDLE' || state === 'STOPPED') && !press && !activeScramble && !importing && !detailsOpen();
   }
 
-  function detailsOpen() { return !!selectedRecordUid || selectedAverage !== null; }
+  function detailsOpen() { return !!selectedRecordUid || selectedAverage !== null || deletingGroupId !== null; }
 
   function renderBackup() {
     var status = backup.status();
@@ -961,9 +1183,14 @@
     el.groupSelect.title = selected ? selected.name : '';
     el.timerGroupName.textContent = selected ? selected.name : '';
     var disabled = !canChangeGroup() || editingGroup !== null;
+    var isDefault = currentGroupId === window.StarCubeStore.defaultGroupId;
     el.groupSelect.disabled = disabled;
     el.groupNew.disabled = disabled;
     el.groupRename.disabled = disabled;
+    el.groupDelete.disabled = disabled || isDefault;
+    el.groupDelete.title = isDefault ? '默认训练不可删除' : '删除当前训练';
+    if (el.groupDeleteExport) el.groupDeleteExport.disabled = el.exportBtn.disabled;
+    if (el.groupDeleteConfirm) el.groupDeleteConfirm.disabled = !canEditRecords();
   }
 
   function selectGroup(id) {
@@ -1004,6 +1231,14 @@
     var group;
     try {
       var name = window.StarCubeStore.validateName(el.groupName.value);
+      if (editingGroup && !memoryMode) {
+        readStore();
+        if (!groups.some(function (g) { return g.id === editingGroup; })) {
+          closeGroupEditor();
+          el.feedback.textContent = '该训练已在其他页面删除，无法重命名。';
+          return;
+        }
+      }
       var existing = groups.find(function (g) { return g.id === editingGroup; });
       group = existing ? Object.assign({}, existing, { name: name }) :
         { id: window.StarCubeStore.newUid(), origin: window.StarCubeStore.newUid(), name: name };
@@ -1020,7 +1255,102 @@
       selectGroup(group.id);
       if (currentView === 'timer') el.pad.focus(); else el.groupSelect.focus();
       el.feedback.textContent = '已保存训练「' + group.name + '」' + (memoryMode ? '，请导出备份保存本页数据。' : '。');
+      showToast('已保存训练「' + group.name + '」');
     } catch (err) { el.groupError.textContent = err.message; el.groupName.focus(); }
+  }
+
+  function openGroupDeleteDialog(group, count) {
+    deletingGroupId = group.id;
+    deleteGroupFocus = el.groupDelete;
+    el.groupDeleteTitle.textContent = '删除训练「' + group.name + '」';
+    el.groupDeleteMessage.textContent = '该训练包含 ' + count + ' 条成绩，删除后将连同全部成绩一起移除。建议先导出全量 JSON 备份，再确认删除。';
+    el.groupDeleteFeedback.textContent = '';
+    audio.stop();
+    render();
+    if (!el.groupDeleteDialog.open) el.groupDeleteDialog.showModal();
+    el.groupDeleteClose.focus({ preventScroll: true });
+  }
+
+  function closeGroupDeleteDialog(restoreFocus) {
+    if (deletingGroupId === null && !el.groupDeleteDialog.open) return;
+    deletingGroupId = null;
+    if (el.groupDeleteDialog.open) el.groupDeleteDialog.close();
+    var target = deleteGroupFocus;
+    deleteGroupFocus = null;
+    render();
+    if (restoreFocus === false) return;
+    if (target && target.isConnected && !target.disabled) target.focus({ preventScroll: true });
+    else if (el.groupSelect && !el.groupSelect.disabled) el.groupSelect.focus({ preventScroll: true });
+  }
+
+  function performDeleteGroup(group) {
+    if (!group || group.id === window.StarCubeStore.defaultGroupId) return;
+    var removedCount = groupRecords(group.id).length;
+    if (!memoryMode) {
+      try {
+        var result = store.removeGroup(group.id);
+        removedCount = result.removedRecords;
+        readStore();
+      } catch (err) {
+        if (err.code === 'INVALID_GROUP') {
+          el.feedback.textContent = '删除未完成：' + err.message;
+          render();
+          return;
+        }
+        // 存储不可写或写入中断时降级为内存只读模式，保留其余训练与成绩
+        setMemoryMode('训练分组删除失败');
+        groups = groups.filter(function (item) { return item.id !== group.id; });
+        allRecords = allRecords.filter(function (item) { return item.groupId !== group.id; });
+      }
+    } else {
+      groups = groups.filter(function (item) { return item.id !== group.id; });
+      allRecords = allRecords.filter(function (item) { return item.groupId !== group.id; });
+    }
+    currentGroupId = window.StarCubeStore.defaultGroupId;
+    try { window.sessionStorage.setItem(SELECTION_KEY, currentGroupId); } catch (err) {}
+    undoDeletions = undoDeletions.filter(function (entry) { return entry.record.groupId !== group.id; });
+    if (!undoDeletions.length) undoMessage = '';
+    historyLimit = 50;
+    reviewSelectedUid = null;
+    el.historyBody.scrollTop = 0;
+    dataChanged();
+    render();
+    var detail = removedCount ? '（已移除 ' + removedCount + ' 条成绩）' : '';
+    el.feedback.textContent = (memoryMode ? '仅在本页删除训练「' : '已删除训练「') + group.name + '」' + detail + '，已切回默认训练。' +
+      (memoryMode ? '请导出备份保存当前数据。' : '');
+    showToast('已删除训练「' + group.name + '」');
+    if (currentView === 'timer') el.pad.focus({ preventScroll: true });
+    else el.groupSelect.focus({ preventScroll: true });
+  }
+
+  function requestDeleteGroup() {
+    if (!canChangeGroup() || editingGroup !== null || deletingGroupId !== null) return;
+    if (!memoryMode) readStore();
+    if (currentGroupId === window.StarCubeStore.defaultGroupId) { render(); return; }
+    var group = groups.find(function (item) { return item.id === currentGroupId; });
+    if (!group) { render(); return; }
+    var count = groupRecords(group.id).length;
+    if (count > 0) {
+      openGroupDeleteDialog(group, count);
+      return;
+    }
+    performDeleteGroup(group);
+  }
+
+  function confirmDeleteGroup() {
+    if (!deletingGroupId || !canEditRecords()) return;
+    var targetId = deletingGroupId;
+    if (!memoryMode) readStore();
+    var group = groups.find(function (item) { return item.id === targetId; });
+    deletingGroupId = null;
+    deleteGroupFocus = null;
+    if (el.groupDeleteDialog.open) el.groupDeleteDialog.close();
+    if (!group) {
+      render();
+      el.feedback.textContent = '该训练已不存在，已切回默认训练。';
+      return;
+    }
+    performDeleteGroup(group);
   }
 
   function reviewValue(value) { return value === null ? '—' : value === 'DNF' ? 'DNF' : Stats.formatMs(value); }
@@ -1216,6 +1546,11 @@
     el.recordRaw.textContent = Stats.formatMs(record.ms);
     el.recordDate.textContent = new Date(record.at).toLocaleString('zh-CN', { hour12: false });
     el.recordScramble.textContent = record.scramble || '—';
+    var hasScramble = !!normalizeScrambleText(record.scramble);
+    el.recordCopyScramble.disabled = !hasScramble;
+    el.recordCopyScramble.title = hasScramble ? '复制该条打乱公式' : '该次成绩没有可复制的打乱公式';
+    el.recordReplayScramble.disabled = !hasScramble || !canEditRecords();
+    el.recordReplayScramble.title = hasScramble ? '关闭详情并回到计时页，将当前打乱替换为该条打乱' : '该次成绩没有可用的打乱公式';
     el.recordAo5.textContent = reviewValue(Stats.aoN(list.slice(Math.max(0, index - 4), index + 1), 5));
     el.recordAo5Detail.disabled = index < 4;
     el.recordAo5Detail.title = index < 4 ? '截至该次不足 5 把' : '查看截至该次的 Ao5 明细';
@@ -1223,6 +1558,50 @@
       var active = record.penalty === ['ok', '+2', 'dnf'][i];
       button.setAttribute('aria-pressed', String(active)); button.classList.toggle('is-active', active);
     });
+  }
+
+  function replayRecordScramble() {
+    if (!selectedRecordUid || !canEditRecords()) return;
+    var record = allRecords.find(function (item) { return item.uid === selectedRecordUid; });
+    if (!record) { render(); return; }
+    var algorithm = normalizeScrambleText(record.scramble);
+    if (!algorithm) return;
+    if (genTimer) {
+      clearTimeout(genTimer);
+      genTimer = 0;
+    }
+    generating = false;
+    genFailed = false;
+    pendingRequestId = null;
+    activeScramble = null;
+    currentScramble = {
+      algorithm: algorithm,
+      facelets: computeFacelets(algorithm),
+      requestId: ++requestSerial,
+      replayed: true
+    };
+    scrambleUsed = false;
+    if (state === 'BOOT' || state === 'STOPPED') state = 'IDLE';
+
+    // 关闭所有嵌套详情弹窗并切回计时页，保持原有状态机与防误触边界，不自动起表
+    selectedRecordUid = null;
+    selectedAverage = null;
+    detailTrail = [];
+    detailRootFocus = null;
+    detailRootView = null;
+    detailRootScroll = null;
+    el.recordContinue.hidden = true;
+    el.averageContinue.hidden = true;
+    if (el.recordDialog.open) el.recordDialog.close();
+    if (el.averageDialog.open) el.averageDialog.close();
+
+    currentView = 'timer';
+    if (!undoDeletions.length) undoMessage = '';
+    render();
+    window.scrollTo(0, 0);
+    el.pad.focus({ preventScroll: true });
+    el.feedback.textContent = '已载入历史打乱，准备就绪后即可开始计时。';
+    showToast('已载入该条打乱，可开始计时');
   }
 
   function setRecordPenalty(penalty) {
@@ -1412,6 +1791,7 @@
     runPenalty = 'ok';
     usedScramble = '';
     activeScramble = null;
+    if (engineDead) currentScramble = null;
     render();
     requestScramble(true);
   }
@@ -1712,6 +2092,15 @@
     if (!canEditRecords() || !undoDeletions.length) return;
     var entry = undoDeletions[undoDeletions.length - 1];
     try {
+      if (!entry.memoryOnly && !memoryMode) readStore();
+      var groupExists = entry.record.groupId === window.StarCubeStore.defaultGroupId ||
+        groups.some(function (group) { return group.id === entry.record.groupId; });
+      if (!groupExists) {
+        undoDeletions.pop();
+        undoMessage = '未能撤销：该成绩所属的训练已删除。';
+        render();
+        return;
+      }
       if (entry.memoryOnly) {
         if (!allRecords.some(function (item) { return item.uid === entry.record.uid; })) allRecords.push(entry.record);
         allRecords.sort(window.StarCubeStore.compareRecords);
@@ -1745,6 +2134,15 @@
     settings.inspection = !settings.inspection;
     persistSettings();
     render();
+  }
+
+  function cycleTheme() {
+    if (detailsOpen() || press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
+    var next = THEMES[(THEMES.indexOf(normalizeTheme(settings.theme)) + 1) % THEMES.length];
+    applyTheme(next);
+    persistSettings();
+    render();
+    showToast('已切换主题：' + THEME_META[next].label);
   }
 
   function newScramble() {
@@ -1841,6 +2239,10 @@
     return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
   }
 
+  function getNativeBridge() {
+    return typeof window !== 'undefined' && window.StarCubeNative ? window.StarCubeNative : null;
+  }
+
   function exportHistoryCsv() {
     if (el.exportHistoryCsv.disabled || !canChangeGroup() || editingGroup !== null) return;
     if (!memoryMode) readStore();
@@ -1856,18 +2258,48 @@
     var scopeLabel = filtered.range ? filtered.range.currentLabel : '全部历史';
     var scopeFile = filtered.range ? (filtered.range.mode === 'today' ? '今天' : '最近7天') : '全部';
     var csv = Review.historyCsv(filtered.entries);
+    var filename = 'starcube-' + csvFilenamePart(groupName, '训练') + '-' + scopeFile + '-' + localDayKey(now) + '.csv';
+    var count = filtered.entries.length;
+    var nativeBridge = getNativeBridge();
+    if (nativeBridge && typeof nativeBridge.exportFile === 'function') {
+      el.feedback.textContent = '请选择 CSV 保存位置…';
+      render();
+      Promise.resolve().then(function () {
+        return nativeBridge.exportFile({ filename: filename, mimeType: 'text/csv', content: csv });
+      }).then(function (result) {
+        if (result && result.status === 'saved') {
+          el.feedback.textContent = '已保存 CSV：「' + groupName + '」' + scopeLabel + '，共 ' + count + ' 条成绩。';
+          showToast('已保存 CSV（' + count + ' 条成绩）');
+        } else if (result && result.status === 'cancelled') {
+          el.feedback.textContent = '已取消 CSV 导出。';
+          showToast('已取消 CSV 导出');
+        } else {
+          var message = (result && result.message) || '未能保存文件';
+          el.feedback.textContent = 'CSV 导出失败：' + message;
+          showToast('CSV 导出失败');
+        }
+        render();
+      }, function (err) {
+        el.feedback.textContent = 'CSV 导出失败：' + ((err && err.message) || '未知错误');
+        showToast('CSV 导出失败');
+        render();
+      });
+      return;
+    }
     try {
       var url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
       var link = document.createElement('a');
       link.href = url;
-      link.download = 'starcube-' + csvFilenamePart(groupName, '训练') + '-' + scopeFile + '-' + localDayKey(now) + '.csv';
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
       setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-      el.feedback.textContent = '已发起 CSV 导出：「' + groupName + '」' + scopeLabel + '，共 ' + filtered.entries.length + ' 条成绩。请确认文件已保存。';
+      el.feedback.textContent = '已发起 CSV 导出：「' + groupName + '」' + scopeLabel + '，共 ' + count + ' 条成绩。请确认文件已保存。';
+      showToast('已导出 CSV（' + count + ' 条成绩）');
     } catch (err) {
       el.feedback.textContent = 'CSV 导出失败：' + err.message;
+      showToast('CSV 导出失败');
     }
     render();
   }
@@ -1877,18 +2309,75 @@
     if (!memoryMode) readStore();
     var payload = { format: 'starcube', version: 3, exportedAt: new Date().toISOString(),
       groups: groups, records: allRecords, backups: store.backups() };
+    var jsonText = JSON.stringify(payload, null, 2);
+    var filename = 'starcube-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    var groupCount = groups.length;
+    var recordCount = allRecords.length;
+    var nativeBridge = getNativeBridge();
+    if (nativeBridge && typeof nativeBridge.exportFile === 'function') {
+      el.feedback.textContent = '请选择备份文件保存位置…';
+      if (deletingGroupId && el.groupDeleteFeedback) {
+        el.groupDeleteFeedback.textContent = '请选择全量 JSON 备份保存位置…';
+      }
+      render();
+      Promise.resolve().then(function () {
+        return nativeBridge.exportFile({ filename: filename, mimeType: 'application/json', content: jsonText });
+      }).then(function (result) {
+        if (result && result.status === 'saved') {
+          backup.markExportRequested();
+          el.feedback.textContent = '已保存备份：全部 ' + groupCount + ' 个训练、' + recordCount + ' 条成绩及可恢复的原始备份。';
+          if (deletingGroupId && el.groupDeleteFeedback) {
+            el.groupDeleteFeedback.textContent = '已保存全量 JSON 备份，现在可以放心确认删除。';
+          }
+          showToast('已保存备份（' + recordCount + ' 条成绩）');
+        } else if (result && result.status === 'cancelled') {
+          el.feedback.textContent = '已取消备份导出。';
+          if (deletingGroupId && el.groupDeleteFeedback) {
+            el.groupDeleteFeedback.textContent = '已取消备份保存。';
+          }
+          showToast('已取消备份导出');
+        } else {
+          var message = (result && result.message) || '未能保存文件';
+          el.feedback.textContent = '导出失败：' + message;
+          if (deletingGroupId && el.groupDeleteFeedback) {
+            el.groupDeleteFeedback.textContent = '导出失败：' + message;
+          }
+          showToast('备份导出失败');
+        }
+        render();
+      }, function (err) {
+        var message = (err && err.message) || '未知错误';
+        el.feedback.textContent = '导出失败：' + message;
+        if (deletingGroupId && el.groupDeleteFeedback) {
+          el.groupDeleteFeedback.textContent = '导出失败：' + message;
+        }
+        showToast('备份导出失败');
+        render();
+      });
+      return;
+    }
     try {
-      var url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+      var url = URL.createObjectURL(new Blob([jsonText], { type: 'application/json' }));
       var link = document.createElement('a');
       link.href = url;
-      link.download = 'starcube-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
       backup.markExportRequested();
       setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-      el.feedback.textContent = '已发起下载：全部 ' + groups.length + ' 个训练、' + allRecords.length + ' 条成绩及可恢复的原始备份。请确认文件已保存。';
-    } catch (err) { el.feedback.textContent = '导出失败：' + err.message; }
+      el.feedback.textContent = '已发起下载：全部 ' + groupCount + ' 个训练、' + recordCount + ' 条成绩及可恢复的原始备份。请确认文件已保存。';
+      if (deletingGroupId && el.groupDeleteFeedback) {
+        el.groupDeleteFeedback.textContent = '已发起全量 JSON 备份下载，请确认文件保存后再确认删除。';
+      }
+      showToast('已导出备份（' + recordCount + ' 条成绩）');
+    } catch (err) {
+      el.feedback.textContent = '导出失败：' + err.message;
+      if (deletingGroupId && el.groupDeleteFeedback) {
+        el.groupDeleteFeedback.textContent = '导出失败：' + err.message;
+      }
+      showToast('备份导出失败');
+    }
     render();
   }
 
@@ -1898,6 +2387,7 @@
     if (el.importBtn.disabled || importing) { el.importFile.value = ''; return; }
     if (file.size > 10 * 1024 * 1024) {
       el.feedback.textContent = '文件超过 10 MB，请拆分后导入。';
+      showToast('文件超过 10 MB');
       el.importFile.value = '';
       return;
     }
@@ -1912,9 +2402,11 @@
         '；新增 ' + result.groupsAdded + ' 个训练' +
         (result.groupConflicts ? '，另存 ' + result.groupConflicts + ' 个 ID 冲突训练' : '') +
         (result.recoveredGroups ? '，恢复 ' + result.recoveredGroups + ' 个缺失分组' : '') + '（同名训练保留独立身份）。';
+      showToast('已导入 ' + result.added + ' 条成绩');
     }).catch(function (err) {
       if (err.partial) readStore();
       el.feedback.textContent = '导入失败：' + err.message;
+      showToast('导入失败');
     }).finally(function () {
       importing = false;
       el.importFile.value = '';
@@ -1998,6 +2490,7 @@
       if (button) openRecord(button.getAttribute('data-record-uid'), button);
     });
     el.switchBtn.addEventListener('click', function (event) { toggleInspection(); returnTimerFocus(event); });
+    if (el.themeToggle) el.themeToggle.addEventListener('click', function (event) { cycleTheme(); returnTimerFocus(event); });
     el.soundToggle.addEventListener('click', function (event) {
       if (!canChangeGroup() || editingGroup !== null) return;
       settings.inspectionSound = !settings.inspectionSound;
@@ -2041,6 +2534,7 @@
       if (el.backupLater.disabled) return;
       backup.snooze();
       renderBackup();
+      showToast('已暂缓备份提醒');
       el.exportBtn.focus({ preventScroll: true });
     });
     el.groupSelect.addEventListener('pointerdown', function () { groupPointerSelection = true; });
@@ -2052,6 +2546,12 @@
     });
     el.groupNew.addEventListener('click', function () { openGroupEditor(false); });
     el.groupRename.addEventListener('click', function () { openGroupEditor(true); });
+    el.groupDelete.addEventListener('click', requestDeleteGroup);
+    el.groupDeleteClose.addEventListener('click', function () { closeGroupDeleteDialog(true); });
+    el.groupDeleteExport.addEventListener('click', function () { if (deletingGroupId) exportData(); });
+    el.groupDeleteConfirm.addEventListener('click', confirmDeleteGroup);
+    el.groupDeleteDialog.addEventListener('cancel', function (event) { event.preventDefault(); closeGroupDeleteDialog(true); });
+    el.groupDeleteDialog.addEventListener('close', function () { if (!el.groupDeleteDialog.open && deletingGroupId !== null) closeGroupDeleteDialog(true); });
     el.groupForm.addEventListener('submit', saveGroup);
     el.groupCancel.addEventListener('click', closeGroupEditor);
     el.groupName.addEventListener('keydown', function (event) {
@@ -2069,6 +2569,11 @@
     });
     el.retryBtn.addEventListener('click', function (event) {
       if (!engineDead && engineReady && !generating) requestScramble(true);
+      returnTimerFocus(event);
+    });
+    el.copyScrambleBtn.addEventListener('click', function (event) {
+      if (el.copyScrambleBtn.disabled) return;
+      copyScramble(currentCopyableScramble(), { inDialog: false });
       returnTimerFocus(event);
     });
     el.newScrambleBtn.addEventListener('click', function (event) { newScramble(); returnTimerFocus(event); });
@@ -2151,6 +2656,12 @@
     el.recordOk.addEventListener('click', function () { setRecordPenalty('ok'); });
     el.recordPlus.addEventListener('click', function () { setRecordPenalty('+2'); });
     el.recordDnf.addEventListener('click', function () { setRecordPenalty('dnf'); });
+    el.recordCopyScramble.addEventListener('click', function () {
+      if (!selectedRecordUid || el.recordCopyScramble.disabled) return;
+      var record = allRecords.find(function (item) { return item.uid === selectedRecordUid; });
+      if (record) copyScramble(record.scramble, { inDialog: true });
+    });
+    el.recordReplayScramble.addEventListener('click', replayRecordScramble);
     el.recordDelete.addEventListener('click', function () { if (selectedRecordUid) deleteRecord(selectedRecordUid); });
     el.recordAo5Detail.addEventListener('click', function () {
       if (!selectedRecordUid) return;
@@ -2159,6 +2670,15 @@
     });
     window.addEventListener('storage', function (event) {
       var key = event.key;
+      if (key === SETTINGS_KEY) {
+        try {
+          var nextSettings = JSON.parse(event.newValue || localStorage.getItem(SETTINGS_KEY) || 'null');
+          applyTheme(nextSettings && nextSettings.theme);
+        } catch (err) {
+          applyTheme('light');
+        }
+        return;
+      }
       if (key === 'starcube.backup.v1') { backup.refresh(); renderBackup(); return; }
       if (key && key !== RECORDS_KEY && key.indexOf('starcube.records.v2.item.') !== 0 &&
           key.indexOf('starcube.records.v2.deleted.') !== 0 && key.indexOf(window.StarCubeStore.keys.restoredPrefix) !== 0 &&
@@ -2169,12 +2689,46 @@
     });
   }
 
+  function handleNativeBack() {
+    if (deletingGroupId !== null) {
+      closeGroupDeleteDialog();
+      return true;
+    }
+    if (selectedRecordUid || selectedAverage !== null) {
+      closeDetail();
+      return true;
+    }
+    if (editingGroup !== null) {
+      closeGroupEditor();
+      return true;
+    }
+    if (state === 'INSPECTING') {
+      if (!press) cancelInspection();
+      return true;
+    }
+    if (state === 'READY' || state === 'RUNNING') {
+      if (state === 'RUNNING') showToast('计时中，请先停表');
+      return true;
+    }
+    if (currentView === 'review') {
+      switchView('timer');
+      return true;
+    }
+    return false;
+  }
+
   loadData();
   el.historyBody.hidden = !historyOpen;
   el.historyToggle.setAttribute('aria-expanded', String(historyOpen));
   el.reviewBody.hidden = !reviewOpen;
   el.reviewToggle.setAttribute('aria-expanded', String(reviewOpen));
   bindEvents();
+  if (typeof window !== 'undefined') {
+    window.StarCubeApp = {
+      handleBack: handleNativeBack,
+      showToast: showToast
+    };
+  }
   render();
   bootSolver();
 })();

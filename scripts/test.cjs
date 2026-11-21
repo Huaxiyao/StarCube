@@ -20,6 +20,7 @@ const scripts = [
   'test-store.cjs',
   'test-domain-regression.cjs',
   'test-app-regression.cjs',
+  'test-mobile.cjs',
   'test-build.cjs'
 ];
 const results = scripts.map(name => {

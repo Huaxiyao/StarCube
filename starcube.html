@@ -1,19 +1,25 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light">
-<meta name="theme-color" content="#f3f4f6">
+<meta id="metaColorScheme" name="color-scheme" content="light">
+<meta id="metaThemeColor" name="theme-color" content="#f3f4f6">
 <title>StarCube</title>
+<script>
+(function(){try{var raw=localStorage.getItem('starcube.settings.v1');var t=raw?JSON.parse(raw).theme:'light';var m={light:['light','#f3f4f6'],warm:['light','#efe6d5'],dark:['dark','#0c0f14']};var k=Object.prototype.hasOwnProperty.call(m,t)?t:'light';document.documentElement.dataset.theme=k;document.documentElement.style.colorScheme=m[k][0];var c=document.getElementById('metaColorScheme'),tc=document.getElementById('metaThemeColor');if(c)c.setAttribute('content',m[k][0]);if(tc)tc.setAttribute('content',m[k][1]);}catch(e){document.documentElement.dataset.theme='light';}})();
+</script>
 <style>
-/* Studio Light — 纯净纸白极简视觉设计
-   柔白画布 + 纯白浮起卡片 + 细腻微边框与轻投影 + 锐利高对比等宽数字。
+/* Studio Light — 纯净纸白极简视觉设计（默认）
+   支持纯净纸白 / 复古暖纸 / 极简曜黑三套高对比主题。
    保留既有 DOM 语义、单计时器实例、44px 触控目标与全 WCAG AA+ 对比度。 */
 :root {
   --bg:#f3f4f6;
   --panel:#ffffff;
   --panel-subtle:#f8fafc;
+  --topbar-bg:rgb(255 255 255 / .92);
+  --mobile-nav-bg:rgb(255 255 255 / .94);
+  --nav-hover:rgb(255 255 255 / .75);
   --text:#111827;
   --muted:#525866;
   --line:rgb(15 23 42 / .12);
@@ -27,8 +33,11 @@
   --accent-pressed:#1f2937;
   --on-accent:#ffffff;
   --accent-soft:#eff6ff;
+  --accent-soft-hover:#dbeafe;
+  --accent-soft-active:#bfdbfe;
   --accent-border:rgb(29 78 216 / .28);
   --yellow:#b45309;
+  --yellow-border:rgb(180 83 9 / .22);
   --green:#047857;
   --green-bright:#047857;
   --red:#b91c1c;
@@ -36,6 +45,16 @@
   --positive-soft:#ecfdf5;
   --yellow-soft:#fffbeb;
   --danger-soft:#fef2f2;
+  --switch-track:#d1d5db;
+  --switch-dot:#ffffff;
+  --cube-top:#ffffff;
+  --cube-left:#cbd5e1;
+  --cube-right:#2563eb;
+  --net-stroke:rgb(15 23 42 / .15);
+  --backdrop:rgb(15 23 42 / .38);
+  --toast-bg:#111827;
+  --toast-text:#ffffff;
+  --toast-border:rgb(255 255 255 / .12);
   --radius:16px;
   --radius-lg:20px;
   --radius-control:10px;
@@ -47,10 +66,107 @@
   --digits:"SF Pro Display","Segoe UI","Helvetica Neue",Arial,var(--ui);
   --mono:ui-monospace,"SFMono-Regular","Cascadia Mono",Menlo,Consolas,"Liberation Mono",var(--ui);
 }
+/* 复古暖纸主题 */
+html[data-theme="warm"] {
+  color-scheme:light;
+  --bg:#efe6d5;
+  --panel:#faf5ea;
+  --panel-subtle:#f3ead9;
+  --topbar-bg:rgb(250 245 234 / .93);
+  --mobile-nav-bg:rgb(250 245 234 / .95);
+  --nav-hover:rgb(250 245 234 / .8);
+  --text:#2c241b;
+  --muted:#5d5041;
+  --line:rgb(44 36 27 / .18);
+  --line-soft:rgb(44 36 27 / .1);
+  --control:#ebe0cc;
+  --control-hover:#e2d4bc;
+  --control-active:#d7c6a9;
+  --control-border:rgb(44 36 27 / .16);
+  --accent:#8f3d16;
+  --accent-fill:#3b2a1e;
+  --accent-pressed:#2a1e15;
+  --on-accent:#faf5ea;
+  --accent-soft:#f5e6d5;
+  --accent-soft-hover:#ecd7bf;
+  --accent-soft-active:#e2c6a6;
+  --accent-border:rgb(143 61 22 / .32);
+  --yellow:#8f4700;
+  --yellow-border:rgb(143 71 0 / .26);
+  --green:#186245;
+  --green-bright:#186245;
+  --red:#a52422;
+  --red-text:#a52422;
+  --positive-soft:#e5f2ea;
+  --yellow-soft:#fbf0d9;
+  --danger-soft:#fae7e4;
+  --switch-track:#cbbba2;
+  --switch-dot:#faf5ea;
+  --cube-top:#faf5ea;
+  --cube-left:#d6c5ad;
+  --cube-right:#9a441b;
+  --net-stroke:rgb(44 36 27 / .22);
+  --backdrop:rgb(35 26 17 / .44);
+  --toast-bg:#2c241b;
+  --toast-text:#faf5ea;
+  --toast-border:rgb(250 245 234 / .14);
+  --shadow-sm:0 1px 2px rgb(44 36 27 / .06), 0 1px 3px rgb(44 36 27 / .04);
+  --shadow-md:0 4px 16px -2px rgb(44 36 27 / .08), 0 2px 6px -1px rgb(44 36 27 / .05);
+  --shadow-lg:0 24px 60px -12px rgb(35 26 17 / .28), 0 8px 20px -6px rgb(35 26 17 / .14);
+}
+/* 极简曜黑主题 */
+html[data-theme="dark"] {
+  color-scheme:dark;
+  --bg:#0c0f14;
+  --panel:#151922;
+  --panel-subtle:#1c222e;
+  --topbar-bg:rgb(21 25 34 / .9);
+  --mobile-nav-bg:rgb(21 25 34 / .94);
+  --nav-hover:rgb(255 255 255 / .08);
+  --text:#f1f5f9;
+  --muted:#a1abbc;
+  --line:rgb(241 245 249 / .16);
+  --line-soft:rgb(241 245 249 / .1);
+  --control:#232a38;
+  --control-hover:#2d3648;
+  --control-active:#374258;
+  --control-border:rgb(241 245 249 / .16);
+  --accent:#60a5fa;
+  --accent-fill:#e2e8f0;
+  --accent-pressed:#cbd5e1;
+  --on-accent:#0f172a;
+  --accent-soft:#17263f;
+  --accent-soft-hover:#1e3252;
+  --accent-soft-active:#263f66;
+  --accent-border:rgb(96 165 250 / .36);
+  --yellow:#fbbf24;
+  --yellow-border:rgb(251 191 36 / .32);
+  --green:#34d399;
+  --green-bright:#34d399;
+  --red:#f87171;
+  --red-text:#f87171;
+  --positive-soft:#102a22;
+  --yellow-soft:#2d2312;
+  --danger-soft:#33181b;
+  --switch-track:#3a4458;
+  --switch-dot:#f8fafc;
+  --cube-top:#e2e8f0;
+  --cube-left:#64748b;
+  --cube-right:#3b82f6;
+  --net-stroke:rgb(0 0 0 / .45);
+  --backdrop:rgb(2 6 14 / .72);
+  --toast-bg:#f1f5f9;
+  --toast-text:#0f172a;
+  --toast-border:rgb(15 23 42 / .14);
+  --shadow-sm:0 1px 2px rgb(0 0 0 / .32), 0 1px 3px rgb(0 0 0 / .24);
+  --shadow-md:0 8px 24px -4px rgb(0 0 0 / .45), 0 2px 8px -2px rgb(0 0 0 / .3);
+  --shadow-lg:0 24px 60px -12px rgb(0 0 0 / .65), 0 8px 24px -6px rgb(0 0 0 / .45);
+}
 * { box-sizing:border-box; }
-html { min-height:100%; scrollbar-gutter:stable; }
+html { min-height:100%; scrollbar-gutter:stable; color-scheme:light; }
 body { margin:0; min-width:280px; background:var(--bg); color:var(--text); font:0.875rem/1.6 var(--ui); -webkit-font-smoothing:antialiased; -webkit-text-size-adjust:100%; }
 button,select,input { font:inherit; color:inherit; }
+select option { background:var(--panel); color:var(--text); }
 button { cursor:pointer; border:0; background:none; min-height:44px; min-width:44px; transition:background-color 140ms ease,color 140ms ease,border-color 140ms ease,box-shadow 140ms ease; }
 button,select,summary { -webkit-tap-highlight-color:transparent; }
 button:disabled,select:disabled { opacity:.42; cursor:not-allowed; }
@@ -63,12 +179,12 @@ h1,h2,p { margin:0; }
 main { min-width:0; }
 
 /* 顶部悬浮导航栏 */
-.topbar { position:sticky; top:14px; z-index:8; display:flex; align-items:center; gap:20px; min-height:60px; padding:8px 16px; margin-bottom:18px; background:rgb(255 255 255 / .92); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--line-soft); border-radius:var(--radius); box-shadow:var(--shadow-sm); }
+.topbar { position:sticky; top:14px; z-index:8; display:flex; align-items:center; gap:20px; min-height:60px; padding:8px 16px; margin-bottom:18px; background:var(--topbar-bg); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--line-soft); border-radius:var(--radius); box-shadow:var(--shadow-sm); }
 .brand { display:flex; align-items:center; gap:10px; font-size:1.0625rem; font-weight:700; letter-spacing:-.025em; flex:none; }
 .brand-symbol { width:26px; height:26px; color:var(--text); flex:none; }
-.brand-symbol .cube-top { fill:#ffffff; }
-.brand-symbol .cube-left { fill:#cbd5e1; }
-.brand-symbol .cube-right { fill:#2563eb; }
+.brand-symbol .cube-top { fill:var(--cube-top); }
+.brand-symbol .cube-left { fill:var(--cube-left); }
+.brand-symbol .cube-right { fill:var(--cube-right); }
 .brand-wordmark { white-space:nowrap; }
 .brand-wordmark span { color:var(--accent); }
 .brand-sub { display:none; }
@@ -80,19 +196,23 @@ main { min-width:0; }
 .nav-button[aria-pressed="true"] { background:var(--accent-fill); color:var(--on-accent); box-shadow:0 1px 3px rgb(15 23 42 / .18); }
 .nav-button[aria-pressed="true"]:disabled { opacity:.72; }
 
-.topbar-right { margin-left:auto; display:flex; align-items:center; gap:12px; }
+.topbar-right { margin-left:auto; display:flex; align-items:center; gap:10px; min-width:0; }
+.theme-btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:44px; min-width:44px; padding:0 12px; border:1px solid var(--control-border); border-radius:var(--radius-control); background:var(--panel-subtle); color:var(--text); font-size:0.8125rem; font-weight:500; white-space:nowrap; flex:none; }
+.theme-icon { width:16px; height:16px; flex:none; display:none; }
+.theme-btn[data-theme="light"] .theme-icon-light,.theme-btn[data-theme="warm"] .theme-icon-warm,.theme-btn[data-theme="dark"] .theme-icon-dark { display:block; }
+.theme-label { line-height:1.2; }
 .status { display:inline-flex; align-items:center; min-height:30px; padding:0 10px; border-radius:var(--radius-pill); background:var(--control); color:var(--muted); font:500 0.75rem/1.4 var(--ui); white-space:nowrap; }
 .status::before { content:""; display:inline-block; width:6px; height:6px; margin-right:6px; border-radius:50%; background:currentColor; flex:none; }
 .status[data-tone="active"] { background:var(--positive-soft); color:var(--green-bright); }
 .status[data-tone="warn"] { background:var(--yellow-soft); color:var(--yellow); }
 
 .switch { display:inline-flex; align-items:center; gap:8px; padding:0 10px; border-radius:var(--radius-control); color:var(--text); font-size:0.8125rem; font-weight:500; }
-.switch-track { width:34px; height:20px; border-radius:var(--radius-pill); background:#d1d5db; position:relative; transition:background-color 150ms ease; flex:none; }
-.switch-dot { position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#ffffff; box-shadow:0 1px 2px rgb(15 23 42 / .2); transition:transform 150ms ease; }
+.switch-track { width:34px; height:20px; border-radius:var(--radius-pill); background:var(--switch-track); position:relative; transition:background-color 150ms ease; flex:none; }
+.switch-dot { position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--switch-dot); box-shadow:0 1px 2px rgb(15 23 42 / .2); transition:transform 150ms ease,background-color 150ms ease; }
 .switch[aria-checked="true"] .switch-track { background:var(--accent-fill); }
-.switch[aria-checked="true"] .switch-dot { transform:translateX(14px); }
+.switch[aria-checked="true"] .switch-dot { background:var(--on-accent); transform:translateX(14px); }
 
-.banner { margin:0 0 16px; padding:12px 16px; border:1px solid rgb(180 83 9 / .22); border-left:3px solid var(--yellow); border-radius:var(--radius-control); background:var(--yellow-soft); color:var(--text); font-size:0.8125rem; overflow-wrap:anywhere; }
+.banner { margin:0 0 16px; padding:12px 16px; border:1px solid var(--yellow-border); border-left:3px solid var(--yellow); border-radius:var(--radius-control); background:var(--yellow-soft); color:var(--text); font-size:0.8125rem; overflow-wrap:anywhere; }
 
 /* 训练分组工具条 */
 .training { padding:0 0 16px; }
@@ -118,6 +238,7 @@ main { min-width:0; }
 .scramble { display:flex; align-items:center; gap:20px; padding:16px 20px; background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); box-shadow:var(--shadow-sm); }
 .scramble-main { flex:1; min-width:0; }
 .scramble-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
+.scramble-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .label { color:var(--muted); font-size:0.75rem; font-weight:500; }
 .label-divider { margin:0 6px; color:var(--line); }
 .small-btn,.retry { min-height:44px; padding:0 14px; border:1px solid var(--control-border); border-radius:var(--radius-control); background:var(--panel); color:var(--text); font-size:0.8125rem; font-weight:500; box-shadow:0 1px 2px rgb(15 23 42 / .03); }
@@ -128,7 +249,7 @@ kbd { display:inline-block; padding:1px 5px; margin-left:6px; border:1px solid v
 .scramble-hint { display:flex; gap:8px; align-items:center; min-height:18px; margin-top:6px; color:var(--muted); font-size:0.75rem; }
 .net-wrap { width:108px; flex:none; padding:8px; background:var(--control); border:1px solid var(--line-soft); border-radius:12px; }
 .net svg { display:block; width:100%; height:auto; }
-.net svg rect { stroke:rgb(15 23 42 / .15); stroke-width:.75; }
+.net svg rect { stroke:var(--net-stroke); stroke-width:.75; }
 
 /* 核心计时器舞台卡片 */
 .timer-console { background:var(--panel); color:var(--text); border:1px solid var(--line-soft); border-radius:var(--radius-lg); box-shadow:var(--shadow-md); overflow:visible; }
@@ -291,13 +412,13 @@ kbd { display:inline-block; padding:1px 5px; margin-left:6px; border:1px solid v
 .data-tools .small-btn { color:var(--text); background:var(--panel-subtle); }
 .data-feedback { flex-basis:100%; color:var(--muted); font-size:0.75rem; line-height:1.6; text-align:right; overflow-wrap:anywhere; }
 .data-feedback:empty { display:none; }
-.backup-reminder { grid-column:1/-1; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; padding:12px 16px; border:1px solid rgb(180 83 9 / .22); border-radius:var(--radius-control); background:var(--yellow-soft); }
+.backup-reminder { grid-column:1/-1; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; padding:12px 16px; border:1px solid var(--yellow-border); border-radius:var(--radius-control); background:var(--yellow-soft); }
 .backup-reminder p { flex:1 1 220px; margin:0; font-size:.8125rem; line-height:1.6; }
 .backup-status { grid-column:1/-1; margin:0; padding-top:10px; border-top:1px solid var(--line-soft); color:var(--muted); font-size:.75rem; line-height:1.6; }
 
 /* 弹窗样式 */
 .record-dialog { width:min(520px,calc(100% - 24px)); max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); margin:auto; padding:24px; border:1px solid var(--line-soft); border-radius:var(--radius-lg); background:var(--panel); color:var(--text); box-shadow:var(--shadow-lg); overflow-y:auto; overscroll-behavior:contain; }
-.record-dialog::backdrop { background:rgb(15 23 42 / .38); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+.record-dialog::backdrop { background:var(--backdrop); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
 
 .average-trigger { display:block; min-height:44px; min-width:44px; padding:0; background:transparent; color:inherit; font:inherit; text-align:left; letter-spacing:inherit; }
 .average-trigger:not(:disabled) { text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:5px; }
@@ -329,26 +450,41 @@ kbd { display:inline-block; padding:1px 5px; margin-left:6px; border:1px solid v
 .record-meta { display:grid; grid-template-columns:auto minmax(0,1fr); gap:12px 16px; margin:20px 0; padding:14px 16px; border-radius:12px; background:var(--panel-subtle); border:1px solid var(--line-soft); font-size:0.8125rem; }
 .record-meta dt { color:var(--muted); }
 .record-meta dd { margin:0; text-align:right; font-weight:500; overflow-wrap:anywhere; }
-.record-scramble { margin:8px 0 20px; padding:12px 14px; border-radius:10px; border:1px solid var(--line-soft); background:var(--panel-subtle); font:0.875rem/1.8 var(--mono); overflow-wrap:anywhere; }
+.record-scramble { margin:8px 0 10px; padding:12px 14px; border-radius:10px; border:1px solid var(--line-soft); background:var(--panel-subtle); font:0.875rem/1.8 var(--mono); overflow-wrap:anywhere; user-select:text; -webkit-user-select:text; }
+.record-scramble-actions { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px; }
+.detail-replay { color:var(--accent); border-color:var(--accent-border); background:var(--accent-soft); box-shadow:none; }
 .record-penalties { display:flex; gap:8px; margin-top:8px; }
 .record-feedback { min-height:36px; margin-top:12px; color:var(--muted); font-size:0.75rem; line-height:1.7; }
+.group-delete-message { margin:14px 0 8px; font-size:0.9375rem; line-height:1.65; color:var(--text); overflow-wrap:anywhere; }
+.group-delete-tip { margin:0; font-size:0.8125rem; line-height:1.65; color:var(--muted); overflow-wrap:anywhere; }
+.group-delete-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px; margin-top:8px; }
+.group-delete-actions .action-btn { flex:0 1 auto; padding:0 18px; }
+.action-btn.danger-confirm { color:var(--red-text); border-color:var(--red-text); background:var(--danger-soft); font-weight:600; box-shadow:none; }
+
+/* 柔和轻提示（Toast） */
+.toast { position:fixed; right:24px; bottom:24px; z-index:20; max-width:min(380px,calc(100vw - 32px)); padding:10px 16px; border:1px solid var(--toast-border); border-radius:12px; background:var(--toast-bg); color:var(--toast-text); font-size:0.8125rem; font-weight:500; line-height:1.5; box-shadow:var(--shadow-md); pointer-events:none; overflow-wrap:anywhere; animation:toast-in 160ms ease-out both; }
+.toast.is-leaving { animation:toast-out 160ms ease-in both; }
+@keyframes toast-in { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+@keyframes toast-out { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(4px); } }
+@keyframes toast-in-mobile { from { opacity:0; transform:translate(-50%,6px); } to { opacity:1; transform:translate(-50%,0); } }
+@keyframes toast-out-mobile { from { opacity:1; transform:translate(-50%,0); } to { opacity:0; transform:translate(-50%,4px); } }
 
 /* 交互态 */
 @media (hover:hover) {
   button:not(:disabled):hover { background:var(--control-hover); }
-  .nav-button:not([aria-pressed="true"]):not(:disabled):hover { background:rgb(255 255 255 / .75); color:var(--text); }
+  .nav-button:not([aria-pressed="true"]):not(:disabled):hover { background:var(--nav-hover); color:var(--text); }
   .nav-button[aria-pressed="true"]:not(:disabled):hover,.training-form #groupSave:not(:disabled):hover { background:var(--accent-pressed); }
   .text-btn:hover,.history-detail:hover,.recent-result:hover { color:var(--accent); background:var(--panel-subtle); }
   .average-trigger:not(:disabled):hover { color:var(--accent); background:transparent; }
-  #newScramble:not(:disabled):hover { background:#dbeafe; }
-  .action-btn.danger:hover { color:var(--red-text); background:var(--danger-soft); }
+  #newScramble:not(:disabled):hover,.detail-replay:not(:disabled):hover { background:var(--accent-soft-hover); }
+  .action-btn.danger:hover,.training .group-delete:not(:disabled):hover { color:var(--red-text); background:var(--danger-soft); }
   .record-delete:not(:disabled):hover { color:var(--red-text); background:var(--danger-soft); }
 }
 button:active:not(:disabled) { background:var(--control-active); }
 .nav-button[aria-pressed="true"]:active:not(:disabled),.training-form #groupSave:active:not(:disabled) { background:var(--accent-pressed); }
-#newScramble:active:not(:disabled) { background:#bfdbfe; }
+#newScramble:active:not(:disabled),.detail-replay:active:not(:disabled) { background:var(--accent-soft-active); }
 .action-btn.is-active:not(:disabled):is(:hover,:active) { background:var(--yellow-soft); }
-.action-btn.is-active.dnf:not(:disabled):is(:hover,:active) { background:var(--danger-soft); }
+.action-btn.is-active.dnf:not(:disabled):is(:hover,:active),.action-btn.danger-confirm:not(:disabled):is(:hover,:active) { background:var(--danger-soft); }
 #recordOk.is-active:not(:disabled):is(:hover,:active) { background:var(--accent-soft); }
 
 /* 响应式：中等屏幕 */
@@ -393,26 +529,28 @@ button:active:not(:disabled) { background:var(--control-active); }
   .topbar { position:static; min-height:52px; flex-wrap:wrap; gap:8px 10px; padding:6px 12px; margin-bottom:12px; border-radius:14px; background:var(--panel); backdrop-filter:none; -webkit-backdrop-filter:none; }
   .brand { gap:8px; font-size:1.0625rem; }
   .brand-symbol { width:22px; height:22px; }
-  .topbar-right { margin:0 0 0 auto; gap:8px; }
+  .topbar-right { margin:0 0 0 auto; gap:6px; flex-wrap:wrap; justify-content:flex-end; max-width:100%; }
+  .theme-btn { padding:0 10px; gap:5px; font-size:0.75rem; }
   .status { font-size:0.75rem; padding:0 8px; }
   .status::before { display:none; }
   .switch { padding:0 4px; gap:6px; font-size:0.75rem; }
-  .view-nav { position:fixed; left:0; right:0; bottom:0; z-index:9; width:auto; border-radius:0; gap:8px; margin:0; padding:8px 14px calc(8px + env(safe-area-inset-bottom)); background:rgb(255 255 255 / .94); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-top:1px solid var(--line-soft); box-shadow:0 -4px 16px rgb(15 23 42 / .05); }
+  .view-nav { position:fixed; left:0; right:0; bottom:0; z-index:9; width:auto; border-radius:0; gap:8px; margin:0; padding:8px 14px calc(8px + env(safe-area-inset-bottom)); background:var(--mobile-nav-bg); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-top:1px solid var(--line-soft); box-shadow:0 -4px 16px rgb(15 23 42 / .05); }
   .nav-button { flex:1; min-height:46px; gap:7px; padding:8px 14px; font-size:0.875rem; }
   .nav-button svg { width:18px; height:18px; }
   .training { padding:0 0 12px; }
   .training-bar { gap:6px; }
-  .training select { flex:1; width:0; padding:8px 10px; }
+  .training select { flex:1 1 136px; min-width:136px; width:auto; padding:8px 10px; }
   .training button { padding:0 10px; }
   .timer-layout { display:flex; flex-direction:column; gap:14px; }
   .timer-stage { width:100%; gap:12px; }
-  .scramble { display:grid; grid-template-columns:minmax(0,1fr) 58px auto; gap:8px 10px; padding:12px 14px; align-items:center; }
+  .scramble { display:grid; grid-template-columns:minmax(0,1fr) 58px; gap:8px 10px; padding:12px 14px; align-items:center; }
   .scramble-main,.scramble-top { display:contents; }
-  .scramble-top .label { grid-column:1; grid-row:1; font-size:0.75rem; }
-  .scramble-top button { grid-column:3; grid-row:1; padding:0 10px; }
+  .scramble-top .label { grid-column:1; grid-row:1; font-size:0.75rem; min-width:0; }
+  .scramble-actions { grid-column:1/-1; grid-row:4; display:flex; flex-wrap:wrap; gap:8px; }
+  .scramble-actions .small-btn { flex:1 1 110px; min-width:0; padding:0 10px; }
   .scramble-text { grid-column:1/-1; grid-row:2; font-size:0.9375rem; line-height:1.6; min-height:3.1rem; }
-  .scramble-hint { grid-column:1/-1; grid-row:3; margin:0; min-height:18px; font-size:0.75rem; }
-  .net-wrap { grid-column:2; grid-row:1; width:58px; padding:4px; border-radius:8px; }
+  .scramble-hint { grid-column:1/-1; grid-row:3; margin:0; min-height:18px; font-size:0.75rem; flex-wrap:wrap; }
+  .net-wrap { grid-column:2; grid-row:1; width:58px; padding:4px; border-radius:8px; justify-self:end; }
   .pad { min-height:244px; padding:2.75rem 12px 1.75rem; }
   .pad-caption { top:14px; left:16px; right:16px; font-size:0.75rem; }
   .timer { font-size:clamp(3.25rem,20vw,6.25rem); }
@@ -469,14 +607,27 @@ button:active:not(:disabled) { background:var(--control-active); }
   .history-id { min-width:28px; }
   .record-dialog { padding:18px; }
   .record-result { font-size:clamp(2.25rem,14vw,3.5rem); }
+  .record-scramble-actions .small-btn { flex:1 1 110px; }
+  .group-delete-actions { justify-content:stretch; }
+  .group-delete-actions .small-btn,.group-delete-actions .action-btn { flex:1 1 110px; }
+  .toast { top:auto; bottom:calc(74px + env(safe-area-inset-bottom)); left:50%; right:auto; transform:translateX(-50%); width:max-content; max-width:calc(100vw - 24px); text-align:center; animation:toast-in-mobile 160ms ease-out both; }
+  .toast.is-leaving { animation:toast-out-mobile 160ms ease-in both; }
+}
+
+@media (max-width:720px) and (max-height:660px) {
+  .toast { top:calc(70px + env(safe-area-inset-top)); bottom:auto; }
 }
 
 @media (max-width:360px) {
   #app { padding-left:10px; padding-right:10px; }
+  .topbar { padding:6px 10px; gap:6px 8px; }
   .brand { font-size:1rem; }
   .brand-symbol { width:20px; }
-  .topbar-right { gap:6px; }
+  .topbar-right { gap:4px; }
+  .theme-btn { width:44px; padding:0; }
+  .theme-label { display:none; }
   .switch { gap:4px; }
+  .training select { flex:1 1 220px; min-width:220px; }
   .scramble-text { min-height:4.6rem; }
   .core-stat { padding:10px 12px; }
   .core-stat dd { font-size:1.1875rem; }
@@ -509,7 +660,7 @@ button:active:not(:disabled) { background:var(--control-active); }
       <button id="navTimer" class="nav-button" type="button" aria-pressed="true" aria-controls="timerView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="14" r="8"/><path d="M9 2h6M12 2v4M12 10v5l3 2"/></svg>计时</button>
       <button id="navReview" class="nav-button" type="button" aria-pressed="false" aria-controls="reviewView"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 3v17h17M7 15l4-5 4 2 6-7"/></svg>复盘</button>
     </nav>
-    <div class="topbar-right"><button id="inspectionToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="15 秒观察"><span class="switch-label">观察</span><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button><span id="status" class="status" role="status">初始化中…</span></div>
+    <div class="topbar-right"><button id="themeToggle" class="theme-btn" type="button" data-theme="light" aria-label="切换主题，当前：纯净纸白，点击切换为复古暖纸" title="当前主题：纯净纸白（点击切换为复古暖纸）"><svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg><svg class="theme-icon theme-icon-warm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v18H7.5A2.5 2.5 0 0 0 5 22V4.5Z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19"/><path d="M9.5 7h5.5M9.5 11h4"/></svg><svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a6.7 6.7 0 0 0 11 11Z"/></svg><span id="themeLabel" class="theme-label">纸白</span></button><button id="inspectionToggle" class="switch" type="button" role="switch" aria-checked="true" aria-label="15 秒观察"><span class="switch-label">观察</span><span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span></button><span id="status" class="status" role="status">初始化中…</span></div>
   </header>
   <div id="storageBanner" class="banner" hidden>成绩不会被保存：浏览器存储不可用</div>
   <main>
@@ -519,6 +670,7 @@ button:active:not(:disabled) { background:var(--control-active); }
         <select id="groupSelect" aria-label="当前训练"></select>
         <button id="groupNew" type="button">新建</button>
         <button id="groupRename" type="button">重命名</button>
+        <button id="groupDelete" class="group-delete" type="button">删除</button>
       </div>
       <form id="groupForm" class="training-form" hidden>
         <label id="groupNameLabel" for="groupName">新建训练</label>
@@ -534,7 +686,7 @@ button:active:not(:disabled) { background:var(--control-active); }
       <div class="timer-layout"><div class="timer-stage">
     <section class="scramble" aria-label="打乱">
       <div class="scramble-main">
-        <div class="scramble-top"><div class="label">3 × 3 <span class="label-divider">/</span> 随机打乱</div><button id="newScramble" class="small-btn" type="button" title="换一条打乱（N）">换打乱<kbd>N</kbd></button></div>
+        <div class="scramble-top"><div class="label">3 × 3 <span class="label-divider" aria-hidden="true">/</span> 随机打乱</div><div class="scramble-actions"><button id="copyScramble" class="small-btn" type="button" title="复制当前打乱公式">复制打乱</button><button id="newScramble" class="small-btn" type="button" title="换一条打乱（N）">换打乱<kbd>N</kbd></button></div></div>
         <div id="scrambleText" class="scramble-text is-message">打乱引擎初始化中…</div>
         <div class="scramble-hint">
           <span id="scrambleHint"></span>
@@ -674,12 +826,15 @@ button:active:not(:disabled) { background:var(--control-active); }
   </main>
 </div>
 
+<div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+
 <dialog id="recordDialog" class="record-dialog" aria-labelledby="recordTitle" aria-describedby="recordGroup">
   <div class="record-heading"><h2 id="recordTitle">成绩详情</h2><button id="recordClose" class="small-btn" type="button" autofocus>关闭</button></div>
   <div class="record-context"><p id="recordGroup" class="record-group"></p><button id="recordContinue" class="small-btn detail-continue" type="button" hidden>继续计时</button></div>
   <div id="recordResult" class="record-result"></div>
   <dl class="record-meta"><dt>原始用时</dt><dd id="recordRaw"></dd><dt>记录时间</dt><dd id="recordDate"></dd><dt>截至该次 Ao5</dt><dd><button id="recordAo5Detail" class="metric-link" type="button" aria-label="查看截至该次 Ao5 明细" disabled><span id="recordAo5"></span></button></dd></dl>
   <div class="label">该次打乱</div><p id="recordScramble" class="record-scramble"></p>
+  <div class="record-scramble-actions"><button id="recordCopyScramble" class="small-btn" type="button">复制打乱</button><button id="recordReplayScramble" class="small-btn detail-replay" type="button">用这条打乱再测一次</button></div>
   <div class="label" id="penaltyLabel">罚时 · 点选后立即保存</div>
   <div class="record-penalties" role="group" aria-labelledby="penaltyLabel"><button id="recordOk" class="action-btn" type="button" aria-pressed="false">正常</button><button id="recordPlus" class="action-btn" type="button" aria-pressed="false">+2</button><button id="recordDnf" class="action-btn dnf" type="button" aria-pressed="false">DNF</button></div>
   <button id="recordDelete" class="text-btn record-delete" type="button">删除这条成绩</button>
@@ -695,6 +850,14 @@ button:active:not(:disabled) { background:var(--control-active); }
   <ol id="averageRows" class="average-rows" aria-label="组成成绩，按记录顺序"></ol>
   <p id="averageNote" class="average-note">各去掉最好与最差 1 次，平均剩余成绩。+2 已计入；DNF 视为最差，去尾后仍有 DNF 则平均为 DNF。同分按记录先后确定去尾。</p>
   <aside id="averageUndoNotice" class="undo-notice" aria-label="删除与撤销" hidden><p id="averageUndoMessage" role="status"></p><button id="averageUndo" class="small-btn" type="button">撤销删除</button></aside>
+</dialog>
+
+<dialog id="groupDeleteDialog" class="record-dialog group-delete-dialog" aria-labelledby="groupDeleteTitle" aria-describedby="groupDeleteMessage groupDeleteTip">
+  <div class="record-heading"><h2 id="groupDeleteTitle">删除训练</h2><button id="groupDeleteClose" class="small-btn" type="button" autofocus>取消</button></div>
+  <p id="groupDeleteMessage" class="group-delete-message"></p>
+  <p id="groupDeleteTip" class="group-delete-tip">删除后将自动切回默认训练组，且无法通过「撤销删除」恢复该组内的成绩。</p>
+  <p id="groupDeleteFeedback" class="record-feedback" role="status" aria-live="polite"></p>
+  <div class="group-delete-actions"><button id="groupDeleteExport" class="small-btn" type="button">先导出备份</button><button id="groupDeleteConfirm" class="action-btn danger-confirm" type="button">确认删除</button></div>
 </dialog>
 
 <!--
@@ -1380,6 +1543,30 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       return normalized;
     }
 
+    function removeGroup(id) {
+      if (!validUid(id)) throw error('训练分组 ID 无效', 'INVALID_GROUP');
+      if (id === DEFAULT_GROUP) throw error('默认训练不可删除', 'INVALID_GROUP');
+      var target = requireStorage();
+      var loaded = load();
+      if (!loaded.writable) throw error('存储无法写入，未删除训练分组', 'STORAGE_UNAVAILABLE');
+      var group = loaded.groups.find(function (item) { return item.id === id; }) || null;
+      var groupRecords = loaded.records.filter(function (record) { return record.groupId === id; });
+      var removedRecords = 0;
+      try {
+        groupRecords.forEach(function (record) {
+          remove(record.uid);
+          removedRecords++;
+        });
+        // 先为组内全部成绩写入删除标记，再移除分组键，避免中途失败时剩余成绩变成「恢复的训练」。
+        target.removeItem(groupKey(id));
+      } catch (err) {
+        err.partial = { groupId: id, removedRecords: removedRecords, totalRecords: groupRecords.length };
+        err.message = '删除训练中断：已删除 ' + removedRecords + ' / ' + groupRecords.length + ' 条成绩；' + err.message;
+        throw err;
+      }
+      return { groupId: id, group: group, removedRecords: removedRecords };
+    }
+
     function probe() {
       if (!storage) return false;
       var key = PREFIX + 'probe.' + newUid();
@@ -1715,7 +1902,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       return result;
     }
 
-    return { load: load, put: put, putGroup: putGroup, remove: remove, restore: restore, importRecords: importRecords, backups: backups, exportData: exportData, readRaw: readRaw };
+    return { load: load, put: put, putGroup: putGroup, removeGroup: removeGroup, remove: remove, restore: restore, importRecords: importRecords, backups: backups, exportData: exportData, readRaw: readRaw };
   }
 
   var api = { create: create, validateRecord: validateRecord, isValidRecord: isValidRecord,
@@ -2134,6 +2321,14 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   var RECORDS_KEY = 'starcube.records.v1';
   var SETTINGS_KEY = 'starcube.settings.v1';
   var SELECTION_KEY = 'starcube.currentGroup.v1';
+  var THEMES = ['light', 'warm', 'dark'];
+  var THEME_META = {
+    light: { label: '纯净纸白', shortLabel: '纸白', colorScheme: 'light', themeColor: '#f3f4f6' },
+    warm: { label: '复古暖纸', shortLabel: '暖纸', colorScheme: 'light', themeColor: '#efe6d5' },
+    dark: { label: '极简曜黑', shortLabel: '曜黑', colorScheme: 'dark', themeColor: '#0c0f14' }
+  };
+  var TOAST_MS = 2000;
+  var TOAST_LEAVE_MS = 160;
   var SOLVED_COLORS = { U: '#F2F2F2', R: '#C62828', F: '#2E7D32', D: '#F2C230', L: '#E06C00', B: '#1565C0' };
   var FACE_ORDER = ['U', 'R', 'F', 'D', 'L', 'B'];
   var SVG_NS = 'http://www.w3.org/2000/svg';
@@ -2151,6 +2346,15 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     bad: 'var(--red-text)'
   };
   var ALG_RE = /^[URFDLB](2|')?$/;
+  var SOLVED_FACELETS = 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB';
+  var MOVE_CYCLES = {
+    U: [[0, 2, 8, 6], [1, 5, 7, 3], [18, 36, 45, 9], [19, 37, 46, 10], [20, 38, 47, 11]],
+    R: [[9, 11, 17, 15], [10, 14, 16, 12], [20, 2, 51, 29], [23, 5, 48, 32], [26, 8, 45, 35]],
+    F: [[18, 20, 26, 24], [19, 23, 25, 21], [6, 9, 29, 44], [7, 12, 28, 41], [8, 15, 27, 38]],
+    D: [[27, 29, 35, 33], [28, 32, 34, 30], [24, 15, 51, 42], [25, 16, 52, 43], [26, 17, 53, 44]],
+    L: [[36, 38, 44, 42], [37, 41, 43, 39], [0, 18, 27, 53], [3, 21, 30, 50], [6, 24, 33, 47]],
+    B: [[45, 47, 53, 51], [46, 50, 52, 48], [2, 36, 33, 17], [1, 39, 34, 14], [0, 42, 35, 11]]
+  };
 
   function $(id) { return document.getElementById(id); }
 
@@ -2160,12 +2364,16 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     timerGroupName: $('timerGroupName'), coreAo5: $('coreAo5'), coreAo12: $('coreAo12'),
     corePb: $('corePb'), coreCount: $('coreCount'), coreGlobalPb: $('coreGlobalPb'),
     recentList: $('recentList'), recentEmpty: $('recentEmpty'),
+    themeToggle: $('themeToggle'), themeLabel: $('themeLabel'),
+    metaColorScheme: $('metaColorScheme'), metaThemeColor: $('metaThemeColor'),
+    toast: $('toast'),
     status: $('status'),
     switchBtn: $('inspectionToggle'),
     storageBanner: $('storageBanner'),
     scrambleText: $('scrambleText'),
     scrambleHint: $('scrambleHint'),
     retryBtn: $('retryBtn'),
+    copyScrambleBtn: $('copyScramble'),
     newScrambleBtn: $('newScramble'),
     exportBtn: $('exportData'),
     importBtn: $('importData'),
@@ -2199,12 +2407,21 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     groupSelect: $('groupSelect'),
     groupNew: $('groupNew'),
     groupRename: $('groupRename'),
+    groupDelete: $('groupDelete'),
     groupForm: $('groupForm'),
     groupName: $('groupName'),
     groupSave: $('groupSave'),
     groupCancel: $('groupCancel'),
     groupError: $('groupError'),
     groupLabel: $('groupNameLabel'),
+    groupDeleteDialog: $('groupDeleteDialog'),
+    groupDeleteTitle: $('groupDeleteTitle'),
+    groupDeleteClose: $('groupDeleteClose'),
+    groupDeleteMessage: $('groupDeleteMessage'),
+    groupDeleteTip: $('groupDeleteTip'),
+    groupDeleteFeedback: $('groupDeleteFeedback'),
+    groupDeleteExport: $('groupDeleteExport'),
+    groupDeleteConfirm: $('groupDeleteConfirm'),
     bestAo5: $('bestAo5'),
     actions: $('actions'),
     plusBtn: $('penaltyPlus'),
@@ -2229,7 +2446,8 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     reviewRecord: $('reviewRecord'), reviewInspect: $('reviewInspect'), reviewSelected: $('reviewSelected'),
     recordDialog: $('recordDialog'), recordClose: $('recordClose'), recordContinue: $('recordContinue'), recordTitle: $('recordTitle'),
     recordResult: $('recordResult'), recordRaw: $('recordRaw'), recordDate: $('recordDate'),
-    recordScramble: $('recordScramble'), recordGroup: $('recordGroup'), recordAo5: $('recordAo5'),
+    recordScramble: $('recordScramble'), recordCopyScramble: $('recordCopyScramble'), recordReplayScramble: $('recordReplayScramble'),
+    recordGroup: $('recordGroup'), recordAo5: $('recordAo5'),
     recordAo5Detail: $('recordAo5Detail'), recordDelete: $('recordDelete'),
     recordOk: $('recordOk'), recordPlus: $('recordPlus'), recordDnf: $('recordDnf'), recordFeedback: $('recordFeedback'),
     solverSrc: $('solver-src')
@@ -2242,8 +2460,12 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   var groups = [];
   var currentGroupId = window.StarCubeStore.defaultGroupId;
   var editingGroup = null;
+  var deletingGroupId = null;
+  var deleteGroupFocus = null;
   var groupsVersion = -1;
-  var settings = { inspection: true, inspectionSound: false, reviewRange: '50' };
+  var settings = { inspection: true, inspectionSound: false, reviewRange: '50', theme: 'light' };
+  var toastLeaveTimer = 0;
+  var toastHideTimer = 0;
   var backup = null;
   function showAudioStatus(status) {
     el.soundFeedback.textContent = status.message || '8 秒一声，12 秒两声';
@@ -2320,6 +2542,66 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   var usedScramble = '';
   var runRaf = 0;
 
+  function normalizeTheme(value) {
+    return typeof value === 'string' && THEMES.includes(value) ? value : 'light';
+  }
+
+  function applyTheme(theme) {
+    var normalized = normalizeTheme(theme);
+    settings.theme = normalized;
+    var meta = THEME_META[normalized];
+    var next = THEMES[(THEMES.indexOf(normalized) + 1) % THEMES.length];
+    if (document.documentElement) {
+      document.documentElement.dataset.theme = normalized;
+      if (document.documentElement.style) document.documentElement.style.colorScheme = meta.colorScheme;
+    }
+    var colorSchemeMeta = el.metaColorScheme || (document.querySelector ? document.querySelector('meta[name="color-scheme"]') : null);
+    if (colorSchemeMeta) colorSchemeMeta.setAttribute('content', meta.colorScheme);
+    var themeColorMeta = el.metaThemeColor || (document.querySelector ? document.querySelector('meta[name="theme-color"]') : null);
+    if (themeColorMeta) themeColorMeta.setAttribute('content', meta.themeColor);
+    if (el.themeToggle) {
+      el.themeToggle.dataset.theme = normalized;
+      el.themeToggle.setAttribute('aria-label', '切换主题，当前：' + meta.label + '，点击切换为' + THEME_META[next].label);
+      el.themeToggle.title = '当前主题：' + meta.label + '（点击切换为' + THEME_META[next].label + '）';
+    }
+    if (el.themeLabel) el.themeLabel.textContent = meta.shortLabel;
+    var nativeBridge = typeof window !== 'undefined' && window.StarCubeNative;
+    if (nativeBridge && typeof nativeBridge.setTheme === 'function') {
+      try { nativeBridge.setTheme(meta.themeColor, meta.colorScheme === 'dark'); } catch (err) {}
+    }
+  }
+
+  function clearToastTimers() {
+    if (toastLeaveTimer) { clearTimeout(toastLeaveTimer); toastLeaveTimer = 0; }
+    if (toastHideTimer) { clearTimeout(toastHideTimer); toastHideTimer = 0; }
+  }
+
+  function hideToast() {
+    clearToastTimers();
+    if (!el.toast) return;
+    el.toast.classList.remove('is-leaving');
+    el.toast.hidden = true;
+    el.toast.textContent = '';
+  }
+
+  function showToast(message) {
+    if (!el.toast || !message) return;
+    clearToastTimers();
+    el.toast.classList.remove('is-leaving');
+    el.toast.hidden = true;
+    el.toast.textContent = String(message);
+    if (typeof el.toast.offsetWidth === 'number') void el.toast.offsetWidth;
+    el.toast.hidden = false;
+    toastLeaveTimer = setTimeout(function () {
+      toastLeaveTimer = 0;
+      if (el.toast && !el.toast.hidden) el.toast.classList.add('is-leaving');
+    }, Math.max(0, TOAST_MS - TOAST_LEAVE_MS));
+    toastHideTimer = setTimeout(function () {
+      toastHideTimer = 0;
+      hideToast();
+    }, TOAST_MS);
+  }
+
   function loadData() {
     var storage = null;
     try {
@@ -2329,9 +2611,12 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       if (parsedSettings && typeof parsedSettings.inspection === 'boolean') settings.inspection = parsedSettings.inspection;
       if (parsedSettings && typeof parsedSettings.inspectionSound === 'boolean') settings.inspectionSound = parsedSettings.inspectionSound;
       if (parsedSettings && ['50', '100', 'today', '7days'].includes(parsedSettings.reviewRange)) settings.reviewRange = parsedSettings.reviewRange;
+      settings.theme = normalizeTheme(parsedSettings && parsedSettings.theme);
     } catch (err) {
+      settings.theme = 'light';
       console.warn('设置读取失败，使用默认设置', err);
     }
+    applyTheme(settings.theme);
     store = window.StarCubeStore.create({ storage: storage });
     reviewLimit = settings.reviewRange === '100' ? 100 : settings.reviewRange === '50' ? 50 : settings.reviewRange;
     el.reviewRange.value = String(reviewLimit);
@@ -2359,10 +2644,35 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
   }
 
   function readStore() {
+    var previousGroupId = currentGroupId;
     var loaded = store.load();
     allRecords = loaded.records;
     groups = loaded.groups;
-    if (!groups.some(function (group) { return group.id === currentGroupId; })) currentGroupId = window.StarCubeStore.defaultGroupId;
+    var groupIds = new Set(groups.map(function (group) { return group.id; }));
+    if (!groupIds.has(currentGroupId)) {
+      currentGroupId = window.StarCubeStore.defaultGroupId;
+      try { window.sessionStorage.setItem(SELECTION_KEY, currentGroupId); } catch (err) {}
+    }
+    if (currentGroupId !== previousGroupId) {
+      historyLimit = 50;
+      reviewSelectedUid = null;
+      if (el.historyBody) el.historyBody.scrollTop = 0;
+    }
+    if (editingGroup && !groupIds.has(editingGroup)) {
+      editingGroup = null;
+      el.groupForm.hidden = true;
+    }
+    if (deletingGroupId && !groupIds.has(deletingGroupId)) {
+      deletingGroupId = null;
+      deleteGroupFocus = null;
+      if (el.groupDeleteDialog && el.groupDeleteDialog.open) el.groupDeleteDialog.close();
+      el.feedback.textContent = '该训练已在另一页面删除，已切回默认训练。';
+    }
+    var hadUndo = undoDeletions.length;
+    undoDeletions = undoDeletions.filter(function (entry) {
+      return entry.record.groupId === window.StarCubeStore.defaultGroupId || groupIds.has(entry.record.groupId);
+    });
+    if (hadUndo && !undoDeletions.length) undoMessage = '';
     memoryMode = !loaded.writable;
     dataNotice = loaded.notice || '';
     pendingStorageRefresh = false;
@@ -2508,6 +2818,104 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     el.status.dataset.tone = tone;
   }
 
+  function normalizeScrambleText(text) {
+    var cleaned = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!cleaned || cleaned === '—') return '';
+    return cleaned;
+  }
+
+  function computeFacelets(algorithm) {
+    var cleaned = normalizeScrambleText(algorithm);
+    if (!cleaned) return null;
+    var moves = cleaned.split(' ');
+    var stickers = SOLVED_FACELETS.split('');
+    for (var i = 0; i < moves.length; i++) {
+      var move = moves[i];
+      if (!ALG_RE.test(move)) return null;
+      var turns = move.charAt(1) === '2' ? 2 : move.charAt(1) === "'" ? 3 : 1;
+      var cycles = MOVE_CYCLES[move.charAt(0)];
+      for (var t = 0; t < turns; t++) {
+        for (var c = 0; c < cycles.length; c++) {
+          var cycle = cycles[c];
+          var last = stickers[cycle[3]];
+          stickers[cycle[3]] = stickers[cycle[2]];
+          stickers[cycle[2]] = stickers[cycle[1]];
+          stickers[cycle[1]] = stickers[cycle[0]];
+          stickers[cycle[0]] = last;
+        }
+      }
+    }
+    return stickers.join('');
+  }
+
+  function currentCopyableScramble() {
+    if (activeScramble) return normalizeScrambleText(activeScramble.algorithm);
+    if (generating || genFailed || !currentScramble) return '';
+    return normalizeScrambleText(currentScramble.algorithm);
+  }
+
+  function fallbackCopyText(text, container) {
+    if (typeof document.execCommand !== 'function' || typeof document.createElement !== 'function') return false;
+    var host = container && container.isConnected ? container : document.body;
+    if (!host || typeof host.appendChild !== 'function') return false;
+    var active = document.activeElement;
+    var area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.top = '-9999px';
+    area.style.left = '-9999px';
+    area.style.opacity = '0';
+    host.appendChild(area);
+    var copied = false;
+    try {
+      if (typeof area.focus === 'function') area.focus({ preventScroll: true });
+      if (typeof area.select === 'function') area.select();
+      if (typeof area.setSelectionRange === 'function') area.setSelectionRange(0, text.length);
+      copied = !!document.execCommand('copy');
+    } catch (err) {
+      copied = false;
+    } finally {
+      area.remove();
+      if (active && active.isConnected && typeof active.focus === 'function') {
+        try { active.focus({ preventScroll: true }); } catch (err) {}
+      }
+    }
+    return copied;
+  }
+
+  function copyScramble(text, options) {
+    options = options || {};
+    var normalized = normalizeScrambleText(text);
+    if (!normalized) return;
+    var inDialog = !!options.inDialog;
+    function onSuccess() {
+      if (inDialog && selectedRecordUid) el.recordFeedback.textContent = '已复制打乱公式。';
+      else el.feedback.textContent = '已复制打乱公式。';
+      showToast('已复制打乱');
+    }
+    function onFailure() {
+      var message = '当前浏览器不支持自动复制，请手动选中上方打乱公式复制。';
+      if (inDialog && selectedRecordUid) el.recordFeedback.textContent = message;
+      else el.feedback.textContent = message;
+      showToast('不支持自动复制，请手动选中复制');
+    }
+    var clipboard = typeof navigator !== 'undefined' && navigator && navigator.clipboard;
+    if (clipboard && typeof clipboard.writeText === 'function') {
+      try {
+        Promise.resolve(clipboard.writeText(normalized)).then(onSuccess, function () {
+          if (fallbackCopyText(normalized, inDialog ? el.recordDialog : document.body)) onSuccess();
+          else onFailure();
+        });
+        return;
+      } catch (err) {
+        // 同步异常时继续走降级逻辑
+      }
+    }
+    if (fallbackCopyText(normalized, inDialog ? el.recordDialog : document.body)) onSuccess();
+    else onFailure();
+  }
+
   function renderScramblePanel() {
     var text = '—';
     var message = false;
@@ -2519,14 +2927,6 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       text = activeScramble.algorithm;
       facelets = activeScramble.facelets;
       hint = '本次打乱 · 已固定';
-    } else if (engineDead) {
-      text = '打乱不可用';
-      message = true;
-      hint = '仍可计时，记录中打乱显示 —';
-    } else if (!engineReady || state === 'BOOT') {
-      text = '打乱引擎初始化中…';
-      message = true;
-      hint = engineFallback ? '主线程初始化，可能卡顿数秒' : '首次初始化约需数秒';
     } else if (generating) {
       text = '生成中…';
       message = true;
@@ -2539,14 +2939,22 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     } else if (currentScramble) {
       text = currentScramble.algorithm;
       facelets = currentScramble.facelets;
-      var canN = (state === 'IDLE' || state === 'STOPPED') && !scrambleUsed && !generating;
-      hint = '随机状态 · ' + currentScramble.algorithm.split(' ').length + ' 步';
+      hint = (currentScramble.replayed ? '重测历史打乱 · ' : '随机状态 · ') + currentScramble.algorithm.split(' ').length + ' 步';
+    } else if (engineDead) {
+      text = '打乱不可用';
+      message = true;
+      hint = '仍可计时，记录中打乱显示 —';
+    } else if (!engineReady || state === 'BOOT') {
+      text = '打乱引擎初始化中…';
+      message = true;
+      hint = engineFallback ? '主线程初始化，可能卡顿数秒' : '首次初始化约需数秒';
     }
 
     el.scrambleText.textContent = text;
     el.scrambleText.classList.toggle('is-message', message);
     el.scrambleHint.textContent = hint;
     el.retryBtn.hidden = !showRetry;
+    el.copyScrambleBtn.disabled = !currentCopyableScramble() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
     el.newScrambleBtn.disabled = !!press || !!activeScramble || !engineReady || engineDead || generating ||
       (state !== 'IDLE' && state !== 'STOPPED');
     renderNet(facelets);
@@ -2889,6 +3297,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       button.title = canToggle ? '' : '请先完成当前操作';
     });
     el.switchBtn.disabled = !canToggle;
+    if (el.themeToggle) el.themeToggle.disabled = detailsOpen() || !!press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY';
     el.soundToggle.disabled = !canToggle;
     el.soundToggle.setAttribute('aria-checked', String(settings.inspectionSound));
     el.soundPreview.disabled = !canToggle;
@@ -2909,7 +3318,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     return (state === 'IDLE' || state === 'STOPPED') && !press && !activeScramble && !importing && !detailsOpen();
   }
 
-  function detailsOpen() { return !!selectedRecordUid || selectedAverage !== null; }
+  function detailsOpen() { return !!selectedRecordUid || selectedAverage !== null || deletingGroupId !== null; }
 
   function renderBackup() {
     var status = backup.status();
@@ -3085,9 +3494,14 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     el.groupSelect.title = selected ? selected.name : '';
     el.timerGroupName.textContent = selected ? selected.name : '';
     var disabled = !canChangeGroup() || editingGroup !== null;
+    var isDefault = currentGroupId === window.StarCubeStore.defaultGroupId;
     el.groupSelect.disabled = disabled;
     el.groupNew.disabled = disabled;
     el.groupRename.disabled = disabled;
+    el.groupDelete.disabled = disabled || isDefault;
+    el.groupDelete.title = isDefault ? '默认训练不可删除' : '删除当前训练';
+    if (el.groupDeleteExport) el.groupDeleteExport.disabled = el.exportBtn.disabled;
+    if (el.groupDeleteConfirm) el.groupDeleteConfirm.disabled = !canEditRecords();
   }
 
   function selectGroup(id) {
@@ -3128,6 +3542,14 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     var group;
     try {
       var name = window.StarCubeStore.validateName(el.groupName.value);
+      if (editingGroup && !memoryMode) {
+        readStore();
+        if (!groups.some(function (g) { return g.id === editingGroup; })) {
+          closeGroupEditor();
+          el.feedback.textContent = '该训练已在其他页面删除，无法重命名。';
+          return;
+        }
+      }
       var existing = groups.find(function (g) { return g.id === editingGroup; });
       group = existing ? Object.assign({}, existing, { name: name }) :
         { id: window.StarCubeStore.newUid(), origin: window.StarCubeStore.newUid(), name: name };
@@ -3144,7 +3566,102 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       selectGroup(group.id);
       if (currentView === 'timer') el.pad.focus(); else el.groupSelect.focus();
       el.feedback.textContent = '已保存训练「' + group.name + '」' + (memoryMode ? '，请导出备份保存本页数据。' : '。');
+      showToast('已保存训练「' + group.name + '」');
     } catch (err) { el.groupError.textContent = err.message; el.groupName.focus(); }
+  }
+
+  function openGroupDeleteDialog(group, count) {
+    deletingGroupId = group.id;
+    deleteGroupFocus = el.groupDelete;
+    el.groupDeleteTitle.textContent = '删除训练「' + group.name + '」';
+    el.groupDeleteMessage.textContent = '该训练包含 ' + count + ' 条成绩，删除后将连同全部成绩一起移除。建议先导出全量 JSON 备份，再确认删除。';
+    el.groupDeleteFeedback.textContent = '';
+    audio.stop();
+    render();
+    if (!el.groupDeleteDialog.open) el.groupDeleteDialog.showModal();
+    el.groupDeleteClose.focus({ preventScroll: true });
+  }
+
+  function closeGroupDeleteDialog(restoreFocus) {
+    if (deletingGroupId === null && !el.groupDeleteDialog.open) return;
+    deletingGroupId = null;
+    if (el.groupDeleteDialog.open) el.groupDeleteDialog.close();
+    var target = deleteGroupFocus;
+    deleteGroupFocus = null;
+    render();
+    if (restoreFocus === false) return;
+    if (target && target.isConnected && !target.disabled) target.focus({ preventScroll: true });
+    else if (el.groupSelect && !el.groupSelect.disabled) el.groupSelect.focus({ preventScroll: true });
+  }
+
+  function performDeleteGroup(group) {
+    if (!group || group.id === window.StarCubeStore.defaultGroupId) return;
+    var removedCount = groupRecords(group.id).length;
+    if (!memoryMode) {
+      try {
+        var result = store.removeGroup(group.id);
+        removedCount = result.removedRecords;
+        readStore();
+      } catch (err) {
+        if (err.code === 'INVALID_GROUP') {
+          el.feedback.textContent = '删除未完成：' + err.message;
+          render();
+          return;
+        }
+        // 存储不可写或写入中断时降级为内存只读模式，保留其余训练与成绩
+        setMemoryMode('训练分组删除失败');
+        groups = groups.filter(function (item) { return item.id !== group.id; });
+        allRecords = allRecords.filter(function (item) { return item.groupId !== group.id; });
+      }
+    } else {
+      groups = groups.filter(function (item) { return item.id !== group.id; });
+      allRecords = allRecords.filter(function (item) { return item.groupId !== group.id; });
+    }
+    currentGroupId = window.StarCubeStore.defaultGroupId;
+    try { window.sessionStorage.setItem(SELECTION_KEY, currentGroupId); } catch (err) {}
+    undoDeletions = undoDeletions.filter(function (entry) { return entry.record.groupId !== group.id; });
+    if (!undoDeletions.length) undoMessage = '';
+    historyLimit = 50;
+    reviewSelectedUid = null;
+    el.historyBody.scrollTop = 0;
+    dataChanged();
+    render();
+    var detail = removedCount ? '（已移除 ' + removedCount + ' 条成绩）' : '';
+    el.feedback.textContent = (memoryMode ? '仅在本页删除训练「' : '已删除训练「') + group.name + '」' + detail + '，已切回默认训练。' +
+      (memoryMode ? '请导出备份保存当前数据。' : '');
+    showToast('已删除训练「' + group.name + '」');
+    if (currentView === 'timer') el.pad.focus({ preventScroll: true });
+    else el.groupSelect.focus({ preventScroll: true });
+  }
+
+  function requestDeleteGroup() {
+    if (!canChangeGroup() || editingGroup !== null || deletingGroupId !== null) return;
+    if (!memoryMode) readStore();
+    if (currentGroupId === window.StarCubeStore.defaultGroupId) { render(); return; }
+    var group = groups.find(function (item) { return item.id === currentGroupId; });
+    if (!group) { render(); return; }
+    var count = groupRecords(group.id).length;
+    if (count > 0) {
+      openGroupDeleteDialog(group, count);
+      return;
+    }
+    performDeleteGroup(group);
+  }
+
+  function confirmDeleteGroup() {
+    if (!deletingGroupId || !canEditRecords()) return;
+    var targetId = deletingGroupId;
+    if (!memoryMode) readStore();
+    var group = groups.find(function (item) { return item.id === targetId; });
+    deletingGroupId = null;
+    deleteGroupFocus = null;
+    if (el.groupDeleteDialog.open) el.groupDeleteDialog.close();
+    if (!group) {
+      render();
+      el.feedback.textContent = '该训练已不存在，已切回默认训练。';
+      return;
+    }
+    performDeleteGroup(group);
   }
 
   function reviewValue(value) { return value === null ? '—' : value === 'DNF' ? 'DNF' : Stats.formatMs(value); }
@@ -3340,6 +3857,11 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     el.recordRaw.textContent = Stats.formatMs(record.ms);
     el.recordDate.textContent = new Date(record.at).toLocaleString('zh-CN', { hour12: false });
     el.recordScramble.textContent = record.scramble || '—';
+    var hasScramble = !!normalizeScrambleText(record.scramble);
+    el.recordCopyScramble.disabled = !hasScramble;
+    el.recordCopyScramble.title = hasScramble ? '复制该条打乱公式' : '该次成绩没有可复制的打乱公式';
+    el.recordReplayScramble.disabled = !hasScramble || !canEditRecords();
+    el.recordReplayScramble.title = hasScramble ? '关闭详情并回到计时页，将当前打乱替换为该条打乱' : '该次成绩没有可用的打乱公式';
     el.recordAo5.textContent = reviewValue(Stats.aoN(list.slice(Math.max(0, index - 4), index + 1), 5));
     el.recordAo5Detail.disabled = index < 4;
     el.recordAo5Detail.title = index < 4 ? '截至该次不足 5 把' : '查看截至该次的 Ao5 明细';
@@ -3347,6 +3869,50 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       var active = record.penalty === ['ok', '+2', 'dnf'][i];
       button.setAttribute('aria-pressed', String(active)); button.classList.toggle('is-active', active);
     });
+  }
+
+  function replayRecordScramble() {
+    if (!selectedRecordUid || !canEditRecords()) return;
+    var record = allRecords.find(function (item) { return item.uid === selectedRecordUid; });
+    if (!record) { render(); return; }
+    var algorithm = normalizeScrambleText(record.scramble);
+    if (!algorithm) return;
+    if (genTimer) {
+      clearTimeout(genTimer);
+      genTimer = 0;
+    }
+    generating = false;
+    genFailed = false;
+    pendingRequestId = null;
+    activeScramble = null;
+    currentScramble = {
+      algorithm: algorithm,
+      facelets: computeFacelets(algorithm),
+      requestId: ++requestSerial,
+      replayed: true
+    };
+    scrambleUsed = false;
+    if (state === 'BOOT' || state === 'STOPPED') state = 'IDLE';
+
+    // 关闭所有嵌套详情弹窗并切回计时页，保持原有状态机与防误触边界，不自动起表
+    selectedRecordUid = null;
+    selectedAverage = null;
+    detailTrail = [];
+    detailRootFocus = null;
+    detailRootView = null;
+    detailRootScroll = null;
+    el.recordContinue.hidden = true;
+    el.averageContinue.hidden = true;
+    if (el.recordDialog.open) el.recordDialog.close();
+    if (el.averageDialog.open) el.averageDialog.close();
+
+    currentView = 'timer';
+    if (!undoDeletions.length) undoMessage = '';
+    render();
+    window.scrollTo(0, 0);
+    el.pad.focus({ preventScroll: true });
+    el.feedback.textContent = '已载入历史打乱，准备就绪后即可开始计时。';
+    showToast('已载入该条打乱，可开始计时');
   }
 
   function setRecordPenalty(penalty) {
@@ -3536,6 +4102,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     runPenalty = 'ok';
     usedScramble = '';
     activeScramble = null;
+    if (engineDead) currentScramble = null;
     render();
     requestScramble(true);
   }
@@ -3836,6 +4403,15 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     if (!canEditRecords() || !undoDeletions.length) return;
     var entry = undoDeletions[undoDeletions.length - 1];
     try {
+      if (!entry.memoryOnly && !memoryMode) readStore();
+      var groupExists = entry.record.groupId === window.StarCubeStore.defaultGroupId ||
+        groups.some(function (group) { return group.id === entry.record.groupId; });
+      if (!groupExists) {
+        undoDeletions.pop();
+        undoMessage = '未能撤销：该成绩所属的训练已删除。';
+        render();
+        return;
+      }
       if (entry.memoryOnly) {
         if (!allRecords.some(function (item) { return item.uid === entry.record.uid; })) allRecords.push(entry.record);
         allRecords.sort(window.StarCubeStore.compareRecords);
@@ -3869,6 +4445,15 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     settings.inspection = !settings.inspection;
     persistSettings();
     render();
+  }
+
+  function cycleTheme() {
+    if (detailsOpen() || press || state === 'RUNNING' || state === 'INSPECTING' || state === 'READY') return;
+    var next = THEMES[(THEMES.indexOf(normalizeTheme(settings.theme)) + 1) % THEMES.length];
+    applyTheme(next);
+    persistSettings();
+    render();
+    showToast('已切换主题：' + THEME_META[next].label);
   }
 
   function newScramble() {
@@ -3965,6 +4550,10 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
   }
 
+  function getNativeBridge() {
+    return typeof window !== 'undefined' && window.StarCubeNative ? window.StarCubeNative : null;
+  }
+
   function exportHistoryCsv() {
     if (el.exportHistoryCsv.disabled || !canChangeGroup() || editingGroup !== null) return;
     if (!memoryMode) readStore();
@@ -3980,18 +4569,48 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     var scopeLabel = filtered.range ? filtered.range.currentLabel : '全部历史';
     var scopeFile = filtered.range ? (filtered.range.mode === 'today' ? '今天' : '最近7天') : '全部';
     var csv = Review.historyCsv(filtered.entries);
+    var filename = 'starcube-' + csvFilenamePart(groupName, '训练') + '-' + scopeFile + '-' + localDayKey(now) + '.csv';
+    var count = filtered.entries.length;
+    var nativeBridge = getNativeBridge();
+    if (nativeBridge && typeof nativeBridge.exportFile === 'function') {
+      el.feedback.textContent = '请选择 CSV 保存位置…';
+      render();
+      Promise.resolve().then(function () {
+        return nativeBridge.exportFile({ filename: filename, mimeType: 'text/csv', content: csv });
+      }).then(function (result) {
+        if (result && result.status === 'saved') {
+          el.feedback.textContent = '已保存 CSV：「' + groupName + '」' + scopeLabel + '，共 ' + count + ' 条成绩。';
+          showToast('已保存 CSV（' + count + ' 条成绩）');
+        } else if (result && result.status === 'cancelled') {
+          el.feedback.textContent = '已取消 CSV 导出。';
+          showToast('已取消 CSV 导出');
+        } else {
+          var message = (result && result.message) || '未能保存文件';
+          el.feedback.textContent = 'CSV 导出失败：' + message;
+          showToast('CSV 导出失败');
+        }
+        render();
+      }, function (err) {
+        el.feedback.textContent = 'CSV 导出失败：' + ((err && err.message) || '未知错误');
+        showToast('CSV 导出失败');
+        render();
+      });
+      return;
+    }
     try {
       var url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
       var link = document.createElement('a');
       link.href = url;
-      link.download = 'starcube-' + csvFilenamePart(groupName, '训练') + '-' + scopeFile + '-' + localDayKey(now) + '.csv';
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
       setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-      el.feedback.textContent = '已发起 CSV 导出：「' + groupName + '」' + scopeLabel + '，共 ' + filtered.entries.length + ' 条成绩。请确认文件已保存。';
+      el.feedback.textContent = '已发起 CSV 导出：「' + groupName + '」' + scopeLabel + '，共 ' + count + ' 条成绩。请确认文件已保存。';
+      showToast('已导出 CSV（' + count + ' 条成绩）');
     } catch (err) {
       el.feedback.textContent = 'CSV 导出失败：' + err.message;
+      showToast('CSV 导出失败');
     }
     render();
   }
@@ -4001,18 +4620,75 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     if (!memoryMode) readStore();
     var payload = { format: 'starcube', version: 3, exportedAt: new Date().toISOString(),
       groups: groups, records: allRecords, backups: store.backups() };
+    var jsonText = JSON.stringify(payload, null, 2);
+    var filename = 'starcube-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    var groupCount = groups.length;
+    var recordCount = allRecords.length;
+    var nativeBridge = getNativeBridge();
+    if (nativeBridge && typeof nativeBridge.exportFile === 'function') {
+      el.feedback.textContent = '请选择备份文件保存位置…';
+      if (deletingGroupId && el.groupDeleteFeedback) {
+        el.groupDeleteFeedback.textContent = '请选择全量 JSON 备份保存位置…';
+      }
+      render();
+      Promise.resolve().then(function () {
+        return nativeBridge.exportFile({ filename: filename, mimeType: 'application/json', content: jsonText });
+      }).then(function (result) {
+        if (result && result.status === 'saved') {
+          backup.markExportRequested();
+          el.feedback.textContent = '已保存备份：全部 ' + groupCount + ' 个训练、' + recordCount + ' 条成绩及可恢复的原始备份。';
+          if (deletingGroupId && el.groupDeleteFeedback) {
+            el.groupDeleteFeedback.textContent = '已保存全量 JSON 备份，现在可以放心确认删除。';
+          }
+          showToast('已保存备份（' + recordCount + ' 条成绩）');
+        } else if (result && result.status === 'cancelled') {
+          el.feedback.textContent = '已取消备份导出。';
+          if (deletingGroupId && el.groupDeleteFeedback) {
+            el.groupDeleteFeedback.textContent = '已取消备份保存。';
+          }
+          showToast('已取消备份导出');
+        } else {
+          var message = (result && result.message) || '未能保存文件';
+          el.feedback.textContent = '导出失败：' + message;
+          if (deletingGroupId && el.groupDeleteFeedback) {
+            el.groupDeleteFeedback.textContent = '导出失败：' + message;
+          }
+          showToast('备份导出失败');
+        }
+        render();
+      }, function (err) {
+        var message = (err && err.message) || '未知错误';
+        el.feedback.textContent = '导出失败：' + message;
+        if (deletingGroupId && el.groupDeleteFeedback) {
+          el.groupDeleteFeedback.textContent = '导出失败：' + message;
+        }
+        showToast('备份导出失败');
+        render();
+      });
+      return;
+    }
     try {
-      var url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+      var url = URL.createObjectURL(new Blob([jsonText], { type: 'application/json' }));
       var link = document.createElement('a');
       link.href = url;
-      link.download = 'starcube-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
       backup.markExportRequested();
       setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-      el.feedback.textContent = '已发起下载：全部 ' + groups.length + ' 个训练、' + allRecords.length + ' 条成绩及可恢复的原始备份。请确认文件已保存。';
-    } catch (err) { el.feedback.textContent = '导出失败：' + err.message; }
+      el.feedback.textContent = '已发起下载：全部 ' + groupCount + ' 个训练、' + recordCount + ' 条成绩及可恢复的原始备份。请确认文件已保存。';
+      if (deletingGroupId && el.groupDeleteFeedback) {
+        el.groupDeleteFeedback.textContent = '已发起全量 JSON 备份下载，请确认文件保存后再确认删除。';
+      }
+      showToast('已导出备份（' + recordCount + ' 条成绩）');
+    } catch (err) {
+      el.feedback.textContent = '导出失败：' + err.message;
+      if (deletingGroupId && el.groupDeleteFeedback) {
+        el.groupDeleteFeedback.textContent = '导出失败：' + err.message;
+      }
+      showToast('备份导出失败');
+    }
     render();
   }
 
@@ -4022,6 +4698,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     if (el.importBtn.disabled || importing) { el.importFile.value = ''; return; }
     if (file.size > 10 * 1024 * 1024) {
       el.feedback.textContent = '文件超过 10 MB，请拆分后导入。';
+      showToast('文件超过 10 MB');
       el.importFile.value = '';
       return;
     }
@@ -4036,9 +4713,11 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
         '；新增 ' + result.groupsAdded + ' 个训练' +
         (result.groupConflicts ? '，另存 ' + result.groupConflicts + ' 个 ID 冲突训练' : '') +
         (result.recoveredGroups ? '，恢复 ' + result.recoveredGroups + ' 个缺失分组' : '') + '（同名训练保留独立身份）。';
+      showToast('已导入 ' + result.added + ' 条成绩');
     }).catch(function (err) {
       if (err.partial) readStore();
       el.feedback.textContent = '导入失败：' + err.message;
+      showToast('导入失败');
     }).finally(function () {
       importing = false;
       el.importFile.value = '';
@@ -4122,6 +4801,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       if (button) openRecord(button.getAttribute('data-record-uid'), button);
     });
     el.switchBtn.addEventListener('click', function (event) { toggleInspection(); returnTimerFocus(event); });
+    if (el.themeToggle) el.themeToggle.addEventListener('click', function (event) { cycleTheme(); returnTimerFocus(event); });
     el.soundToggle.addEventListener('click', function (event) {
       if (!canChangeGroup() || editingGroup !== null) return;
       settings.inspectionSound = !settings.inspectionSound;
@@ -4165,6 +4845,7 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
       if (el.backupLater.disabled) return;
       backup.snooze();
       renderBackup();
+      showToast('已暂缓备份提醒');
       el.exportBtn.focus({ preventScroll: true });
     });
     el.groupSelect.addEventListener('pointerdown', function () { groupPointerSelection = true; });
@@ -4176,6 +4857,12 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     });
     el.groupNew.addEventListener('click', function () { openGroupEditor(false); });
     el.groupRename.addEventListener('click', function () { openGroupEditor(true); });
+    el.groupDelete.addEventListener('click', requestDeleteGroup);
+    el.groupDeleteClose.addEventListener('click', function () { closeGroupDeleteDialog(true); });
+    el.groupDeleteExport.addEventListener('click', function () { if (deletingGroupId) exportData(); });
+    el.groupDeleteConfirm.addEventListener('click', confirmDeleteGroup);
+    el.groupDeleteDialog.addEventListener('cancel', function (event) { event.preventDefault(); closeGroupDeleteDialog(true); });
+    el.groupDeleteDialog.addEventListener('close', function () { if (!el.groupDeleteDialog.open && deletingGroupId !== null) closeGroupDeleteDialog(true); });
     el.groupForm.addEventListener('submit', saveGroup);
     el.groupCancel.addEventListener('click', closeGroupEditor);
     el.groupName.addEventListener('keydown', function (event) {
@@ -4193,6 +4880,11 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     });
     el.retryBtn.addEventListener('click', function (event) {
       if (!engineDead && engineReady && !generating) requestScramble(true);
+      returnTimerFocus(event);
+    });
+    el.copyScrambleBtn.addEventListener('click', function (event) {
+      if (el.copyScrambleBtn.disabled) return;
+      copyScramble(currentCopyableScramble(), { inDialog: false });
       returnTimerFocus(event);
     });
     el.newScrambleBtn.addEventListener('click', function (event) { newScramble(); returnTimerFocus(event); });
@@ -4275,6 +4967,12 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     el.recordOk.addEventListener('click', function () { setRecordPenalty('ok'); });
     el.recordPlus.addEventListener('click', function () { setRecordPenalty('+2'); });
     el.recordDnf.addEventListener('click', function () { setRecordPenalty('dnf'); });
+    el.recordCopyScramble.addEventListener('click', function () {
+      if (!selectedRecordUid || el.recordCopyScramble.disabled) return;
+      var record = allRecords.find(function (item) { return item.uid === selectedRecordUid; });
+      if (record) copyScramble(record.scramble, { inDialog: true });
+    });
+    el.recordReplayScramble.addEventListener('click', replayRecordScramble);
     el.recordDelete.addEventListener('click', function () { if (selectedRecordUid) deleteRecord(selectedRecordUid); });
     el.recordAo5Detail.addEventListener('click', function () {
       if (!selectedRecordUid) return;
@@ -4283,6 +4981,15 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     });
     window.addEventListener('storage', function (event) {
       var key = event.key;
+      if (key === SETTINGS_KEY) {
+        try {
+          var nextSettings = JSON.parse(event.newValue || localStorage.getItem(SETTINGS_KEY) || 'null');
+          applyTheme(nextSettings && nextSettings.theme);
+        } catch (err) {
+          applyTheme('light');
+        }
+        return;
+      }
       if (key === 'starcube.backup.v1') { backup.refresh(); renderBackup(); return; }
       if (key && key !== RECORDS_KEY && key.indexOf('starcube.records.v2.item.') !== 0 &&
           key.indexOf('starcube.records.v2.deleted.') !== 0 && key.indexOf(window.StarCubeStore.keys.restoredPrefix) !== 0 &&
@@ -4293,12 +5000,46 @@ if (typeof self.document === 'undefined' && typeof self.postMessage === 'functio
     });
   }
 
+  function handleNativeBack() {
+    if (deletingGroupId !== null) {
+      closeGroupDeleteDialog();
+      return true;
+    }
+    if (selectedRecordUid || selectedAverage !== null) {
+      closeDetail();
+      return true;
+    }
+    if (editingGroup !== null) {
+      closeGroupEditor();
+      return true;
+    }
+    if (state === 'INSPECTING') {
+      if (!press) cancelInspection();
+      return true;
+    }
+    if (state === 'READY' || state === 'RUNNING') {
+      if (state === 'RUNNING') showToast('计时中，请先停表');
+      return true;
+    }
+    if (currentView === 'review') {
+      switchView('timer');
+      return true;
+    }
+    return false;
+  }
+
   loadData();
   el.historyBody.hidden = !historyOpen;
   el.historyToggle.setAttribute('aria-expanded', String(historyOpen));
   el.reviewBody.hidden = !reviewOpen;
   el.reviewToggle.setAttribute('aria-expanded', String(reviewOpen));
   bindEvents();
+  if (typeof window !== 'undefined') {
+    window.StarCubeApp = {
+      handleBack: handleNativeBack,
+      showToast: showToast
+    };
+  }
   render();
   bootSolver();
 })();

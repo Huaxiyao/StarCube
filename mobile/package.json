@@ -1,0 +1,18 @@
+{
+  "name": "starcube-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "StarCube Android offline wrapper built with Capacitor",
+  "scripts": {
+    "prepare:web": "node scripts/prepare-web.cjs",
+    "configure:android": "node scripts/configure-android.cjs",
+    "sync:android": "npm run prepare:web && npx cap sync android && npm run configure:android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/core": "^7.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3"
+  }
+}

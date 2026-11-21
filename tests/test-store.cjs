@@ -499,4 +499,91 @@ test('quota failure between group and record writes retries without orphan dupli
   assert.strictEqual(api.exportData().records[0].groupId, 'a');
 });
 
+test('removeGroup rejects default group and invalid group ids without any storage writes', () => {
+  const st = storage();
+  const api = Store.create({ storage: st });
+  api.put(record(1, { uid: 'd1', groupId: 'default' }));
+  const before = new Map(st.values);
+  const writesBefore = st.writes;
+  for (const badId of ['default', '', '  ', 'bad id', '*', null, undefined, 123]) {
+    assert.throws(() => api.removeGroup(badId), err => err.code === 'INVALID_GROUP');
+  }
+  assert.strictEqual(st.writes, writesBefore);
+  assert.deepStrictEqual(st.values, before);
+  assert.strictEqual(api.load().records.length, 1);
+  assert.strictEqual(api.load().groups[0].id, 'default');
+});
+
+test('removeGroup deletes empty and non-empty groups cleanly without leaving orphan records or stale group keys', () => {
+  const st = storage();
+  const a = Store.create({ storage: st });
+  const b = Store.create({ storage: st });
+  a.putGroup(group('empty', '空训练'));
+  a.putGroup(group('target', '待删除'));
+  a.putGroup(group('keep', '保留训练'));
+  a.put(record(1, { uid: 'd1', groupId: 'default' }));
+  const t1 = a.put(record(2, { uid: 't1', groupId: 'target', ms: 9000 }));
+  a.put(record(3, { uid: 't2', groupId: 'target', ms: 9500 }));
+  a.put(record(4, { uid: 'k1', groupId: 'keep', ms: 11000 }));
+
+  const emptyResult = a.removeGroup('empty');
+  assert.strictEqual(emptyResult.removedRecords, 0);
+  assert.strictEqual(st.getItem(K.groupPrefix + 'empty'), null);
+  assert.strictEqual(a.load().groups.some(g => g.id === 'empty'), false);
+
+  const staleRecord = b.load().records.find(r => r.uid === t1.uid);
+  const removed = a.removeGroup('target');
+  assert.strictEqual(removed.removedRecords, 2);
+  assert.strictEqual(st.getItem(K.groupPrefix + 'target'), null);
+
+  const loaded = b.load();
+  assert.strictEqual(loaded.groups.some(g => g.id === 'target'), false);
+  assert.strictEqual(loaded.records.some(r => r.groupId === 'target'), false);
+  assert.doesNotMatch(loaded.notice, /恢复/);
+  assert.deepStrictEqual(loaded.records.map(r => r.uid).sort(), ['d1', 'k1']);
+  assert.throws(() => b.put({ ...staleRecord, penalty: '+2' }), err => err.code === 'RECORD_DELETED');
+
+  const exported = a.exportData();
+  assert.strictEqual(exported.groups.some(g => g.id === 'target'), false);
+  assert.strictEqual(exported.records.some(r => r.groupId === 'target'), false);
+});
+
+test('removeGroup enforces storage availability, read-only protection, partial quota retry and damaged backup retention', () => {
+  assert.throws(() => Store.create({ storage: null }).removeGroup('a'), err => err.code === 'STORAGE_UNAVAILABLE');
+
+  const ro = storage({ [K.groupPrefix + 'a']: JSON.stringify(group('a')) }, { readOnly: true });
+  const roBefore = new Map(ro.values);
+  assert.throws(() => Store.create({ storage: ro }).removeGroup('a'), err => err.code === 'STORAGE_UNAVAILABLE');
+  assert.deepStrictEqual(ro.values, roBefore);
+
+  const unreadable = storage({ [K.groupPrefix + 'a']: JSON.stringify(group('a')) }, { unreadable: true });
+  const unBefore = new Map(unreadable.values);
+  assert.throws(() => Store.create({ storage: unreadable }).removeGroup('a'), err => err.code === 'STORAGE_UNAVAILABLE');
+  assert.deepStrictEqual(unreadable.values, unBefore);
+
+  const st = storage();
+  const api = Store.create({ storage: st });
+  api.putGroup(group('partial', '部分写入'));
+  api.put(record(1, { uid: 'p1', groupId: 'partial' }));
+  api.put(record(2, { uid: 'p2', groupId: 'partial' }));
+  // 允许 probe 写入 1 次 + 第 1 条 tombstone 写入 1 次，然后第 2 条失败
+  st.options.failAfter = st.writes + 2;
+  assert.throws(() => api.removeGroup('partial'), err => err.partial && err.partial.removedRecords === 1 && err.partial.totalRecords === 2);
+  assert.notStrictEqual(st.getItem(K.groupPrefix + 'partial'), null, 'Group key stays intact until all group records are deleted');
+  delete st.options.failAfter;
+  const retry = api.removeGroup('partial');
+  assert.strictEqual(retry.removedRecords, 1);
+  assert.strictEqual(st.getItem(K.groupPrefix + 'partial'), null);
+  assert.strictEqual(api.load().groups.some(g => g.id === 'partial'), false);
+  assert.strictEqual(api.load().records.length, 0);
+
+  const damagedStorage = storage({ [K.groupPrefix + 'broken']: '{broken' });
+  const damagedApi = Store.create({ storage: damagedStorage });
+  damagedApi.put(record(1, { uid: 'b1', groupId: 'broken' }));
+  damagedApi.removeGroup('broken');
+  assert.strictEqual(damagedStorage.getItem(K.groupPrefix + 'broken'), null);
+  assert.strictEqual(damagedApi.load().records.length, 0);
+  assert(damagedApi.backups().some(b => b.raw === '{broken'));
+});
+
 console.log('\n' + passed + ' store regression groups passed.');

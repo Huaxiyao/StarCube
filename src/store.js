@@ -160,6 +160,30 @@
       return normalized;
     }
 
+    function removeGroup(id) {
+      if (!validUid(id)) throw error('训练分组 ID 无效', 'INVALID_GROUP');
+      if (id === DEFAULT_GROUP) throw error('默认训练不可删除', 'INVALID_GROUP');
+      var target = requireStorage();
+      var loaded = load();
+      if (!loaded.writable) throw error('存储无法写入，未删除训练分组', 'STORAGE_UNAVAILABLE');
+      var group = loaded.groups.find(function (item) { return item.id === id; }) || null;
+      var groupRecords = loaded.records.filter(function (record) { return record.groupId === id; });
+      var removedRecords = 0;
+      try {
+        groupRecords.forEach(function (record) {
+          remove(record.uid);
+          removedRecords++;
+        });
+        // 先为组内全部成绩写入删除标记，再移除分组键，避免中途失败时剩余成绩变成「恢复的训练」。
+        target.removeItem(groupKey(id));
+      } catch (err) {
+        err.partial = { groupId: id, removedRecords: removedRecords, totalRecords: groupRecords.length };
+        err.message = '删除训练中断：已删除 ' + removedRecords + ' / ' + groupRecords.length + ' 条成绩；' + err.message;
+        throw err;
+      }
+      return { groupId: id, group: group, removedRecords: removedRecords };
+    }
+
     function probe() {
       if (!storage) return false;
       var key = PREFIX + 'probe.' + newUid();
@@ -495,7 +519,7 @@
       return result;
     }
 
-    return { load: load, put: put, putGroup: putGroup, remove: remove, restore: restore, importRecords: importRecords, backups: backups, exportData: exportData, readRaw: readRaw };
+    return { load: load, put: put, putGroup: putGroup, removeGroup: removeGroup, remove: remove, restore: restore, importRecords: importRecords, backups: backups, exportData: exportData, readRaw: readRaw };
   }
 
   var api = { create: create, validateRecord: validateRecord, isValidRecord: isValidRecord,

@@ -6,6 +6,9 @@
 /HANDOFF.md
 /PROMPT.md
 /test-results/
+/mobile/www/
+/mobile/android/
+/mobile/node_modules/
 
 # Dependencies and editor / operating-system files
 node_modules/
