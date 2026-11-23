@@ -85,25 +85,30 @@ function independentFacelets(algorithm){
 const bundle=fs.readFileSync(path.join(__dirname,'../src/solver.bundle.js'),'utf8');
 const entry=fs.readFileSync(path.join(__dirname,'../src/worker-entry.js'),'utf8').trimEnd();
 check('Bundle contains the exact editable worker entry',()=>assert.ok(bundle.includes(entry)));
-const constructorMarker='var StarCubeBundledCube = Qe();';
+const constructorMarker='var StarCubeBundledMin2Phase = module.exports && module.exports.solve ? module.exports : min2phase;';
 assert.equal(bundle.split(constructorMarker).length,2,'Expected one explicit dependency wrapper');
 const messages=[];
-const sandbox={self:{postMessage:message=>messages.push(message)},console};
+const sandbox={self:{postMessage:message=>messages.push(message)},console,crypto:globalThis.crypto};
 vm.createContext(sandbox);
-// In-memory test instrumentation exposes only the bundled constructor for controlled RNG tests.
-vm.runInContext(bundle.replace(constructorMarker,constructorMarker+'\nself.__testCube=StarCubeBundledCube;'),sandbox);
-const Cube=sandbox.self.__testCube;
+// In-memory test instrumentation exposes only the bundled dependency for controlled RNG & Search tests.
+vm.runInContext(bundle.replace(constructorMarker,constructorMarker+'\nself.__testMin2Phase=StarCubeBundledMin2Phase;'),sandbox);
+const min2phase=sandbox.self.__testMin2Phase;
 const api=sandbox.self.StarCubeSolver;
-const originalRandom=Cube.random;
+const OriginalSearch=min2phase.Search;
 for(const algorithm of ['',...faces.flatMap(face=>['',"'",'2'].map(suffix=>face+suffix))]) {
   check('Reject target distance <=1: '+(algorithm||'solved'),()=>{
     let solveCalls=0;
-    Cube.random=()=>({asString:()=>independentFacelets(algorithm),solve:()=>{solveCalls++;throw new Error('too-simple state reached solve');}});
-    assert.throws(()=>api.scramble(),/过于简单/);
-    assert.equal(solveCalls,0,'Must reject by target state before calling the solver');
+    min2phase.Search=function(){solveCalls++;return new OriginalSearch();};
+    api._setRandomFacelets(()=>independentFacelets(algorithm));
+    try{
+      assert.throws(()=>api.scramble(),/过于简单/);
+      assert.equal(solveCalls,0,'Must reject by target state before calling the solver');
+    }finally{
+      api._setRandomFacelets(null);
+      min2phase.Search=OriginalSearch;
+    }
   });
 }
-Cube.random=originalRandom;
 check('Worker init keeps the ready protocol',()=>{
   sandbox.self.onmessage({data:{cmd:'init'}});
   assert.equal(messages.at(-1).cmd,'ready');
@@ -117,20 +122,37 @@ check('Worker success echoes its requestId',()=>{
   assert.equal(response.facelets,independentFacelets(response.algorithm));
 });
 check('Worker failure echoes its requestId',()=>{
-  Cube.random=()=>{throw new Error('controlled RNG failure');};
-  sandbox.self.onmessage({data:{cmd:'scramble',requestId:42}});
-  const response=messages.at(-1);
-  assert.equal(response.cmd,'error');
-  assert.equal(response.requestId,42);
-  assert.match(response.message,/controlled RNG failure/);
-  Cube.random=originalRandom;
+  api._setRandomFacelets(()=>{throw new Error('controlled RNG failure');});
+  try{
+    sandbox.self.onmessage({data:{cmd:'scramble',requestId:42}});
+    const response=messages.at(-1);
+    assert.equal(response.cmd,'error');
+    assert.equal(response.requestId,42);
+    assert.match(response.message,/controlled RNG failure/);
+  }finally{
+    api._setRandomFacelets(null);
+  }
 });
 check('Two-move target remains eligible',()=>{
-  Cube.random=()=>new Cube().move('R U');
-  const result=api.scramble();
-  assert.equal(result.facelets,independentFacelets('R U'));
-  assert.equal(independentFacelets(result.algorithm),result.facelets);
-  Cube.random=originalRandom;
+  api._setRandomFacelets(()=>independentFacelets('R U'));
+  try{
+    const result=api.scramble();
+    assert.equal(result.facelets,independentFacelets('R U'));
+    assert.equal(independentFacelets(result.algorithm),result.facelets);
+  }finally{
+    api._setRandomFacelets(null);
+  }
+});
+check('Seeded scrambleBatch is deterministic and agrees with independent 3D rotations',()=>{
+  sandbox.self.onmessage({data:{cmd:'scrambleBatch',requestId:43,seeds:['StarCube:daily:333:2026-11-22:solve-1','StarCube:daily:333:2026-11-22:solve-2']}});
+  const r1=messages.at(-1);
+  sandbox.self.onmessage({data:{cmd:'scrambleBatch',requestId:44,seeds:['StarCube:daily:333:2026-11-22:solve-1','StarCube:daily:333:2026-11-22:solve-2']}});
+  const r2=messages.at(-1);
+  assert.equal(r1.cmd,'scrambleBatch');
+  assert.equal(r1.requestId,43);
+  assert.equal(r1.results.length,2);
+  assert.deepEqual(r1.results,r2.results);
+  for(const item of r1.results)assert.equal(independentFacelets(item.algorithm),item.facelets);
 });
 check('20 generated scrambles agree with independent 3D rotations',()=>{
   const excluded=new Set(['',...faces.flatMap(face=>['',"'",'2'].map(suffix=>face+suffix))].map(independentFacelets));
@@ -138,7 +160,7 @@ check('20 generated scrambles agree with independent 3D rotations',()=>{
     const result=api.scramble();
     assert.equal(independentFacelets(result.algorithm),result.facelets);
     assert.ok(!excluded.has(result.facelets));
-    assert.ok(result.algorithm.split(' ').length<=22);
+    assert.ok(result.algorithm.split(' ').length<=21);
     for(const face of faces)assert.equal([...result.facelets].filter(c=>c===face).length,9);
   }
 });

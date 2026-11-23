@@ -6,6 +6,7 @@ const path = require('path');
 const mobileRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(mobileRoot, '..');
 const sourceHtmlPath = path.join(repoRoot, 'starcube.html');
+const stylesPath = path.join(mobileRoot, 'src', 'android-styles.css');
 const bridgePath = path.join(mobileRoot, 'src', 'android-bridge.js');
 const wwwDir = path.join(mobileRoot, 'www');
 const targetHtmlPath = path.join(wwwDir, 'index.html');
@@ -15,6 +16,8 @@ if (!fs.existsSync(sourceHtmlPath)) {
 }
 
 const html = fs.readFileSync(sourceHtmlPath, 'utf8');
+const stylesSource = fs.readFileSync(stylesPath, 'utf8').replace(/<\/style/gi, '<\\/style');
+const stylesTag = '<style data-starcube-native="android-styles">\n' + stylesSource + '\n</style>\n';
 const bridgeSource = fs.readFileSync(bridgePath, 'utf8').replace(/<\/script/gi, '<\\/script');
 const bridgeTag = '<script data-starcube-native="android">\n' + bridgeSource + '\n</script>\n';
 
@@ -23,7 +26,7 @@ if (headCloseIndex === -1) {
   throw new Error('starcube.html 缺少 </head> 标签，无法注入 Android 原生桥接');
 }
 
-const output = html.slice(0, headCloseIndex) + bridgeTag + html.slice(headCloseIndex);
+const output = html.slice(0, headCloseIndex) + stylesTag + bridgeTag + html.slice(headCloseIndex);
 
 fs.mkdirSync(wwwDir, { recursive: true });
 fs.writeFileSync(targetHtmlPath, output, 'utf8');

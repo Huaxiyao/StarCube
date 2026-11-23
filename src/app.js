@@ -215,6 +215,8 @@
   var challengeStore = null;
   var contestMode = 'daily';
   var activeContest = null;
+  var contestRandomStateCache = Object.create(null);
+  var contestBatchRequests = Object.create(null);
   var recordsFilter = 'all';
   var recordsSort = 'latest';
   var recordsPageLimit = 60;
@@ -767,7 +769,8 @@
       text = currentScramble.algorithm;
       facelets = currentScramble.facelets;
       puzzleForNet = currentScramble.puzzle || puzzle.id;
-      hint = (currentScramble.replayed ? '重测历史打乱 · ' : (puzzle.usesWorker ? '随机状态 · ' : puzzle.name + ' · ')) + currentScramble.algorithm.split(' ').length + ' 步';
+      var isRandomState = puzzle.scrambleMode === 'random-state' || puzzle.usesWorker;
+      hint = (currentScramble.replayed ? '重测历史打乱 · ' : (isRandomState ? '随机状态 · ' : puzzle.name + ' · ')) + currentScramble.algorithm.split(' ').length + ' 步';
     } else if (engineDead && puzzle.usesWorker) {
       text = '打乱不可用';
       message = true;
@@ -1622,6 +1625,71 @@
     el.contestBanner.hidden = false;
   }
 
+  function contestCacheKey(type, puzzleId, period) {
+    return type + ':' + puzzleId + ':' + period;
+  }
+
+  function applyCachedContestScrambles(type, puzzleId, period, list) {
+    if (!activeContest || activeContest.type !== type || activeContest.puzzle !== puzzleId || activeContest.period !== period) return;
+    if (!Array.isArray(list) || !list.length) return;
+    var nextScrambles = activeContest.scrambles.slice();
+    for (var i = activeContest.index; i < nextScrambles.length && i < list.length; i++) {
+      if (list[i] && list[i].algorithm && list[i].facelets) {
+        nextScrambles[i] = {
+          algorithm: list[i].algorithm,
+          facelets: list[i].facelets,
+          puzzle: puzzleId
+        };
+      }
+    }
+    activeContest.scrambles = nextScrambles;
+    if (currentView === 'timer' && state === 'IDLE' && !scrambleUsed && !press && !activeScramble) {
+      loadActiveContestScramble();
+      render();
+    }
+  }
+
+  function ensureContestRandomState(type, puzzleId, period, total) {
+    if (puzzleId !== '333' && puzzleId !== '333oh') return;
+    var key = contestCacheKey(type, puzzleId, period);
+    var existing = contestRandomStateCache[key];
+    if (existing && existing.scrambles) {
+      applyCachedContestScrambles(type, puzzleId, period, existing.scrambles);
+      return;
+    }
+    if (!engineReady || engineDead) return;
+    if (existing && existing.pending) return;
+
+    var seeds = [];
+    for (var i = 0; i < total; i++) {
+      seeds.push('StarCube:' + key + ':solve-' + (i + 1));
+    }
+
+    if (engineMode === 'main' && self.StarCubeSolver && typeof self.StarCubeSolver.scramble === 'function') {
+      try {
+        var syncList = seeds.map(function (seed) {
+          var res = self.StarCubeSolver.scramble({ seed: seed });
+          return { algorithm: res.algorithm, facelets: res.facelets, puzzle: puzzleId };
+        });
+        contestRandomStateCache[key] = { scrambles: syncList, pending: false };
+        applyCachedContestScrambles(type, puzzleId, period, syncList);
+      } catch (err) {}
+      return;
+    }
+
+    if (engineMode === 'worker' && worker) {
+      var reqId = ++requestSerial;
+      contestRandomStateCache[key] = { scrambles: null, pending: true };
+      contestBatchRequests[reqId] = { cacheKey: key, type: type, puzzleId: puzzleId, period: period };
+      try {
+        worker.postMessage({ cmd: 'scrambleBatch', requestId: reqId, seeds: seeds });
+      } catch (err) {
+        delete contestBatchRequests[reqId];
+        delete contestRandomStateCache[key];
+      }
+    }
+  }
+
   function renderContestView() {
     if (currentView !== 'contest' || !challengeStore || !el.contestSlots) return;
     var puzzle = currentPuzzle();
@@ -1629,6 +1697,7 @@
     var entry = data.entry;
     var summary = data.summary;
     var isWeekly = contestMode === 'weekly';
+    if (!summary.completed) ensureContestRandomState(contestMode, puzzle.id, entry.period, summary.total);
 
     if (el.contestStreakNum) el.contestStreakNum.textContent = String(challengeStore.dailyStreak());
     if (el.contestModeBar && el.contestModeBar.querySelectorAll) {
@@ -1735,14 +1804,26 @@
     var puzzle = currentPuzzle();
     var data = challengeStore.getOrInit(contestMode, puzzle.id);
     if (data.summary.completed) return;
+    var scrambles = data.scrambles.slice();
+    var cacheEntry = contestRandomStateCache[contestCacheKey(contestMode, puzzle.id, data.entry.period)];
+    if (cacheEntry && cacheEntry.scrambles) {
+      for (var i = data.entry.solves.length; i < scrambles.length && i < cacheEntry.scrambles.length; i++) {
+        scrambles[i] = {
+          algorithm: cacheEntry.scrambles[i].algorithm,
+          facelets: cacheEntry.scrambles[i].facelets,
+          puzzle: puzzle.id
+        };
+      }
+    }
     activeContest = {
       type: contestMode,
       puzzle: puzzle.id,
       period: data.entry.period,
-      scrambles: data.scrambles,
+      scrambles: scrambles,
       index: data.entry.solves.length
     };
     loadActiveContestScramble();
+    ensureContestRandomState(contestMode, puzzle.id, data.entry.period, data.summary.total);
     switchView('timer');
     showToast((contestMode === 'weekly' ? '周赛' : '日赛') + '第 ' + (activeContest.index + 1) + ' 把准备就绪');
   }
@@ -2805,7 +2886,31 @@
       acceptScramble(data);
       return;
     }
+    if (data.cmd === 'scrambleBatch') {
+      var batchMeta = contestBatchRequests[data.requestId];
+      if (!batchMeta) return;
+      delete contestBatchRequests[data.requestId];
+      var list = Array.isArray(data.results) ? data.results.map(function (item) {
+        var alg = String((item && item.algorithm) || '').replace(/\s+/g, ' ').trim();
+        var fl = String((item && item.facelets) || '');
+        if (!isValidAlgorithm(alg) || !/^[URFDLB]{54}$/.test(fl)) return null;
+        return { algorithm: alg, facelets: fl, puzzle: batchMeta.puzzleId };
+      }) : [];
+      if (list.length && list.every(Boolean)) {
+        contestRandomStateCache[batchMeta.cacheKey] = { scrambles: list, pending: false };
+        applyCachedContestScrambles(batchMeta.type, batchMeta.puzzleId, batchMeta.period, list);
+      } else {
+        delete contestRandomStateCache[batchMeta.cacheKey];
+      }
+      return;
+    }
     if (data.cmd === 'error') {
+      if (data.requestId !== undefined && Object.prototype.hasOwnProperty.call(contestBatchRequests, data.requestId)) {
+        var failedMeta = contestBatchRequests[data.requestId];
+        delete contestBatchRequests[data.requestId];
+        if (failedMeta) delete contestRandomStateCache[failedMeta.cacheKey];
+        return;
+      }
       if (!engineReady) {
         fallbackToMain(data.message || 'Worker 初始化失败');
       } else {

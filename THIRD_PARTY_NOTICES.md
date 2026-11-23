@@ -1,16 +1,21 @@
 # Third-party notices
 
-## cubejs 1.3.2
+## CubingApp 3×3 algorithm catalog
 
-StarCube bundles cubejs in `src/solver.bundle.js` and the generated `starcube.html`. Its copyright and license notice are also preserved in `src/template.html` and the generated HTML.
+StarCube bundles selected F2L, OLL, PLL, COLL, and ZBLL algorithms from [CubingApp at revision 613a498](https://github.com/spencerchubb/cubingapp/tree/613a49885dc618023368e5f0c2a25024b8c7e9a5/tanstack/src/routes/algorithms/algs). These data are Copyright (c) 2024 Spencer Chubb and distributed under the [MIT License](https://github.com/spencerchubb/cubingapp/blob/613a49885dc618023368e5f0c2a25024b8c7e9a5/LICENSE).
 
-The following license applies to cubejs. It does not assign a license to StarCube's original code.
+The full notice is preserved in `src/formula-catalog.js` and the generated `starcube.html`. StarCube selects one sequence per case and normalizes its notation and reference orientation. Case diagrams are generated locally from the sequences.
+
+## min2phase.js
+
+StarCube bundles [min2phase.js](https://github.com/cs0x7f/min2phase.js) in `src/solver.bundle.js` and the generated `starcube.html`. Its copyright and MIT license notice are also preserved in `src/template.html`, `src/solver.bundle.js`, and the generated HTML.
+
+The following license applies to min2phase.js. It does not assign a license to StarCube's original code.
 
 ```text
 MIT License
 
-Copyright (c) 2013-2017 Petri Lehtinen
-Copyright (c) 2018 Ludovic Fernandez
+Copyright (c) 2023 Chen Shuang
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

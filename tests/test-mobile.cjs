@@ -138,7 +138,7 @@ test('android-bridge.js bridges exportFile promises, theme sync, haptics, splash
   assert.equal(calls.exits, 1);
 });
 
-test('prepare-web.cjs builds offline Android index.html with inline native bridge and no external assets', () => {
+test('prepare-web.cjs builds offline Android index.html with inline native bridge, android styles and no external assets', () => {
   const run = spawnSync(process.execPath, [path.join(mobileRoot, 'scripts', 'prepare-web.cjs')], {
     cwd: root,
     encoding: 'utf8',
@@ -148,8 +148,17 @@ test('prepare-web.cjs builds offline Android index.html with inline native bridg
   const outPath = path.join(mobileRoot, 'www', 'index.html');
   assert.ok(fs.existsSync(outPath), 'mobile/www/index.html must be generated');
   const html = fs.readFileSync(outPath, 'utf8');
+  assert.match(html, /<style data-starcube-native="android-styles">/);
+  assert.match(html, /#202d40/);
+  assert.match(html, /align-items:stretch/);
+  assert.match(html, /\.review-diag-item/);
+  assert.match(html, /\.records-toolbar/);
   assert.match(html, /<script data-starcube-native="android">/);
   assert.doesNotMatch(html, /<(?:script|link)\b[^>]*(?:src|href)\s*=\s*["']https?:\/\//i);
+
+  const webHtml = fs.readFileSync(path.join(root, 'starcube.html'), 'utf8');
+  assert.doesNotMatch(webHtml, /data-starcube-native="android-styles"/);
+  assert.doesNotMatch(webHtml, /#202d40/);
 });
 
 test('configure-android.cjs patches MainActivity, adaptive icons, manifest, version and signing idempotently', () => {

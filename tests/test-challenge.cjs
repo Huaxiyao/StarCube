@@ -66,3 +66,15 @@ const store2 = Challenge.create({ storage: memoryStorage(), stats: Stats, puzzle
 assert.equal(store2.importAll(exported), 1);
 assert.equal(store2.totalCompleted(), 1);
 console.log('PASS Challenge history exports and merges cleanly');
+
+// 6. 2x2 / Pyraminx / Skewb 确定性挑战也严格走 WCA Random-State
+for (const [pid, minOpt] of [['222', 4], ['pyram', 6], ['skewb', 7]]) {
+  const s1 = Challenge.generateScrambles('daily', pid, day, Puzzles);
+  const s2 = Challenge.generateScrambles('daily', pid, day, Puzzles);
+  assert.equal(s1.length, 5);
+  assert.deepEqual(s1.map(s => s.algorithm), s2.map(s => s.algorithm));
+  for (const item of s1) {
+    assert.ok(Puzzles.optimalMoves(pid, item.algorithm) >= minOpt, pid + ' challenge optimal >= ' + minOpt);
+  }
+}
+console.log('PASS Deterministic daily challenges for 2x2, Pyraminx, and Skewb use WCA random-state');
