@@ -118,6 +118,8 @@ if (!gradle.includes(signingMarker)) {
   const buildTypesMatch = gradle.match(/^([ \t]*)buildTypes\s*\{/m);
   if (buildTypesMatch) {
     const indent = buildTypesMatch[1];
+    const before = gradle.slice(0, buildTypesMatch.index);
+    const after = gradle.slice(buildTypesMatch.index);
     const signingBlock = [
       indent + signingMarker,
       indent + 'signingConfigs {',
@@ -129,15 +131,14 @@ if (!gradle.includes(signingMarker)) {
       indent + '            keyPassword System.getenv("STARCUBE_KEY_PASSWORD")',
       indent + '        }',
       indent + '    }',
-      indent + '}',
-      buildTypesMatch[0]
+      indent + '}'
     ].join('\n');
 
-    gradle = gradle.replace(buildTypesMatch[0], signingBlock);
-    gradle = gradle.replace(
+    const patchedAfter = after.replace(
       /^([ \t]*)release\s*\{/m,
       '$1release {\n$1    if (System.getenv("STARCUBE_KEYSTORE_PATH")) {\n$1        signingConfig signingConfigs.release\n$1    }'
     );
+    gradle = before + signingBlock + '\n' + patchedAfter;
   }
 }
 

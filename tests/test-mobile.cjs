@@ -234,6 +234,12 @@ test('configure-android.cjs patches MainActivity, adaptive icons, manifest, vers
     assert.match(gradle, /versionCode 42/);
     assert.match(gradle, /versionName "1\.2\.3"/);
     assert.equal((gradle.match(/STARCUBE_RELEASE_SIGNING/g) || []).length, 1, 'Signing block patch must be idempotent');
+    const buildTypesIdx = gradle.indexOf('buildTypes {');
+    assert.ok(buildTypesIdx > 0, 'buildTypes block must exist');
+    const signingSection = gradle.slice(gradle.indexOf('signingConfigs {'), buildTypesIdx);
+    const buildTypesSection = gradle.slice(buildTypesIdx);
+    assert.doesNotMatch(signingSection, /signingConfig\s+signingConfigs\.release/, 'signingConfigs.release must not contain signingConfig');
+    assert.equal((buildTypesSection.match(/signingConfig\s+signingConfigs\.release/g) || []).length, 1, 'buildTypes.release must reference signingConfigs.release exactly once');
   } finally {
     fs.rmSync(tempBase, { recursive: true, force: true });
   }

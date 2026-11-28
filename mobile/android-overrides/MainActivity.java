@@ -652,11 +652,19 @@ public class MainActivity extends BridgeActivity {
                             if (asset == null) continue;
                             String name = asset.optString("name", "");
                             String url = asset.optString("browser_download_url", "");
-                            if (name.toLowerCase().endsWith(".apk") && !url.isEmpty()) {
-                                downloadUrl = url;
-                                assetName = name;
-                                isApk = true;
-                                break;
+                            String lower = name.toLowerCase();
+                            if (lower.endsWith(".apk") && !url.isEmpty()) {
+                                if (!isApk) {
+                                    downloadUrl = url;
+                                    assetName = name;
+                                    isApk = true;
+                                }
+                                if (lower.contains("release")) {
+                                    downloadUrl = url;
+                                    assetName = name;
+                                    isApk = true;
+                                    break;
+                                }
                             }
                         }
                     }
